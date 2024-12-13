@@ -12,9 +12,12 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div>
+    <>
       <Header />
-      {children}
-    </div>
+      <main className="flex min-h-[calc(100svh-4rem)] flex-col items-center bg-blue-50/40">
+        {children}
+      </main>
+      {/* <main className="min-h-[calc(100svh-4rem)]">{children}</main> */}
+    </>
   );
 }

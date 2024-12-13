@@ -22,7 +22,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${lora.className} antialiased`}>
+      <body className={`${lora.className}`}>
         <ConvexClientProvider>{children}</ConvexClientProvider>
       </body>
     </html>
