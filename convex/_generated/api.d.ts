@@ -14,7 +14,10 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as http from "../http.js";
+import type * as iot from "../iot.js";
+import type * as machines from "../machines.js";
 import type * as users from "../users.js";
+import type * as vendors from "../vendors.js";
 
 /**
  * A utility for referencing Convex functions in your app's API.
@@ -26,7 +29,10 @@ import type * as users from "../users.js";
  */
 declare const fullApi: ApiFromModules<{
   http: typeof http;
+  iot: typeof iot;
+  machines: typeof machines;
   users: typeof users;
+  vendors: typeof vendors;
 }>;
 export declare const api: FilterApi<
   typeof fullApi,

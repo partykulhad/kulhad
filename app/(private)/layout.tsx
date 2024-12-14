@@ -1,5 +1,5 @@
-import type {Metadata} from "next";
-import Header from "@/components/AuthenticatedHeader";
+import type { Metadata } from "next";
+// import Header from "@/components/AuthenticatedHeader";
 
 export const metadata: Metadata = {
   title: "Kulhad",
@@ -13,7 +13,7 @@ export default function RootLayout({
 }>) {
   return (
     <div>
-      <Header />
+      {/* <Header /> */}
       {children}
     </div>
   );
