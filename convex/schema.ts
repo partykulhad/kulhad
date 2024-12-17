@@ -47,7 +47,7 @@ export default defineSchema({
       phone: v.string(),
       company: v.string(),
     }),
-    iot_data: defineTable({
+    machine_data: defineTable({
       machineId: v.string(),
       timestamp: v.string(),
       temperature: v.optional(v.number()),

@@ -21,7 +21,7 @@ export const addIoTData = mutation({
     if (rating !== undefined) iotData.rating = rating;
     if (canisterLevel !== undefined) iotData.canisterLevel = canisterLevel;
 
-    const iotDataId = await ctx.db.insert("iot_data", iotData);
+    const iotDataId = await ctx.db.insert("machine_data", iotData);
 
     // Update the machine's data in the machines table
     const machine = await ctx.db
@@ -48,7 +48,7 @@ export const getLatestIoTData = query({
   args: { machineId: v.string() },
   handler: async (ctx, args) => {
     const latestData = await ctx.db
-      .query("iot_data")
+      .query("machine_data")
       .filter((q) => q.eq(q.field("machineId"), args.machineId))
       .order("desc")
       .first();
