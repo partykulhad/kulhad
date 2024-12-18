@@ -16,9 +16,19 @@ export default defineSchema({
     machines: defineTable({
       id: v.string(),
       name: v.string(),
-      location: v.string(),
       description: v.string(),
-      status: v.union(v.literal("online"), v.literal("offline")),
+      model: v.string(),
+      installedDate: v.optional(v.string()),
+      address: v.object({
+        building: v.string(),
+        floor: v.string(),
+        area: v.string(),
+        district: v.string(),
+        state: v.string(),
+      }),
+      gisLatitude: v.string(),
+      gisLongitude: v.string(),
+      status: v.string(),
       temperature: v.number(),
       rating: v.number(),
       canisterLevel: v.number(),
@@ -53,5 +63,30 @@ export default defineSchema({
       temperature: v.optional(v.number()),
       rating: v.optional(v.number()),
       canisterLevel:v.optional(v.number()),
+    }),
+
+
+    deliveryAgents: defineTable({
+      name: v.string(),
+      mobile: v.string(),
+      email: v.string(),
+      adhaar: v.string(),
+      address: v.string(),
+      uid: v.string(),
+      startingDate: v.string(),
+      company: v.string(),
+      pan: v.string(),
+      photoStorageId: v.optional(v.string()),
+      createdAt: v.number(), // Add this line
+      trips: v.array(
+        v.object({
+          startPoint: v.string(),
+          kitchenName: v.string(),
+          endPoint: v.string(),
+          refilledMachineId: v.string(),
+          distance: v.number(),
+          timestamp: v.string(),
+        })
+      ),
     }),
 });

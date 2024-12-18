@@ -6,10 +6,10 @@ import Link from "next/link";
 import {
   CoffeeIcon,
   LayoutDashboardIcon,
-  SettingsIcon,
   UsersIcon,
   PlusCircleIcon,
   UserPlusIcon,
+  TruckIcon,
 } from "lucide-react";
 
 import { Loading } from "@/components/shared/loading";
@@ -77,8 +77,11 @@ const Header: React.FC<HeaderProps> = ({
             <Button variant="outline" onClick={() => setActiveTab("addVendor")}>
               <UserPlusIcon className="mr-2 h-4 w-4" /> Add Vendor
             </Button>
-            <Button variant="outline">
-              <SettingsIcon className="mr-2 h-4 w-4" /> Settings
+            <Button
+              variant="outline"
+              onClick={() => setActiveTab("deliveryAgents")}
+            >
+              <TruckIcon className="mr-2 h-4 w-4" /> Delivery Agents
             </Button>
           </div>
 

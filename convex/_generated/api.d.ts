@@ -13,6 +13,7 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as deliveryAgents from "../deliveryAgents.js";
 import type * as http from "../http.js";
 import type * as iot from "../iot.js";
 import type * as machines from "../machines.js";
@@ -28,6 +29,7 @@ import type * as vendors from "../vendors.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  deliveryAgents: typeof deliveryAgents;
   http: typeof http;
   iot: typeof iot;
   machines: typeof machines;

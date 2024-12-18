@@ -11,8 +11,18 @@ export const add = mutation({
   args: {
     id: v.string(),
     name: v.string(),
-    location: v.string(),
     description: v.string(),
+    model: v.string(),
+    installedDate: v.optional(v.string()),
+    address: v.object({
+      building: v.string(),
+      floor: v.string(),
+      area: v.string(),
+      district: v.string(),
+      state: v.string(),
+    }),
+    gisLatitude: v.string(),
+    gisLongitude: v.string(),
   },
   handler: async (ctx, args) => {
     const machineId = await ctx.db.insert("machines", {
@@ -28,6 +38,8 @@ export const add = mutation({
     return { id: machineId };
   },
 });
+
+
 
 export const toggleStatus = mutation({
   args: { id: v.id("machines") },
