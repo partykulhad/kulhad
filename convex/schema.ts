@@ -12,6 +12,12 @@ export default defineSchema({
     .index("by_clerk_id", ["userId"])
     .index("by_email", ["email"]),
 
+    appUser: defineTable({
+      username: v.string(),
+      password: v.string(), // Note: In a real-world scenario, you should hash passwords
+      // Add any other fields you need for users
+    }).index("by_username", ["username"]),
+
 
     machines: defineTable({
       id: v.string(),
@@ -89,4 +95,6 @@ export default defineSchema({
         })
       ),
     }),
+
+    
 });
