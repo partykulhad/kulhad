@@ -12,6 +12,7 @@ import AddMachineContent from "@/components/AddMachineContent";
 import AddVendorContent from "@/components/AddVendorContent";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import AddDeliveryAgent from "@/components/AddDeliveryAgent";
+import AddKitchen from "@/components/add-kitchen";
 
 export default function TeaVendingDashboard() {
   const [selectedMachine, setSelectedMachine] = useState<string>("all");
@@ -55,11 +56,17 @@ export default function TeaVendingDashboard() {
             <TabsContent value="vendors">
               <VendorsContent vendors={vendors} />
             </TabsContent>
+            <TabsContent value="Kitchen">
+              <VendorsContent vendors={vendors} />
+            </TabsContent>
             <TabsContent value="addMachine">
               <AddMachineContent />
             </TabsContent>
             <TabsContent value="addVendor">
               <AddVendorContent />
+            </TabsContent>
+            <TabsContent value="addKitchen">
+              <AddKitchen />
             </TabsContent>
             <TabsContent value="deliveryAgents">
               <AddDeliveryAgent />

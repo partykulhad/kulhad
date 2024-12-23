@@ -65,18 +65,25 @@ const Header: React.FC<HeaderProps> = ({
             <Button variant="outline" onClick={() => setActiveTab("dashboard")}>
               <LayoutDashboardIcon className="mr-2 h-4 w-4" /> Overview
             </Button>
-            <Button variant="outline" onClick={() => setActiveTab("vendors")}>
+            {/* <Button variant="outline" onClick={() => setActiveTab("vendors")}>
               <UsersIcon className="mr-2 h-4 w-4" /> Vendors
-            </Button>
+            </Button> */}
             <Button
               variant="outline"
               onClick={() => setActiveTab("addMachine")}
             >
               <PlusCircleIcon className="mr-2 h-4 w-4" /> Add Machine
             </Button>
-            <Button variant="outline" onClick={() => setActiveTab("addVendor")}>
+            {/* <Button variant="outline" onClick={() => setActiveTab("addVendor")}>
               <UserPlusIcon className="mr-2 h-4 w-4" /> Add Vendor
+            </Button> */}
+            <Button
+              variant="outline"
+              onClick={() => setActiveTab("addKitchen")}
+            >
+              <UserPlusIcon className="mr-2 h-4 w-4" /> Add Kitchen
             </Button>
+
             <Button
               variant="outline"
               onClick={() => setActiveTab("deliveryAgents")}

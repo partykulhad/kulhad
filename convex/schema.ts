@@ -96,5 +96,28 @@ export default defineSchema({
       ),
     }),
 
+    kitchens: defineTable({
+      name: v.string(),
+      address: v.string(),
+      manager: v.string(),
+      managerMobile: v.string(),
+      gis: v.string(),
+      capacity: v.number(),
+      members: v.array(
+        v.object({
+          name: v.string(),
+          mobile: v.string(),
+          email: v.string(),
+          adhaar: v.string(),
+          address: v.string(),
+          uid: v.string(),
+          startingDate: v.string(),
+          company: v.string(),
+          pan: v.string(),
+          photoStorageId: v.optional(v.string()),
+        })
+      ),
+    }),
+
     
 });
