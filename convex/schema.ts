@@ -15,6 +15,7 @@ export default defineSchema({
     appUser: defineTable({
       username: v.string(),
       password: v.string(), // Note: In a real-world scenario, you should hash passwords
+      role: v.string(), // New field for user role
       // Add any other fields you need for users
     }).index("by_username", ["username"]),
 

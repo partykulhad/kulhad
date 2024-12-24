@@ -22,7 +22,14 @@ export async function POST(req: NextRequest) {
     });
 
     if (result.success) {
-      return NextResponse.json({ success: true, userId: result.userId }, { status: 200 });
+      return NextResponse.json({
+        success: true,
+        userId: result.userId,
+        role: result.role,
+        token: result.token,
+        tokenExpireTime: result.tokenExpireTime,
+        tokenExpireDate: result.tokenExpireDate
+      }, { status: 200 });
     } else {
       return NextResponse.json({ success: false, error: result.error }, { status: 401 });
     }

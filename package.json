@@ -25,6 +25,8 @@
     "clsx": "^2.1.1",
     "convex": "^1.17.3",
     "date-fns": "^4.1.0",
+    "jose": "^5.9.6",
+    "jsonwebtoken": "^9.0.2",
     "lucide-react": "^0.468.0",
     "next": "15.1.0",
     "qrcode": "^1.5.4",
@@ -37,6 +39,7 @@
     "tailwindcss-animate": "^1.0.7"
   },
   "devDependencies": {
+    "@types/jsonwebtoken": "^9.0.7",
     "@types/node": "^20",
     "@types/qrcode": "^1.5.5",
     "@types/react": "^19",
