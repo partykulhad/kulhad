@@ -18,7 +18,7 @@ export const add = mutation({
     adhaar: v.string(),
     address: v.string(),
     uid: v.string(),
-    userId: v.string(),
+    userId:  v.optional(v.string()),
     startingDate: v.string(),
     company: v.string(),
     pan: v.string(),
