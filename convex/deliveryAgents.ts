@@ -18,6 +18,7 @@ export const add = mutation({
     adhaar: v.string(),
     address: v.string(),
     uid: v.string(),
+    userId: v.string(),
     startingDate: v.string(),
     company: v.string(),
     pan: v.string(),
@@ -80,6 +81,19 @@ export const getById = query({
   args: { id: v.id("deliveryAgents") },
   handler: async (ctx, args) => {
     const agent = await ctx.db.get(args.id);
+    if (!agent) throw new ConvexError("Delivery agent not found");
+    return agent;
+  },
+});
+
+// Get a specific delivery agent by userId
+export const getByUserId = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const agent = await ctx.db
+      .query("deliveryAgents")
+      .withIndex("by_userId", (q) => q.eq("userId", args.userId))
+      .first();
     if (!agent) throw new ConvexError("Delivery agent not found");
     return agent;
   },

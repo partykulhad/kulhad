@@ -15,9 +15,9 @@ export default defineSchema({
     appUser: defineTable({
       username: v.string(),
       password: v.string(), // Note: In a real-world scenario, you should hash passwords
-      role: v.string(), // New field for user role
-      // Add any other fields you need for users
-    }).index("by_username", ["username"]),
+      role: v.string(),
+      userId: v.string(),
+    }).index("by_username", ["username"]).index("by_userId", ["userId"]),
 
 
     machines: defineTable({
@@ -84,6 +84,7 @@ export default defineSchema({
       company: v.string(),
       pan: v.string(),
       photoStorageId: v.optional(v.string()),
+      userId: v.optional(v.string()),
       createdAt: v.number(), // Add this line
       trips: v.array(
         v.object({
@@ -95,7 +96,7 @@ export default defineSchema({
           timestamp: v.string(),
         })
       ),
-    }),
+    }).index("by_userId", ["userId"]),
 
     kitchens: defineTable({
       name: v.string(),
@@ -104,6 +105,7 @@ export default defineSchema({
       managerMobile: v.string(),
       gis: v.string(),
       capacity: v.number(),
+      userId: v.optional(v.string()),
       members: v.array(
         v.object({
           name: v.string(),
