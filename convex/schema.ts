@@ -12,115 +12,122 @@ export default defineSchema({
     .index("by_clerk_id", ["userId"])
     .index("by_email", ["email"]),
 
-    appUser: defineTable({
-      username: v.string(),
-      password: v.string(), // Note: In a real-world scenario, you should hash passwords
-      role: v.string(),
-      userId: v.string(),
-    }).index("by_username", ["username"]).index("by_userId", ["userId"]),
+  appUser: defineTable({
+    username: v.string(),
+    password: v.string(),
+    salt: v.optional(v.string()),
+    role: v.string(),
+    userId: v.string(),
+    token: v.optional(v.string()),
+    tokenExpiration: v.optional(v.number()),
+  }).index("by_username", ["username"]).index("by_userId", ["userId"]),
 
-
-    machines: defineTable({
-      id: v.string(),
-      name: v.string(),
-      description: v.string(),
-      model: v.string(),
-      installedDate: v.optional(v.string()),
-      address: v.object({
-        building: v.string(),
-        floor: v.string(),
-        area: v.string(),
-        district: v.string(),
-        state: v.string(),
-      }),
-      gisLatitude: v.string(),
-      gisLongitude: v.string(),
+  machines: defineTable({
+    id: v.string(),
+    name: v.string(),
+    description: v.string(),
+    model: v.string(),
+    installedDate: v.optional(v.string()),
+    address: v.object({
+      building: v.string(),
+      floor: v.string(),
+      area: v.string(),
+      district: v.string(),
+      state: v.string(),
+    }),
+    gisLatitude: v.string(),
+    gisLongitude: v.string(),
+    status: v.string(),
+    temperature: v.number(),
+    rating: v.number(),
+    canisterLevel: v.number(),
+    replenishmentOrder: v.object({
       status: v.string(),
-      temperature: v.number(),
-      rating: v.number(),
-      canisterLevel: v.number(),
-      replenishmentOrder: v.object({
-        status: v.string(),
+      eta: v.union(v.string(), v.null()),
+    }),
+    deliveryBoy: v.union(
+      v.object({
+        name: v.string(),
+        location: v.string(),
         eta: v.union(v.string(), v.null()),
       }),
-      deliveryBoy: v.union(
-        v.object({
-          name: v.string(),
-          location: v.string(),
-          eta: v.union(v.string(), v.null()),
-        }),
-        v.null()
-      ),
-      lastFulfilled: v.string(),
-    }),
-    vendors: defineTable({
-      id: v.string(),
-      name: v.string(),
-      status: v.string(),
-      amountDue: v.number(),
-      lastOrder: v.string(),
-      contactPerson: v.string(),
-      email: v.string(),
-      phone: v.string(),
-      company: v.string(),
-    }),
-    machine_data: defineTable({
-      machineId: v.string(),
-      timestamp: v.string(),
-      temperature: v.optional(v.number()),
-      rating: v.optional(v.number()),
-      canisterLevel:v.optional(v.number()),
-    }),
+      v.null()
+    ),
+    lastFulfilled: v.string(),
+    slo: v.optional(v.object({
+      uptime: v.number(),
+      responseTime: v.number(),
+      availabilityTarget: v.number(),
+    })),
+  }),
 
+  vendors: defineTable({
+    id: v.string(),
+    name: v.string(),
+    status: v.string(),
+    amountDue: v.number(),
+    lastOrder: v.string(),
+    contactPerson: v.string(),
+    email: v.string(),
+    phone: v.string(),
+    company: v.string(),
+  }),
 
-    deliveryAgents: defineTable({
-      name: v.string(),
-      mobile: v.string(),
-      email: v.string(),
-      adhaar: v.string(),
-      address: v.string(),
-      uid: v.string(),
-      startingDate: v.string(),
-      company: v.string(),
-      pan: v.string(),
-      photoStorageId: v.optional(v.string()),
-      userId: v.optional(v.string()),
-      createdAt: v.number(), // Add this line
-      trips: v.array(
-        v.object({
-          startPoint: v.string(),
-          kitchenName: v.string(),
-          endPoint: v.string(),
-          refilledMachineId: v.string(),
-          distance: v.number(),
-          timestamp: v.string(),
-        })
-      ),
-    }).index("by_userId", ["userId"]),
+  machine_data: defineTable({
+    machineId: v.string(),
+    timestamp: v.string(),
+    temperature: v.optional(v.number()),
+    rating: v.optional(v.number()),
+    canisterLevel: v.optional(v.number()),
+  }),
 
-    kitchens: defineTable({
-      name: v.string(),
-      address: v.string(),
-      manager: v.string(),
-      managerMobile: v.string(),
-      gis: v.string(),
-      capacity: v.number(),
-      userId: v.optional(v.string()),
-      members: v.array(
-        v.object({
-          name: v.string(),
-          mobile: v.string(),
-          email: v.string(),
-          adhaar: v.string(),
-          address: v.string(),
-          uid: v.string(),
-          startingDate: v.string(),
-          company: v.string(),
-          pan: v.string(),
-          photoStorageId: v.optional(v.string()),
-        })
-      ),
-    }),
+  deliveryAgents: defineTable({
+    name: v.string(),
+    mobile: v.string(),
+    email: v.string(),
+    adhaar: v.string(),
+    address: v.string(),
+    uid: v.string(),
+    startingDate: v.string(),
+    company: v.string(),
+    pan: v.string(),
+    photoStorageId: v.optional(v.string()),
+    userId: v.optional(v.string()),
+    createdAt: v.number(),
+    trips: v.array(
+      v.object({
+        startPoint: v.string(),
+        kitchenName: v.string(),
+        endPoint: v.string(),
+        refilledMachineId: v.string(),
+        distance: v.number(),
+        timestamp: v.string(),
+      })
+    ),
+  }).index("by_userId", ["userId"]),
 
-    
+  kitchens: defineTable({
+    name: v.string(),
+    address: v.string(),
+    manager: v.string(),
+    managerMobile: v.string(),
+    gis: v.string(),
+    capacity: v.number(),
+    userId: v.optional(v.string()),
+    members: v.array(
+      v.object({
+        name: v.string(),
+        mobile: v.string(),
+        email: v.string(),
+        adhaar: v.string(),
+        address: v.string(),
+        uid: v.string(),
+        startingDate: v.string(),
+        company: v.string(),
+        pan: v.string(),
+        photoStorageId: v.optional(v.string()),
+      })
+    ),
+  }),
 });
+

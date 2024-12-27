@@ -9,10 +9,15 @@ export async function POST(req: NextRequest) {
     const { username, password } = await req.json();
 
     if (!username || !password) {
-      return NextResponse.json(
-        { success: false, error: "Missing required parameters: username or password" },
-        { status: 400 }
-      );
+      return NextResponse.json({
+        code: 300,
+        Message: "Missing required parameters: username or password",
+        userId: null,
+        role: null,
+        token: null,
+        tokenExpireTime: null,
+        tokenExpireDate: null
+      }, { status: 400 });
     }
 
     // Call the Convex mutation for authentication
@@ -23,7 +28,8 @@ export async function POST(req: NextRequest) {
 
     if (result.success) {
       return NextResponse.json({
-        success: true,
+        code: 200,
+        Message: "Login Successful",
         userId: result.userId,
         role: result.role,
         token: result.token,
@@ -31,11 +37,27 @@ export async function POST(req: NextRequest) {
         tokenExpireDate: result.tokenExpireDate
       }, { status: 200 });
     } else {
-      return NextResponse.json({ success: false, error: result.error }, { status: 401 });
+      return NextResponse.json({
+        code: 300,
+        Message: result.error || "Invalid username or password",
+        userId: null,
+        role: null,
+        token: null,
+        tokenExpireTime: null,
+        tokenExpireDate: null
+      }, { status: 401 });
     }
   } catch (error) {
     console.error('Failed to authenticate:', error);
-    return NextResponse.json({ success: false, error: 'Failed to authenticate' }, { status: 500 });
+    return NextResponse.json({
+      code: 400,
+      Message: error instanceof Error ? error.message : "Failed to authenticate",
+      userId: null,
+      role: null,
+      token: null,
+      tokenExpireTime: null,
+      tokenExpireDate: null
+    }, { status: 500 });
   }
 }
 
