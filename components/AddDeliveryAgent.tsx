@@ -56,6 +56,8 @@ interface DeliveryAgent {
   pan: string;
   photoStorageId?: string;
   photo?: File | null;
+  username: string;
+  password: string;
 }
 
 export default function AddDeliveryAgent() {
@@ -70,6 +72,8 @@ export default function AddDeliveryAgent() {
     company: "",
     pan: "",
     photo: null,
+    username: "",
+    password: "",
   });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -135,6 +139,8 @@ export default function AddDeliveryAgent() {
         company: agent.company,
         pan: agent.pan,
         photoStorageId,
+        username: agent.username,
+        password: agent.password,
       };
 
       if (isEditing && agent._id) {
@@ -156,6 +162,8 @@ export default function AddDeliveryAgent() {
         company: "",
         pan: "",
         photo: null,
+        username: "",
+        password: "",
       });
       setIsDialogOpen(false);
       setIsEditing(false);
@@ -209,6 +217,8 @@ export default function AddDeliveryAgent() {
                 company: "",
                 pan: "",
                 photo: null,
+                username: "",
+                password: "",
               });
             }
           }}
@@ -312,6 +322,27 @@ export default function AddDeliveryAgent() {
                     accept="image/*"
                   />
                 </div>
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    name="username"
+                    value={agent.username}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={agent.password}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
@@ -343,6 +374,7 @@ export default function AddDeliveryAgent() {
               <TableHead>Email</TableHead>
               <TableHead>Address</TableHead>
               <TableHead>UID</TableHead>
+              <TableHead>Username</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -360,6 +392,7 @@ export default function AddDeliveryAgent() {
                 <TableCell>{agent.email}</TableCell>
                 <TableCell>{agent.address}</TableCell>
                 <TableCell>{agent.uid}</TableCell>
+                <TableCell>{agent.username}</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button

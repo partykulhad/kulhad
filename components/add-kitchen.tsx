@@ -63,8 +63,11 @@ interface Kitchen {
   address: string;
   manager: string;
   managerMobile: string;
-  gis: string;
+  latitude: number;
+  longitude: number;
   capacity: number;
+  username: string;
+  password: string;
   members: KitchenMember[];
 }
 
@@ -74,8 +77,11 @@ export default function AddKitchen() {
     address: "",
     manager: "",
     managerMobile: "",
-    gis: "",
+    latitude: 0,
+    longitude: 0,
     capacity: 0,
+    username: "",
+    password: "",
     members: [],
   });
   const [member, setMember] = useState<KitchenMember>({
@@ -162,8 +168,11 @@ export default function AddKitchen() {
         address: kitchen.address,
         manager: kitchen.manager,
         managerMobile: kitchen.managerMobile,
-        gis: kitchen.gis,
+        latitude: Number(kitchen.latitude),
+        longitude: Number(kitchen.longitude),
         capacity: Number(kitchen.capacity),
+        username: kitchen.username,
+        password: kitchen.password,
         members: updatedMembers,
       };
 
@@ -180,8 +189,11 @@ export default function AddKitchen() {
         address: "",
         manager: "",
         managerMobile: "",
-        gis: "",
+        latitude: 0,
+        longitude: 0,
         capacity: 0,
+        username: "",
+        password: "",
         members: [],
       });
       setIsDialogOpen(false);
@@ -289,8 +301,11 @@ export default function AddKitchen() {
                 address: "",
                 manager: "",
                 managerMobile: "",
-                gis: "",
+                latitude: 0,
+                longitude: 0,
                 capacity: 0,
+                username: "",
+                password: "",
                 members: [],
               });
             }
@@ -343,12 +358,25 @@ export default function AddKitchen() {
                     required
                   />
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="gis">GIS</Label>
+                  <Label htmlFor="latitude">Latitude</Label>
                   <Input
-                    id="gis"
-                    name="gis"
-                    value={kitchen.gis}
+                    id="latitude"
+                    name="latitude"
+                    type="number"
+                    value={kitchen.latitude}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="longitude">Longitude</Label>
+                  <Input
+                    id="longitude"
+                    name="longitude"
+                    type="number"
+                    value={kitchen.longitude}
                     onChange={handleInputChange}
                     required
                   />
@@ -362,6 +390,27 @@ export default function AddKitchen() {
                     value={kitchen.capacity}
                     onChange={handleInputChange}
                     required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="username">Username</Label>
+                  <Input
+                    id="username"
+                    name="username"
+                    value={kitchen.username}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <Input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={kitchen.password}
+                    onChange={handleInputChange}
+                    required={!isEditing}
                   />
                 </div>
               </div>
@@ -612,8 +661,10 @@ export default function AddKitchen() {
               <TableHead>Manager</TableHead>
               <TableHead>Manager Mobile</TableHead>
               <TableHead>Address</TableHead>
-              <TableHead>GIS</TableHead>
+              <TableHead>Latitude</TableHead>
+              <TableHead>Longitude</TableHead>
               <TableHead>Capacity</TableHead>
+              <TableHead>Username</TableHead>
               <TableHead>Members</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -625,8 +676,10 @@ export default function AddKitchen() {
                 <TableCell>{kitchen.manager}</TableCell>
                 <TableCell>{kitchen.managerMobile}</TableCell>
                 <TableCell>{kitchen.address}</TableCell>
-                <TableCell>{kitchen.gis}</TableCell>
+                <TableCell>{kitchen.latitude}</TableCell>
+                <TableCell>{kitchen.longitude}</TableCell>
                 <TableCell>{kitchen.capacity}</TableCell>
+                <TableCell>{kitchen.username}</TableCell>
                 <TableCell>{kitchen.members.length}</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">

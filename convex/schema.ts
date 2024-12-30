@@ -92,7 +92,11 @@ export default defineSchema({
     company: v.string(),
     pan: v.string(),
     photoStorageId: v.optional(v.string()),
-    userId: v.optional(v.string()),
+    username: v.string(),
+    password: v.string(),
+    salt: v.string(),
+    role: v.string(),
+    userId: v.string(),
     createdAt: v.number(),
     trips: v.array(
       v.object({
@@ -105,15 +109,20 @@ export default defineSchema({
       })
     ),
   }).index("by_userId", ["userId"]),
-
+  
   kitchens: defineTable({
     name: v.string(),
     address: v.string(),
     manager: v.string(),
     managerMobile: v.string(),
-    gis: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
     capacity: v.number(),
-    userId: v.optional(v.string()),
+    userId: v.string(),
+    username: v.string(),
+    password: v.string(),
+    salt: v.string(),
+    role: v.string(),
     members: v.array(
       v.object({
         name: v.string(),
