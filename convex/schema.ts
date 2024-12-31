@@ -98,6 +98,8 @@ export default defineSchema({
     role: v.string(),
     userId: v.string(),
     createdAt: v.number(),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
     trips: v.array(
       v.object({
         startPoint: v.string(),
@@ -138,5 +140,30 @@ export default defineSchema({
       })
     ),
   }),
+
+
+  teaContainers: defineTable({
+    status: v.union(v.literal("in_kitchen"), v.literal("in_transit"), v.literal("in_machine")),
+    currentLocation: v.union(v.literal("kitchen"), v.literal("agent"), v.literal("machine")),
+    kitchenId: v.optional(v.id("kitchens")),
+    agentId: v.optional(v.id("deliveryAgents")),
+    machineId: v.optional(v.id("vendingMachines")),
+  }),
+
+  notifications: defineTable({
+    type: v.union(v.literal("low_tea"), v.literal("tea_ready"), v.literal("container_replaced")),
+    recipientId: v.union(v.id("kitchens"), v.id("deliveryAgents")),
+    message: v.string(),
+    status: v.union(v.literal("pending"), v.literal("sent"), v.literal("accepted"), v.literal("rejected"), v.literal("expired")),
+    createdAt: v.number(),
+    expiresAt: v.optional(v.number()),
+  }),
+
+  notificationQueue: defineTable({
+    notificationId: v.id("notifications"),
+    agentId: v.id("deliveryAgents"),
+    distance: v.number(),
+    order: v.number(),
+  }).index("by_notification", ["notificationId"]),
 });
 

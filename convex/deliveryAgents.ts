@@ -192,3 +192,36 @@ export const getPhotoUrl = query({
   },
 });
 
+// Update agent location
+export const updateAgentLocation = mutation({
+  args: {
+    userId: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const { userId, latitude, longitude } = args;
+
+    // Find the agent by userId
+    const agent = await ctx.db
+      .query("deliveryAgents")
+      .withIndex("by_userId", (q) => q.eq("userId", userId))
+      .first();
+
+    if (!agent) {
+      throw new ConvexError("Delivery agent not found");
+    }
+
+    // Update the agent's location
+    await ctx.db.patch(agent._id, {
+      latitude,
+      longitude,
+    });
+
+    return {
+      success: true,
+      message: "Agent location updated successfully",
+    };
+  },
+});
+
