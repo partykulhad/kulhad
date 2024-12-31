@@ -8,19 +8,6 @@ function generateUserId(role: string, username: string): string {
   return `${prefix}${username.toUpperCase()}_${randomSuffix}`;
 }
 
-async function generateSalt(): Promise<string> {
-  const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
-  return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
-async function hashPassword(password: string, salt: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + salt);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
-}
 
 export const add = mutation({
   args: {
@@ -49,22 +36,18 @@ export const add = mutation({
     ),
   },
   handler: async (ctx, args) => {
-    const salt = await generateSalt();
-    const hashedPassword = await hashPassword(args.password, salt);
     const userId = generateUserId("kitchen", args.username);
 
     const kitchenId = await ctx.db.insert("kitchens", {
       ...args,
       userId,
-      salt,
       role: "kitchen",
-      password: hashedPassword,
+      salt: ""
     });
 
     await ctx.db.insert("appUser", {
       username: args.username,
-      password: hashedPassword,
-      salt,
+      password: args.password,
       role: "kitchen",
       userId,
     });
@@ -111,10 +94,7 @@ export const edit = mutation({
     let updatedFields: any = { ...updates };
 
     if (password) {
-      const salt = await generateSalt();
-      const hashedPassword = await hashPassword(password, salt);
-      updatedFields.password = hashedPassword;
-      updatedFields.salt = salt;
+      updatedFields.password = password;
 
       // Update appUser table
       const appUser = await ctx.db
@@ -124,8 +104,7 @@ export const edit = mutation({
 
       if (appUser) {
         await ctx.db.patch(appUser._id, {
-          password: hashedPassword,
-          salt,
+          password: password,
         });
       }
     }

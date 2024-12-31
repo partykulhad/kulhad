@@ -659,12 +659,13 @@ export default function AddKitchen() {
             <TableRow>
               <TableHead>Kitchen Name</TableHead>
               <TableHead>Manager</TableHead>
+              <TableHead>Username</TableHead>
+              <TableHead>Password</TableHead>
               <TableHead>Manager Mobile</TableHead>
               <TableHead>Address</TableHead>
               <TableHead>Latitude</TableHead>
               <TableHead>Longitude</TableHead>
               <TableHead>Capacity</TableHead>
-              <TableHead>Username</TableHead>
               <TableHead>Members</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -674,12 +675,14 @@ export default function AddKitchen() {
               <TableRow key={kitchen._id}>
                 <TableCell>{kitchen.name}</TableCell>
                 <TableCell>{kitchen.manager}</TableCell>
+                <TableCell>{kitchen.username}</TableCell>
+                <TableCell>{kitchen.password}</TableCell>
                 <TableCell>{kitchen.managerMobile}</TableCell>
                 <TableCell>{kitchen.address}</TableCell>
                 <TableCell>{kitchen.latitude}</TableCell>
                 <TableCell>{kitchen.longitude}</TableCell>
                 <TableCell>{kitchen.capacity}</TableCell>
-                <TableCell>{kitchen.username}</TableCell>
+
                 <TableCell>{kitchen.members.length}</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">

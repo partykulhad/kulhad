@@ -9,20 +9,6 @@ function generateUserId(role: string, username: string): string {
   return `${prefix}${username.toUpperCase()}_${randomSuffix}`;
 }
 
-async function generateSalt(): Promise<string> {
-  const array = new Uint8Array(16);
-  crypto.getRandomValues(array);
-  return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
-async function hashPassword(password: string, salt: string): Promise<string> {
-  const encoder = new TextEncoder();
-  const data = encoder.encode(password + salt);
-  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(byte => byte.toString(16).padStart(2, '0')).join('');
-}
-
 // Generate upload URL for images
 export const generateUploadUrl = mutation({
   handler: async (ctx) => {
@@ -47,26 +33,22 @@ export const add = mutation({
     password: v.string(),
   },
   handler: async (ctx, args) => {
-    const salt = await generateSalt();
-    const hashedPassword = await hashPassword(args.password, salt);
     const userId = generateUserId("refiller", args.username);
 
     // Insert into deliveryAgents table
     const newId = await ctx.db.insert("deliveryAgents", {
       ...args,
-      password: hashedPassword,
-      salt,
       role: "refiller",
       userId,
       createdAt: Date.now(),
       trips: [],
+      salt: ""
     });
 
     // Insert into appUser table
     await ctx.db.insert("appUser", {
       username: args.username,
-      password: hashedPassword,
-      salt,
+      password: args.password,
       role: "refiller",
       userId,
     });
@@ -103,10 +85,7 @@ export const edit = mutation({
     let updatedFields: Partial<typeof existingAgent> = { ...updateData };
 
     if (password) {
-      const salt = await generateSalt();
-      const hashedPassword = await hashPassword(password, salt);
-      updatedFields.password = hashedPassword;
-      updatedFields.salt = salt;
+      updatedFields.password = password;
 
       // Update appUser table
       const appUser = await ctx.db
@@ -116,8 +95,7 @@ export const edit = mutation({
 
       if (appUser) {
         await ctx.db.patch(appUser._id, {
-          password: hashedPassword,
-          salt,
+          password,
         });
       }
     }

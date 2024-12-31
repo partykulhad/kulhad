@@ -370,11 +370,12 @@ export default function AddDeliveryAgent() {
             <TableRow>
               <TableHead>Photo</TableHead>
               <TableHead>Name</TableHead>
+              <TableHead>Username</TableHead>
+              <TableHead>Password</TableHead>
               <TableHead>Mobile</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Address</TableHead>
               <TableHead>UID</TableHead>
-              <TableHead>Username</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
@@ -388,6 +389,8 @@ export default function AddDeliveryAgent() {
                   />
                 </TableCell>
                 <TableCell>{agent.name}</TableCell>
+                <TableCell>{agent.username}</TableCell>
+                <TableCell>{agent.password}</TableCell>
                 <TableCell>{agent.mobile}</TableCell>
                 <TableCell>{agent.email}</TableCell>
                 <TableCell>{agent.address}</TableCell>
