@@ -395,7 +395,6 @@ export default function AddDeliveryAgent() {
                 <TableCell>{agent.email}</TableCell>
                 <TableCell>{agent.address}</TableCell>
                 <TableCell>{agent.uid}</TableCell>
-                <TableCell>{agent.username}</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button
