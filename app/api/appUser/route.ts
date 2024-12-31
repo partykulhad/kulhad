@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
         code: 200,
         Message: "Login Successful",
         userId: result.userId,
+        name: result.name,
         role: result.role,
         token: result.token,
         tokenExpireTime: result.tokenExpireTime,

@@ -95,6 +95,7 @@ export const authenticateAppUser = mutation({
 
     return {
       success: true,
+      name:user.name,
       userId: user.userId,
       role: user.role,
       token: token,

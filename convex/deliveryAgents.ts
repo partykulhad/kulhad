@@ -51,6 +51,7 @@ export const add = mutation({
       password: args.password,
       role: "refiller",
       userId,
+      name: args.name, // Add this line
     });
 
     return newId;

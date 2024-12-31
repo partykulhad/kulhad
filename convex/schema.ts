@@ -18,6 +18,7 @@ export default defineSchema({
     salt: v.optional(v.string()),
     role: v.string(),
     userId: v.string(),
+    name: v.optional(v.string()),
     token: v.optional(v.string()),
     tokenExpiration: v.optional(v.number()),
   }).index("by_username", ["username"]).index("by_userId", ["userId"]),

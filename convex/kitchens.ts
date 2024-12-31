@@ -50,6 +50,7 @@ export const add = mutation({
       password: args.password,
       role: "kitchen",
       userId,
+      name: args.name, // Add this line
     });
 
     return kitchenId;
