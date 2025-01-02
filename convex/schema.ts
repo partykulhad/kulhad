@@ -101,6 +101,7 @@ export default defineSchema({
     createdAt: v.number(),
     latitude: v.optional(v.number()),
     longitude: v.optional(v.number()),
+    status: v.optional(v.string()),
     trips: v.array(
       v.object({
         startPoint: v.string(),
@@ -126,6 +127,7 @@ export default defineSchema({
     password: v.string(),
     salt: v.string(),
     role: v.string(),
+    status: v.optional(v.string()),
     members: v.array(
       v.object({
         name: v.string(),

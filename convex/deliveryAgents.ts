@@ -193,15 +193,16 @@ export const getPhotoUrl = query({
   },
 });
 
-// Update agent location
-export const updateAgentLocation = mutation({
+// Update agent information
+export const updateAgentInfo = mutation({
   args: {
     userId: v.string(),
-    latitude: v.number(),
-    longitude: v.number(),
+    latitude: v.optional(v.number()),
+    longitude: v.optional(v.number()),
+    status: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { userId, latitude, longitude } = args;
+    const { userId, ...updateFields } = args;
 
     // Find the agent by userId
     const agent = await ctx.db
@@ -213,15 +214,25 @@ export const updateAgentLocation = mutation({
       throw new ConvexError("Delivery agent not found");
     }
 
-    // Update the agent's location
-    await ctx.db.patch(agent._id, {
-      latitude,
-      longitude,
-    });
+    // Validate status if provided
+    if (updateFields.status !== undefined && updateFields.status !== 'online' && updateFields.status !== 'offline') {
+      throw new ConvexError("Invalid status. Must be 'online' or 'offline'");
+    }
+
+    // Update only the provided fields
+    const fieldsToUpdate: Record<string, any> = {};
+    for (const [key, value] of Object.entries(updateFields)) {
+      if (value !== undefined) {
+        fieldsToUpdate[key] = value;
+      }
+    }
+
+    // Update the agent's information
+    await ctx.db.patch(agent._id, fieldsToUpdate);
 
     return {
       success: true,
-      message: "Agent location updated successfully",
+      message: "Agent information updated successfully",
     };
   },
 });
