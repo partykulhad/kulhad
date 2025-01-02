@@ -153,20 +153,39 @@ export default defineSchema({
     machineId: v.optional(v.id("vendingMachines")),
   }),
 
-  notifications: defineTable({
-    type: v.union(v.literal("low_tea"), v.literal("tea_ready"), v.literal("container_replaced")),
-    recipientId: v.union(v.id("kitchens"), v.id("deliveryAgents")),
-    message: v.string(),
-    status: v.union(v.literal("pending"), v.literal("sent"), v.literal("accepted"), v.literal("rejected"), v.literal("expired")),
-    createdAt: v.number(),
-    expiresAt: v.optional(v.number()),
-  }),
+  // notifications: defineTable({
+  //   type: v.union(v.literal("low_tea"), v.literal("tea_ready"), v.literal("container_replaced")),
+  //   recipientId: v.union(v.id("kitchens"), v.id("deliveryAgents")),
+  //   message: v.string(),
+  //   status: v.union(v.literal("pending"), v.literal("sent"), v.literal("accepted"), v.literal("rejected"), v.literal("expired")),
+  //   createdAt: v.number(),
+  //   expiresAt: v.optional(v.number()),
+  // }),
 
-  notificationQueue: defineTable({
-    notificationId: v.id("notifications"),
-    agentId: v.id("deliveryAgents"),
+  // notificationQueue: defineTable({
+  //   notificationId: v.id("notifications"),
+  //   agentId: v.id("deliveryAgents"),
+  //   distance: v.number(),
+  //   order: v.number(),
+  // }).index("by_notification", ["notificationId"]),
+
+  notifications: defineTable({
+    machineId: v.string(),
+    kitchenId: v.string(),
+    kitchenName: v.string(),
     distance: v.number(),
-    order: v.number(),
-  }).index("by_notification", ["notificationId"]),
+    timestamp: v.number(),
+    message: v.string(),
+  }).index("by_machineId", ["machineId"]),
+
+  agentNotifications: defineTable({
+    agentId: v.string(),
+    agentName: v.string(),
+    kitchenId: v.string(),
+    kitchenName: v.string(),
+    distance: v.optional(v.number()),
+    timestamp: v.number(),
+    message: v.string(),
+  }).index("by_agentId", ["agentId"]),
 });
 

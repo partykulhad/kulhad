@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as appUsers from "../appUsers.js";
+import type * as canisterCheck from "../canisterCheck.js";
 import type * as deliveryAgents from "../deliveryAgents.js";
 import type * as http from "../http.js";
 import type * as iot from "../iot.js";
@@ -33,6 +34,7 @@ import type * as vendors from "../vendors.js";
  */
 declare const fullApi: ApiFromModules<{
   appUsers: typeof appUsers;
+  canisterCheck: typeof canisterCheck;
   deliveryAgents: typeof deliveryAgents;
   http: typeof http;
   iot: typeof iot;
