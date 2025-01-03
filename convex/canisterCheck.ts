@@ -170,4 +170,3 @@ export const getAgentNotifications = query({
     return await notificationsQuery.collect();
   },
 });
-

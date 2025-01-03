@@ -176,7 +176,9 @@ export default defineSchema({
     distance: v.number(),
     timestamp: v.number(),
     message: v.string(),
-  }).index("by_machineId", ["machineId"]),
+    status:  v.optional(v.string()),// 'pending', 'accepted', 'rejected', 'canceled'
+    lastStatusUpdate:v.optional(v.number()),
+  }).index("by_machineId", ["machineId"]).index("by_status", ["status"]),
 
   agentNotifications: defineTable({
     agentId: v.string(),
@@ -186,6 +188,8 @@ export default defineSchema({
     distance: v.optional(v.number()),
     timestamp: v.number(),
     message: v.string(),
-  }).index("by_agentId", ["agentId"]),
+    status:  v.optional(v.string()),// 'pending', 'accepted', 'rejected', 'canceled'
+    lastStatusUpdate: v.optional(v.number()),
+  }).index("by_agentId", ["agentId"]).index("by_status", ["status"]),
 });
 
