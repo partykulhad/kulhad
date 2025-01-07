@@ -143,41 +143,17 @@ export default defineSchema({
       })
     ),
   }),
-
-
-  teaContainers: defineTable({
-    status: v.union(v.literal("in_kitchen"), v.literal("in_transit"), v.literal("in_machine")),
-    currentLocation: v.union(v.literal("kitchen"), v.literal("agent"), v.literal("machine")),
-    kitchenId: v.optional(v.id("kitchens")),
-    agentId: v.optional(v.id("deliveryAgents")),
-    machineId: v.optional(v.id("vendingMachines")),
-  }),
-
-  // notifications: defineTable({
-  //   type: v.union(v.literal("low_tea"), v.literal("tea_ready"), v.literal("container_replaced")),
-  //   recipientId: v.union(v.id("kitchens"), v.id("deliveryAgents")),
-  //   message: v.string(),
-  //   status: v.union(v.literal("pending"), v.literal("sent"), v.literal("accepted"), v.literal("rejected"), v.literal("expired")),
-  //   createdAt: v.number(),
-  //   expiresAt: v.optional(v.number()),
-  // }),
-
-  // notificationQueue: defineTable({
-  //   notificationId: v.id("notifications"),
-  //   agentId: v.id("deliveryAgents"),
-  //   distance: v.number(),
-  //   order: v.number(),
-  // }).index("by_notification", ["notificationId"]),
-
+  
   notifications: defineTable({
     machineId: v.string(),
     kitchenId: v.string(),
     kitchenName: v.string(),
-    distance: v.number(),
+    distance:v.optional(v.number()),
     timestamp: v.number(),
     message: v.string(),
     status:  v.optional(v.string()),// 'pending', 'accepted', 'rejected', 'canceled'
-    lastStatusUpdate:v.optional(v.number()),
+    createdAt:v.optional(v.number()),
+    updatedAt:v.optional(v.number()),
   }).index("by_machineId", ["machineId"]).index("by_status", ["status"]),
 
   agentNotifications: defineTable({
@@ -189,7 +165,49 @@ export default defineSchema({
     timestamp: v.number(),
     message: v.string(),
     status:  v.optional(v.string()),// 'pending', 'accepted', 'rejected', 'canceled'
-    lastStatusUpdate: v.optional(v.number()),
+    createdAt:v.optional(v.number()),
+    updatedAt:v.optional(v.number()),
   }).index("by_agentId", ["agentId"]).index("by_status", ["status"]),
+
+  requests: defineTable({
+    machineId: v.string(),
+    kitchenUserId: v.optional(v.string()),
+    agentUserId: v.optional(v.string()),
+    kitchenStatus: v.optional(v.string()),
+    agentStatus: v.optional(v.string()),
+    requestStatus: v.string(),
+    requestDateTime: v.string(),
+    srcAddress: v.optional(v.string()),
+    srcLatitude: v.optional(v.number()),
+    srcLongitude: v.optional(v.number()),
+    srcContactName: v.optional(v.string()),
+    srcContactNumber: v.optional(v.string()),
+    dstAddress: v.optional(v.string()),
+    dstLatitude: v.optional(v.number()),
+    dstLongitude: v.optional(v.number()),
+    dstContactName: v.optional(v.string()),
+    dstContactNumber: v.optional(v.string()),
+    assignRefillerName: v.optional(v.string()),
+    assignRefillerContactNumber: v.optional(v.string()),
+    reason: v.optional(v.string()),
+    statusMessage: v.optional(v.string()),
+  }).index("by_machineId", ["machineId"])
+    .index("by_kitchenUserId", ["kitchenUserId"])
+    .index("by_agentUserId", ["agentUserId"])
+    .index("by_requestStatus", ["requestStatus"])
+    .index("by_kitchenStatus", ["kitchenStatus"]),
+
+
+  requestStatusUpdates: defineTable({
+    requestId: v.id("requests"),
+    userId: v.string(),
+    status: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    dateAndTime: v.string(),
+    isProceedNext: v.boolean(),
+    reason: v.optional(v.string()),
+    message: v.optional(v.string()),
+  }).index("by_requestId", ["requestId"]),
 });
 
