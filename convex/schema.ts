@@ -170,6 +170,7 @@ export default defineSchema({
   }).index("by_agentId", ["agentId"]).index("by_status", ["status"]),
 
   requests: defineTable({
+    requestId: v.string(),
     machineId: v.string(),
     kitchenUserId: v.optional(v.string()),
     agentUserId: v.optional(v.string()),
@@ -192,6 +193,7 @@ export default defineSchema({
     reason: v.optional(v.string()),
     statusMessage: v.optional(v.string()),
   }).index("by_machineId", ["machineId"])
+  .index("by_requestId", ["requestId"])
     .index("by_kitchenUserId", ["kitchenUserId"])
     .index("by_agentUserId", ["agentUserId"])
     .index("by_requestStatus", ["requestStatus"])
@@ -199,7 +201,7 @@ export default defineSchema({
 
 
   requestStatusUpdates: defineTable({
-    requestId: v.id("requests"),
+    requestId: v.string(),
     userId: v.string(),
     status: v.string(),
     latitude: v.number(),

@@ -10,7 +10,7 @@ export async function GET(req: NextRequest) {
 
     if (!userId) {
       return NextResponse.json(
-        { code: 400, message: "Missing required parameter: agentUserId" },
+        { code: 400, message: "Missing required parameter: userId" },
         { status: 400 }
       );
     }
@@ -18,16 +18,45 @@ export async function GET(req: NextRequest) {
     const orders = await convex.query(api.requests.getMyOrders, { userId });
 
     if (orders.length > 0) {
+      const formattedOrders = orders.map(order => ({
+        requestId: order.requestId || null,
+        requestStatus: order.requestStatus || null,
+        requestDateTime: order.requestDateTime 
+          ? new Date(order.requestDateTime).toLocaleString('en-US', {
+              day: '2-digit',
+              month: '2-digit',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+              second: '2-digit',
+              hour12: true
+            })
+          : null,
+        srcAddress: order.srcAddress || null,
+        machineId: order.machineId || null,
+        srcLatitude: order.srcLatitude || null,
+        srcLongitude: order.srcLongitude || null,
+        srcContactName: order.srcContactName || null,
+        srcContactNumber: order.srcContactNumber || null,
+        dstAddress: order.dstAddress || null,
+        dstLatitude: order.dstLatitude || null,
+        dstLongitude: order.dstLongitude || null,
+        dstContactName: order.dstContactName || null,
+        dstContactNumber: order.dstContactNumber || null,
+        assgnRefillerName: order.assignRefillerName || null,
+        assignRefillerContactNumber: order.assignRefillerContactNumber || null
+      }));
+
       return NextResponse.json({
         code: 200,
         message: "Orders Available",
-        ordersDetailsList: orders
+        orderDetailsList: formattedOrders
       }, { status: 200 });
     } else {
       return NextResponse.json({
         code: 300,
         message: "No Request Available",
-        ordersDetailsList: []
+        orderDetailsList: []
       }, { status: 300 });
     }
   } catch (error) {
@@ -35,7 +64,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({
       code: 400,
       message: "Exception Message",
-      ordersDetailsList: []
+      orderDetailsList: []
     }, { status: 400 });
   }
 }

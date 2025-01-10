@@ -17,12 +17,29 @@ function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: numbe
   return R * c;
 }
 
+// Helper function to generate custom request ID
+async function generateRequestId(ctx: any): Promise<string> {
+  const prefix = "REQ";
+  const lastRequest = await ctx.db
+    .query("requests")
+    .order("desc")
+    .first();
+
+  let counter = 1;
+  if (lastRequest && lastRequest.requestId) {
+    const lastCounter = parseInt(lastRequest.requestId.split('-')[1]);
+    counter = isNaN(lastCounter) ? 1 : lastCounter + 1;
+  }
+
+  return `${prefix}-${counter.toString().padStart(4, '0')}`;
+}
+
 export const checkCanisterLevel = mutation({
   args: { machineId: v.string(), canisterLevel: v.number() },
   handler: async (ctx, args) => {
     const { machineId, canisterLevel } = args;
 
-    if (canisterLevel >= 20) {
+    if (canisterLevel > 20) {
       return { success: true, message: "Canister level is above threshold" };
     }
 
@@ -48,7 +65,10 @@ export const checkCanisterLevel = mutation({
       throw new ConvexError("No online kitchen found");
     }
 
+    const customRequestId = await generateRequestId(ctx);
+
     const requestId = await ctx.db.insert("requests", {
+      requestId: customRequestId,
       machineId: machineId,
       kitchenUserId: nearestKitchen.userId,
       requestStatus: "pending",
@@ -68,7 +88,7 @@ export const checkCanisterLevel = mutation({
     return { 
       success: true, 
       message: "Request created and scheduled for processing",
-      requestId
+      requestId: customRequestId
     };
   },
 });

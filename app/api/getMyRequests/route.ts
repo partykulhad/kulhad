@@ -22,7 +22,7 @@ export async function GET(req: NextRequest) {
         code: 200,
         message: "Requests Available",
         requestDetailsList: requests.map(request => ({
-          requestId: request._id,
+          requestId: request.requestId,
           requestStatus: request.kitchenStatus,
           requestDateTime: new Date(request.requestDateTime).toLocaleString('en-GB', { 
             day: '2-digit', 
@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
             hour12: true 
           }),
           srcAddress: request.srcAddress || null,
+          machineId: request.machineId || null,
           srcLatitude: request.srcLatitude || 0.0,
           srcLongitude: request.srcLongitude || 0.0,
           srcContactName: request.srcContactName || "",
