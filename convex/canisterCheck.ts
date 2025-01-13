@@ -71,9 +71,9 @@ export const checkCanisterLevel = mutation({
       requestId: customRequestId,
       machineId: machineId,
       kitchenUserId: nearestKitchen.userId,
-      requestStatus: "pending",
-      kitchenStatus: "pending",
-      agentStatus: "pending",
+      requestStatus: "Pending",
+      kitchenStatus: "Pending",
+      agentStatus: "Pending",
       requestDateTime: new Date().toISOString(),
       dstAddress: machine.address.building + ", " + machine.address.floor + ", " + machine.address.area + ", " + machine.address.district + ", " + machine.address.state,
       dstLatitude: machineLat,
@@ -106,17 +106,17 @@ export const processRequest = action({
       }
 
       switch (request.requestStatus) {
-        case "pending":
-          if (request.kitchenStatus === "pending") {
+        case "Pending":
+          if (request.kitchenStatus === "Pending") {
             // Wait for kitchen response
             await new Promise(resolve => setTimeout(resolve, 5000)); // Wait for 5 seconds
-          } else if (request.kitchenStatus === "accepted" && request.agentStatus === "pending") {
+          } else if (request.kitchenStatus === "Accepted" && request.agentStatus === "Pending") {
             await handleAgentSearch(ctx, requestId, request);
-          } else if (request.kitchenStatus === "rejected") {
+          } else if (request.kitchenStatus === "Rejected") {
             await handleKitchenRejection(ctx, requestId, request);
           }
           break;
-        case "accepted":
+        case "Accepted":
         case "failed":
           isCompleted = true;
           break;
@@ -153,7 +153,7 @@ async function handleAgentSearch(ctx: any, requestId: Id<"requests">, request: a
       requestId,
       updates: {
         agentUserId: nearestAgent.userId,
-        agentStatus: "pending",
+        agentStatus: "Pending",
         srcAddress: kitchen.address,
         srcLatitude: kitchen.latitude,
         srcLongitude: kitchen.longitude,
@@ -187,7 +187,7 @@ async function handleKitchenRejection(ctx: any, requestId: Id<"requests">, reque
       requestId,
       updates: {
         kitchenUserId: nextKitchen.userId,
-        kitchenStatus: "pending",
+        kitchenStatus: "Pending",
       }
     });
   }
@@ -208,11 +208,11 @@ export const updateAgentStatus = mutation({
   handler: async (ctx, args) => {
     const { requestId, status } = args;
     await ctx.db.patch(requestId, { agentStatus: status });
-    if (status === "accepted") {
-      await ctx.db.patch(requestId, { requestStatus: "accepted" });
-    } else if (status === "rejected") {
+    if (status === "Accepted") {
+      await ctx.db.patch(requestId, { requestStatus: "Accepted" });
+    } else if (status === "Rejected") {
       // If agent rejects, reset agent status and trigger processRequest to find a new agent
-      await ctx.db.patch(requestId, { agentStatus: "pending", agentUserId: "" });
+      await ctx.db.patch(requestId, { agentStatus: "Pending", agentUserId: "" });
       await ctx.scheduler.runAfter(0, api.canisterCheck.processRequest, { requestId });
     }
   },

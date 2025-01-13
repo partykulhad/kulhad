@@ -9,8 +9,8 @@ export const getMyRequests = query({
       .query("requests")
       .filter((q) => 
         q.and(
-          q.eq(q.field("kitchenUserId"), args.userId),
-          q.eq(q.field("kitchenStatus"), "pending")
+          q.eq(q.field("kitchenUserId"), args.userId)
+          // q.eq(q.field("kitchenStatus"), "Pending")
         )
       )
       .collect();
@@ -26,8 +26,8 @@ export const getMyOrders = query({
       .query("requests")
       .filter((q) => 
         q.and(
-          q.eq(q.field("agentUserId"), args.userId),
-          q.eq(q.field("requestStatus"), "Accepted")
+          q.eq(q.field("agentUserId"), args.userId)
+          // q.eq(q.field("requestStatus"), "Accepted")
         )
       )
       .collect();
