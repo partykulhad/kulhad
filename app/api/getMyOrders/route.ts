@@ -21,15 +21,15 @@ export async function GET(req: NextRequest) {
       const formattedOrders = orders.map(order => ({
         requestId: order.requestId || null,
         requestStatus: order.requestStatus || null,
-        requestDateTime: order.requestDateTime 
-          ? new Date(order.requestDateTime).toLocaleString('en-US', {
-              day: '2-digit',
-              month: '2-digit',
-              year: 'numeric',
-              hour: '2-digit',
-              minute: '2-digit',
-              second: '2-digit',
-              hour12: true
+        requestDateTime: order._creationTime 
+          ? new Date(order._creationTime).toLocaleString('en-GB', { 
+            day: '2-digit', 
+            month: '2-digit', 
+            year: 'numeric', 
+            hour: '2-digit', 
+            minute: '2-digit', 
+            second: '2-digit', 
+            hour12: true 
             })
           : null,
         srcAddress: order.srcAddress || null,
@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     } else {
       return NextResponse.json({
         code: 300,
-        message: "No Request Available",
+        message: "No Active Orders Available",
         orderDetailsList: []
       }, { status: 300 });
     }

@@ -23,8 +23,8 @@ export async function GET(req: NextRequest) {
         message: "Requests Available",
         requestDetailsList: requests.map(request => ({
           requestId: request.requestId,
-          requestStatus: request.kitchenStatus,
-          requestDateTime: new Date(request.requestDateTime).toLocaleString('en-GB', { 
+          requestStatus: request.requestStatus,
+          requestDateTime: new Date(request._creationTime).toLocaleString('en-GB', { 
             day: '2-digit', 
             month: '2-digit', 
             year: 'numeric', 
@@ -51,7 +51,7 @@ export async function GET(req: NextRequest) {
     } else {
       return NextResponse.json({
         code: 300,
-        message: "No Request Available",
+        message: "No Active Requests Available",
         requestDetailsList: []
       }, { status: 300 });
     }
@@ -64,4 +64,5 @@ export async function GET(req: NextRequest) {
     }, { status: 400 });
   }
 }
+
 

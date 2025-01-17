@@ -9,12 +9,15 @@ export const getMyRequests = query({
       .query("requests")
       .filter((q) => 
         q.and(
-          q.eq(q.field("kitchenUserId"), args.userId)
-          // q.eq(q.field("kitchenStatus"), "Pending")
+          q.eq(q.field("kitchenUserId"), args.userId),
+          q.not(q.or(
+            q.eq(q.field("requestStatus"), "Completed"),
+            q.eq(q.field("requestStatus"), "Cancelled")
+          ))
         )
       )
       .collect();
-    console.log(`Found ${requests.length} requests`);
+    console.log(`Found ${requests.length} active requests`);
     return requests;
   },
 });
@@ -26,8 +29,11 @@ export const getMyOrders = query({
       .query("requests")
       .filter((q) => 
         q.and(
-          q.eq(q.field("agentUserId"), args.userId)
-          // q.eq(q.field("requestStatus"), "Accepted")
+          q.eq(q.field("agentUserId"), args.userId),
+          q.not(q.or(
+            q.eq(q.field("requestStatus"), "Completed"),
+            q.eq(q.field("requestStatus"), "Cancelled")
+          ))
         )
       )
       .collect();
@@ -308,3 +314,60 @@ export const updateCompleteOrCancel = mutation({
   },
 });
 
+export const updateSubmitStatus = mutation({
+  args: {
+    userId: v.string(),
+    requestId: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    status: v.string(),
+    dateAndTime: v.string(),
+    isProceedNext: v.boolean(),
+    reason: v.optional(v.string())
+  },
+  handler: async (ctx, args) => {
+    try {
+      // Validate reason when not submitting
+      if (args.status === "NotSubmit" && !args.reason) {
+        return { 
+          success: false, 
+          message: "Reason is required when not submitting" 
+        };
+      }
+
+      // First, update the request status in the requests table
+      const request = await ctx.db
+        .query("requests")
+        .filter((q) => q.eq(q.field("requestId"), args.requestId))
+        .first();
+
+      if (!request) {
+        return { success: false, message: "Request not found" };
+      }
+
+      await ctx.db.patch(request._id, {
+        requestStatus: args.status
+      });
+
+      // Then, create a new record in requestStatusUpdates table
+      await ctx.db.insert("requestStatusUpdates", {
+        requestId: args.requestId,
+        userId: args.userId,
+        status: args.status,
+        latitude: args.latitude,
+        longitude: args.longitude,
+        dateAndTime: args.dateAndTime,
+        isProceedNext: args.isProceedNext,
+        reason: args.reason,
+        message: args.status === "Submit" 
+          ? " submitted successfully"
+          : ` not submitted: ${args.reason}`
+      });
+
+      return { success: true };
+    } catch (error) {
+      console.error("Error updating submit status:", error);
+      return { success: false, message: "Internal server error" };
+    }
+  }
+});
