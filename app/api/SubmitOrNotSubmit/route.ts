@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Validate reason when not submitting
-    if (status === "NotSubmit" && !reason) {
+    if (status === "NotSubmitted" && !reason) {
       return NextResponse.json(
         {
           code: 400,
@@ -55,12 +55,12 @@ export async function POST(req: NextRequest) {
     if (result.success) {
       return NextResponse.json({
         code: 200,
-        message: status === "Submit" ? "Submitted status updated" : "Not submitted status updated"
+        message: status === "Submitted" ? "Submitted status updated" : "Not submitted status updated"
       }, { status: 200 });
     } else {
       return NextResponse.json({
         code: 300,
-        message: `Failed to update ${status === "Submit" ? "submitted" : "not submitted"} status`
+        message: `Failed to update ${status === "Submitted" ? "submitted" : "not submitted"} status`
       }, { status: 300 });
     }
 

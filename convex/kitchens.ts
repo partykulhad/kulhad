@@ -169,7 +169,7 @@ export const getPhotoUrl = query({
   },
 });
 
-export const getKitchenByUserId = query({
+export const getKitchenByUserId1 = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
     const kitchen = await ctx.db
@@ -185,3 +185,18 @@ export const getKitchenByUserId = query({
   },
 });
 
+export const getKitchenByUserId = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const kitchen = await ctx.db
+      .query("kitchens")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first();
+    
+    if (!kitchen) {
+      throw new Error("Kitchen not found");
+    }
+
+    return kitchen;
+  },
+});

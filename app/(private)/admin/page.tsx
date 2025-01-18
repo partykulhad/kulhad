@@ -83,8 +83,8 @@ export default function AdminPage() {
             <th className="border p-2">Request ID</th>
             <th className="border p-2">Machine ID</th>
             <th className="border p-2">Status</th>
-            <th className="border p-2">Kitchen Status</th>
-            <th className="border p-2">Agent Status</th>
+            {/* <th className="border p-2">Kitchen Status</th>
+            <th className="border p-2">Agent Status</th> */}
             <th className="border p-2">Actions</th>
           </tr>
         </thead>
@@ -94,12 +94,12 @@ export default function AdminPage() {
               <td className="border p-2">{request.requestId}</td>
               <td className="border p-2">{request.machineId}</td>
               <td className="border p-2">{request.requestStatus}</td>
-              <td className="border p-2">
+              {/* <td className="border p-2">
                 {request.kitchenStatus || "Not Assigned"}
               </td>
               <td className="border p-2">
                 {request.agentStatus || "Not Assigned"}
-              </td>
+              </td> */}
               <td className="border p-2">
                 {!request.kitchenUserId && (
                   <div className="flex items-center space-x-2">
@@ -123,7 +123,7 @@ export default function AdminPage() {
                     </button>
                   </div>
                 )}
-                {request.kitchenStatus === "Accepted" &&
+                {request.requestStatus === "Accepted" &&
                   !request.agentUserId && (
                     <div className="flex items-center space-x-2 mt-2">
                       <select

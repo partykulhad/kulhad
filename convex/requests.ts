@@ -64,8 +64,8 @@ export const updateKitchenStatus = mutation({
       throw new Error("Request not found");
     }
 
-    // Check if the request is already accepted
-    if (currentRequest.kitchenStatus === "Accepted") {
+    // Check if the request is already Submitted
+    if (currentRequest.requestStatus === "Submitted") {
       // Create a status update record without changing the request
       await ctx.db.insert("requestStatusUpdates", {
         requestId,
@@ -76,10 +76,10 @@ export const updateKitchenStatus = mutation({
         dateAndTime,
         isProceedNext,
         reason,
-        message: "Request already accepted"
+        message: "Request already Submitted"
       });
 
-      return { success: false, message: "Request already accepted" };
+      return { success: false, message: "Request already Submitted" };
     }
 
     // Update the request status and all provided information
@@ -135,7 +135,7 @@ export const updateAgentStatus = mutation({
       }
 
       // Check if the request is already assigned
-      if (currentRequest.agentStatus === "Assigned") {
+      if (currentRequest.requestStatus === "Submitted") {
         // Create a status update record without changing the request
         await ctx.db.insert("requestStatusUpdates", {
           requestId,
@@ -146,10 +146,10 @@ export const updateAgentStatus = mutation({
           dateAndTime,
           isProceedNext,
           reason,
-          message: "Request already assigned"
+          message: "Request already Submitted"
         });
 
-        return { success: false, message: "Request already assigned" };
+        return { success: false, message: "Request already Submitted" };
       }
 
       // Update the request status and all provided information
@@ -251,8 +251,8 @@ export const updateCompleteOrCancel = mutation({
       return { success: false, message: "Request not found" };
     }
 
-    // Check if request is already completed or cancelled
-    if (currentRequest.requestStatus === "Completed" || currentRequest.requestStatus === "Cancelled") {
+    // Check if the current status is "Submitted" or "NotSubmitted"
+    if (currentRequest.requestStatus !== "Submitted" && currentRequest.requestStatus !== "NotSubmitted") {
       await ctx.db.insert("requestStatusUpdates", {
         requestId,
         userId,
@@ -262,31 +262,14 @@ export const updateCompleteOrCancel = mutation({
         dateAndTime,
         isProceedNext,
         reason,
-        message: `Request already ${currentRequest.requestStatus.toLowerCase()}`
+        message: "Unable to Proceed due to status mismatch"
       });
 
-      return { success: false, message: `Request already ${currentRequest.requestStatus.toLowerCase()}` };
+      return { success: false, message: "Unable to Proceed due to status mismatch" };
     }
 
-    // For completion, check if the current status is "Refilled"
-    if (isProceedNext && status === "Completed" && currentRequest.requestStatus !== "Refilled") {
-      await ctx.db.insert("requestStatusUpdates", {
-        requestId,
-        userId,
-        status,
-        latitude,
-        longitude,
-        dateAndTime,
-        isProceedNext,
-        reason,
-        message: "Request must be refilled before completion"
-      });
-
-      return { success: false, message: "Request must be refilled before completion" };
-    }
-
-    // For cancellation, update status back to Pending
-    const newStatus = !isProceedNext ? "Pending" : status;
+    // Determine the new status based on isProceedNext
+    const newStatus = isProceedNext ? "Completed" : "Cancelled";
 
     // Update the request status
     await ctx.db.patch(currentRequest._id, { 
@@ -299,7 +282,7 @@ export const updateCompleteOrCancel = mutation({
     await ctx.db.insert("requestStatusUpdates", {
       requestId,
       userId,
-      status,
+      status: newStatus,
       latitude,
       longitude,
       dateAndTime,
@@ -309,10 +292,12 @@ export const updateCompleteOrCancel = mutation({
 
     return { 
       success: true, 
-      message: isProceedNext ? "Completed status updated" : "Cancelled status updated"
+      message: `Request ${newStatus.toLowerCase()} successfully`
     };
   },
 });
+
+
 
 export const updateSubmitStatus = mutation({
   args: {
@@ -328,7 +313,7 @@ export const updateSubmitStatus = mutation({
   handler: async (ctx, args) => {
     try {
       // Validate reason when not submitting
-      if (args.status === "NotSubmit" && !args.reason) {
+      if (args.status === "NotSubmitted" && !args.reason) {
         return { 
           success: false, 
           message: "Reason is required when not submitting" 
@@ -359,14 +344,14 @@ export const updateSubmitStatus = mutation({
         dateAndTime: args.dateAndTime,
         isProceedNext: args.isProceedNext,
         reason: args.reason,
-        message: args.status === "Submit" 
+        message: args.status === "Submitted" 
           ? " submitted successfully"
           : ` not submitted: ${args.reason}`
       });
 
       return { success: true };
     } catch (error) {
-      console.error("Error updating submit status:", error);
+      console.error("Error updating Submitted status:", error);
       return { success: false, message: "Internal server error" };
     }
   }

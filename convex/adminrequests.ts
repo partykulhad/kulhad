@@ -1,5 +1,6 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { getKitchenByUserId } from "./kitchens";
 
 export const getAllRequests = query({
   handler: async (ctx) => {
@@ -35,7 +36,15 @@ export const createRequest = mutation({
     dstContactNumber: v.string(),
   },
   handler: async (ctx, args) => {
-    const requestId = `REQ-${Math.floor(1000 + Math.random() * 9000)}`;
+    const latestRequest = await ctx.db
+      .query("requests")
+      .order("desc")
+      .first();
+    const latestRequestId = latestRequest?.requestId ?? "REQ-0000";
+    const numericPart = parseInt(latestRequestId.split("-")[1]);
+    const nextNumericPart = numericPart + 1;
+    const requestId = `REQ-${nextNumericPart.toString().padStart(4, "0")}`;
+
     const newRequest = await ctx.db.insert("requests", {
       requestId,
       machineId: args.machineId,
@@ -66,9 +75,23 @@ export const assignKitchen = mutation({
       throw new Error("Request not found");
     }
 
+    const kitchen = await ctx.db
+      .query("kitchens")
+      .filter((q) => q.eq(q.field("userId"), args.kitchenUserId))
+      .first();
+
+    if (!kitchen) {
+      throw new Error("Kitchen not found");
+    }
+
     await ctx.db.patch(request._id, {
       kitchenUserId: args.kitchenUserId,
-      kitchenStatus: "TempAssigned",
+      kitchenStatus: "Accepted",
+      srcAddress: kitchen.address,
+      srcLatitude: kitchen.latitude,
+      srcLongitude: kitchen.longitude,
+      srcContactName: kitchen.manager,
+      srcContactNumber: kitchen.managerMobile,
     });
 
     return { success: true };
@@ -90,13 +113,25 @@ export const assignRefiller = mutation({
       throw new Error("Request not found");
     }
 
-    if (request.kitchenStatus !== "Accepted") {
+    if (request.requestStatus !== "Accepted") {
       throw new Error("Kitchen must accept the request before assigning a refiller");
+    }
+
+    const agent = await ctx.db
+      .query("deliveryAgents")
+      .filter((q) => q.eq(q.field("userId"), args.agentUserId))
+      .first();
+
+    if (!agent) {
+      throw new Error("Delivery agent not found");
     }
 
     await ctx.db.patch(request._id, {
       agentUserId: args.agentUserId,
-      agentStatus: "TempAssigned",
+      agentStatus: "Assigned",
+      requestStatus: "Assigned",
+      assignRefillerName: agent.name,
+      assignRefillerContactNumber: agent.mobile,
     });
 
     return { success: true };
