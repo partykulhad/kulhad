@@ -54,10 +54,10 @@ export async function GET(req: NextRequest) {
       }, { status: 200 });
     } else {
       return NextResponse.json({
-        code: 300,
+        code: 302,
         message: "No Active Orders Available",
         orderDetailsList: []
-      }, { status: 300 });
+      }, { status: 302 });
     }
   } catch (error) {
     console.error('Exception in getting orders:', error);

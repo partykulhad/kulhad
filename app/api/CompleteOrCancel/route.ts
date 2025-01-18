@@ -46,9 +46,9 @@ export async function POST(req: NextRequest) {
       }, { status: 200 });
     } else {
       return NextResponse.json({
-        code: 300,
+        code: 301,
         message: result.message
-      }, { status: 300 });
+      }, { status: 301 });
     }
 
   } catch (error) {
