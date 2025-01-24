@@ -86,8 +86,8 @@ export const updateKitchenStatus = mutation({
     await ctx.db.patch(currentRequest._id, { 
       kitchenStatus: status,
       kitchenUserId: userId,
-      srcLatitude: latitude,
-      srcLongitude: longitude,
+      // srcLatitude: latitude,
+      // srcLongitude: longitude,
       requestStatus: status,
       requestDateTime: dateAndTime,
       reason: reason,

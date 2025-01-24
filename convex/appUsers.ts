@@ -1,7 +1,7 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-const TOKEN_EXPIRY = 10 * 24 * 60 * 60 * 1000; // 10 days in milliseconds
+const TOKEN_EXPIRY = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
 
 function generateUserId(role: string, username: string): string {
   const prefix = role === 'kitchen' ? 'KITCHEN_' : 'REFILLER_';
@@ -160,3 +160,50 @@ export const getUserByUserId = query({
   },
 });
 
+export const updateFCMToken = mutation({
+  args: {
+    userId: v.string(),
+    fcmToken: v.string(),
+    userDevice: v.string(),
+    appVersion: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { userId, fcmToken, userDevice, appVersion } = args
+
+    try {
+      // Find the user by userId
+      const user = await ctx.db
+        .query("appUser")
+        .filter((q) => q.eq(q.field("userId"), userId))
+        .first()
+
+      if (!user) {
+        return {
+          code: 400,
+          success: false,
+          message: "User not found",
+        }
+      }
+
+      // Update the user with new FCM token and related information
+      await ctx.db.patch(user._id, {
+        fcmToken,
+        userDevice,
+        appVersion,
+      })
+
+      return {
+        code: 200,
+        success: true,
+        message: "FCM Token updated successfully",
+      }
+    } catch (error) {
+      console.error("Error updating FCM token:", error)
+      return {
+        code: 400,
+        success: false,
+        message: "An error occurred while updating FCM token",
+      }
+    }
+  },
+})

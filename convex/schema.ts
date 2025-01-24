@@ -21,6 +21,9 @@ export default defineSchema({
     name: v.optional(v.string()),
     token: v.optional(v.string()),
     tokenExpiration: v.optional(v.number()),
+    fcmToken: v.optional(v.string()),
+    userDevice: v.optional(v.string()),
+    appVersion:v.optional(v.string()),
   }).index("by_username", ["username"]).index("by_userId", ["userId"]),
 
   machines: defineTable({
