@@ -207,3 +207,16 @@ export const updateFCMToken = mutation({
     }
   },
 })
+
+export const getUserById = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const user = await ctx.db
+      .query("appUser")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first()
+
+    return user
+  },
+})
+

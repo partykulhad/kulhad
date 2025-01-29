@@ -356,3 +356,59 @@ export const updateSubmitStatus = mutation({
     }
   }
 });
+
+export const updateOrderReadyStatus = mutation({
+  args: {
+    userId: v.string(),
+    requestId: v.string(),
+    latitude: v.number(),
+    longitude: v.number(),
+    status: v.string(),
+    dateAndTime: v.string(),
+    isProceedNext: v.boolean(),
+    reason: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // Validate status
+      if (args.status !== "OrderReady") {
+        return {
+          success: false,
+          message: "Invalid status. Expected 'OrderReady'",
+        }
+      }
+
+      // First, update the request status in the requests table
+      const request = await ctx.db
+        .query("requests")
+        .filter((q) => q.eq(q.field("requestId"), args.requestId))
+        .first()
+
+      if (!request) {
+        return { success: false, message: "Request not found" }
+      }
+
+      await ctx.db.patch(request._id, {
+        requestStatus: args.status,
+      })
+
+      // Then, create a new record in requestStatusUpdates table
+      await ctx.db.insert("requestStatusUpdates", {
+        requestId: args.requestId,
+        userId: args.userId,
+        status: args.status,
+        latitude: args.latitude,
+        longitude: args.longitude,
+        dateAndTime: args.dateAndTime,
+        isProceedNext: args.isProceedNext,
+        reason: args.reason,
+        message: "Order is ready for pickup",
+      })
+
+      return { success: true }
+    } catch (error) {
+      console.error("Error updating Order Ready status:", error)
+      return { success: false, message: "Internal server error" }
+    }
+  },
+})
