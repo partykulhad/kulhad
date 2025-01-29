@@ -1,7 +1,6 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { ConvexHttpClient } from "convex/browser"
 import { api } from "../../../convex/_generated/api"
-import { firebaseAdmin } from "@/lib/firebaseAdmin"
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
@@ -37,32 +36,6 @@ export async function POST(req: NextRequest) {
     console.log("Mutation Result:", result)
 
     if (result.success) {
-      // Fetch the user's FCM token
-      const user = await convex.query(api.appUsers.getUserById, { userId })
-      console.log("Fetched User:", user)
-
-      if (user && user.fcmToken) {
-        // Prepare notification
-        const message = {
-          notification: {
-            title: "Order Picked Up",
-            body: `Your order has been picked up and is on its way!`,
-          },
-          token: user.fcmToken,
-        }
-        console.log("Notification Message:", message)
-
-        try {
-          // Send notification
-          await firebaseAdmin.messaging().send(message)
-          console.log("Notification sent successfully")
-        } catch (error) {
-          console.error("Error sending notification:", error instanceof Error ? error.message : String(error))
-        }
-      } else {
-        console.error("User not found or FCM token missing")
-      }
-
       return NextResponse.json(
         {
           code: 200,
