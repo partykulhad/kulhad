@@ -123,7 +123,7 @@ export default function AdminPage() {
                     </button>
                   </div>
                 )}
-                {request.requestStatus === "Accepted" &&
+                {request.requestStatus === "OrderReady" &&
                   !request.agentUserId && (
                     <div className="flex items-center space-x-2 mt-2">
                       <select
