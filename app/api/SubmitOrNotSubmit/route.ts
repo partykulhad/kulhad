@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
+import { sendStatusNotification } from "@/lib/notificationHelper";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -53,9 +54,25 @@ export async function POST(req: NextRequest) {
     });
 
     if (result.success) {
+      // Fetch the request details to get the refillerUserId
+      const requestDetails = await convex.query(api.requests.getRequestByRequestId, { requestId });
+
+      if (requestDetails && requestDetails.refillerUserId) {
+        // Fetch refiller user details
+        const refillerUserDetails = await convex.query(api.appUsers.getUserById, { userId: requestDetails.refillerUserId });
+
+        if (refillerUserDetails && refillerUserDetails.fcmToken) {
+          // Send notification to refiller user
+          const notificationResult = await sendStatusNotification(refillerUserDetails.fcmToken, requestId, status, false); // false because it's not a refiller sending the notification
+          if (!notificationResult.success) {
+            console.error("Failed to send notification:", notificationResult.message);
+          }
+        }
+      }
+
       return NextResponse.json({
         code: 200,
-        message: status === "Submitted" ? "Submitted status updated" : "Not submitted status updated"
+        message: `${status === "Submitted" ? "Submitted" : "Not submitted"} status updated and notification sent to refiller`
       }, { status: 200 });
     } else {
       return NextResponse.json({
@@ -68,8 +85,7 @@ export async function POST(req: NextRequest) {
     console.error('Exception in updating submit status:', error);
     return NextResponse.json({
       code: 400,
-      message: "Exception Message"
+      message: "Exception in updating submit status and sending notification"
     }, { status: 400 });
   }
 }
-

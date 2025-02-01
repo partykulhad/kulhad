@@ -113,8 +113,8 @@ export const assignRefiller = mutation({
       throw new Error("Request not found");
     }
 
-    if (request.requestStatus !== "Accepted") {
-      throw new Error("Kitchen must accept the request before assigning a refiller");
+    if (request.requestStatus !== "OrderReady") {
+      throw new Error("Kitchen must OrderReady the request before assigning a refiller");
     }
 
     const agent = await ctx.db

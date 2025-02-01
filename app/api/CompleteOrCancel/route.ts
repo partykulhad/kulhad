@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ConvexHttpClient } from "convex/browser";
 import { api } from "../../../convex/_generated/api";
+import { sendStatusNotification } from "@/lib/notificationHelper";
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
@@ -36,13 +37,41 @@ export async function POST(req: NextRequest) {
     });
 
     if (result.success) {
+      // Fetch the request details to get the refillerUserId and kitchenUserId
+      const requestDetails = await convex.query(api.requests.getRequestByRequestId, { requestId });
+
+      if (requestDetails) {
+        const { refillerUserId, kitchenUserId } = requestDetails;
+        
+        // Determine which user to notify based on who initiated the action
+        const userToNotify = userId === refillerUserId ? kitchenUserId : refillerUserId;
+        
+        if (userToNotify) {
+          // Fetch user details for notification
+          const userDetails = await convex.query(api.appUsers.getUserById, { userId: userToNotify });
+
+          if (userDetails && userDetails.fcmToken) {
+            // Send notification
+            const notificationResult = await sendStatusNotification(
+              userDetails.fcmToken, 
+              requestId, 
+              status, 
+              userId === refillerUserId // isRefiller is true if the action was initiated by the refiller
+            );
+            if (!notificationResult.success) {
+              console.error("Failed to send notification:", notificationResult.message);
+            }
+          }
+        }
+      }
+
       const statusMessage = status === "Cancelled" || !isProceedNext 
         ? "Cancelled status updated"
         : "Completed status updated";
 
       return NextResponse.json({
         code: 200,
-        message: statusMessage
+        message: `${statusMessage} and notification sent`
       }, { status: 200 });
     } else {
       return NextResponse.json({
@@ -55,8 +84,7 @@ export async function POST(req: NextRequest) {
     console.error('Exception in updating status:', error);
     return NextResponse.json({
       code: 400,
-      message: "Exception Message"
+      message: "Exception in updating status and sending notification"
     }, { status: 400 });
   }
 }
-

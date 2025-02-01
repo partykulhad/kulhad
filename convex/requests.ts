@@ -412,3 +412,23 @@ export const updateOrderReadyStatus = mutation({
     }
   },
 })
+
+export const getRequestByRequestId = query({
+  args: { requestId: v.string() },
+  handler: async (ctx, args) => {
+    const request = await ctx.db
+      .query("requests")
+      .filter((q) => q.eq(q.field("requestId"), args.requestId))
+      .unique();
+    
+    if (!request) {
+      return null;
+    }
+    
+    return {
+      refillerUserId: request.agentUserId,
+      kitchenUserId: request.kitchenUserId,
+      // Add other fields you need
+    };
+  },
+});
