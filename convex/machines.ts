@@ -23,6 +23,7 @@ export const add = mutation({
     }),
     gisLatitude: v.string(),
     gisLongitude: v.string(),
+    price:v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const machineId = await ctx.db.insert("machines", {

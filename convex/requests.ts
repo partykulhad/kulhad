@@ -32,7 +32,8 @@ export const getMyOrders = query({
           q.eq(q.field("agentUserId"), args.userId),
           q.not(q.or(
             q.eq(q.field("requestStatus"), "Completed"),
-            q.eq(q.field("requestStatus"), "Cancelled")
+            q.eq(q.field("requestStatus"), "Cancelled"),
+            q.eq(q.field("requestStatus"), "Accepted")
           ))
         )
       )
@@ -432,3 +433,150 @@ export const getRequestByRequestId = query({
     };
   },
 });
+
+// export const getMyRequestsHistory = query({
+//   args: { userId: v.string() },
+//   handler: async (ctx, args) => {
+//     const requests = await ctx.db
+//       .query("requests")
+//       .filter((q) => q.eq(q.field("kitchenUserId"), args.userId))
+//       .collect()
+
+//     const completedOrCancelledRequests = []
+
+//     for (const request of requests) {
+//       const latestStatus = await ctx.db
+//         .query("requestStatusUpdates")
+//         .filter((q) => q.eq(q.field("requestId"), request.requestId))
+//         .order("desc")
+//         .first()
+
+//       if (latestStatus && (latestStatus.status === "Completed" || latestStatus.status === "Cancelled")) {
+//         completedOrCancelledRequests.push({
+//           ...request,
+//           requestStatus: latestStatus.status,
+//         })
+//       }
+//     }
+
+//     return completedOrCancelledRequests
+//   },
+// })
+
+// export const getMyOrdersHistory = query({
+//   args: { userId: v.string() },
+//   handler: async (ctx, args) => {
+//     const orders = await ctx.db
+//       .query("requests")
+//       .filter((q) => q.eq(q.field("agentUserId"), args.userId))
+//       .collect()
+
+//     const completedOrCancelledOrders: any[] | PromiseLike<any[]> = []
+
+//     for (const order of orders) {
+//       const latestStatus = await ctx.db
+//         .query("requestStatusUpdates")
+//         .filter((q) => q.eq(q.field("requestId"), order.requestId))
+//         .order("desc")
+//         .first()
+
+//       if (latestStatus && (latestStatus.status === "Completed" || latestStatus.status === "Cancelled")) {
+//         completedOrCancelledOrders.push({
+//           ...order,
+//           requestStatus: latestStatus.status,
+//         })
+//       }
+//     }
+
+//     return completedOrCancelledOrders
+//   },
+// })
+
+export const getMyRequestsHistory = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const requestStatusUpdates = await ctx.db
+      .query("requestStatusUpdates")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .collect()
+
+    const completedOrCancelledRequests = requestStatusUpdates.filter(
+      (update) => update.status === "Completed" || update.status === "Cancelled",
+    )
+
+    const requestDetails = await Promise.all(
+      completedOrCancelledRequests.map(async (update) => {
+        const request = await ctx.db
+          .query("requests")
+          .filter((q) => q.eq(q.field("requestId"), update.requestId))
+          .first()
+
+        return {
+          requestId: update.requestId || null,
+          requestStatus: update.status || null,
+          requestDateTime: update.dateAndTime || null,
+          srcAddress: request?.srcAddress || null,
+          machineId: request?.machineId || null,
+          srcLatitude: request?.srcLatitude || null,
+          srcLongitude: request?.srcLongitude || null,
+          srcContactName: request?.srcContactName || null,
+          srcContactNumber: request?.srcContactNumber || null,
+          dstAddress: request?.dstAddress || null,
+          dstLatitude: request?.dstLatitude || null,
+          dstLongitude: request?.dstLongitude || null,
+          dstContactName: request?.dstContactName || null,
+          dstContactNumber: request?.dstContactNumber || null,
+          assgnRefillerName: update.status === "Completed" ? request?.assignRefillerName || null : null,
+          assignRefillerContactNumber:
+            update.status === "Completed" ? request?.assignRefillerContactNumber || null : null,
+        }
+      }),
+    )
+
+    return requestDetails
+  },
+})
+
+export const getMyOrdersHistory = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    const requestStatusUpdates = await ctx.db
+      .query("requestStatusUpdates")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .collect()
+
+    const completedOrCancelledOrders = requestStatusUpdates.filter(
+      (update) => update.status === "Completed" || update.status === "Cancelled",
+    )
+
+    const orderDetails = await Promise.all(
+      completedOrCancelledOrders.map(async (update) => {
+        const order = await ctx.db
+          .query("requests")
+          .filter((q) => q.eq(q.field("requestId"), update.requestId))
+          .first()
+
+        return {
+          requestId: update.requestId || null,
+          requestStatus: update.status || null,
+          requestDateTime: update.dateAndTime || null,
+          srcAddress: order?.srcAddress || null,
+          machineId: order?.machineId || null,
+          srcLatitude: order?.srcLatitude || null,
+          srcLongitude: order?.srcLongitude || null,
+          srcContactName: order?.srcContactName || null,
+          srcContactNumber: order?.srcContactNumber || null,
+          dstAddress: order?.dstAddress || null,
+          dstLatitude: order?.dstLatitude || null,
+          dstLongitude: order?.dstLongitude || null,
+          dstContactName: order?.dstContactName || null,
+          dstContactNumber: order?.dstContactNumber || null,
+          assgnRefillerName: order?.assignRefillerName || null,
+          assignRefillerContactNumber: order?.assignRefillerContactNumber || null,
+        }
+      }),
+    )
+
+    return orderDetails
+  },
+})

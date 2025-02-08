@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 import { useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { toast } from "react-toastify";
@@ -43,6 +44,7 @@ interface NewMachine {
   address: Address;
   gisLatitude: string;
   gisLongitude: string;
+  price: string;
 }
 
 export default function AddMachineContent() {
@@ -61,6 +63,7 @@ export default function AddMachineContent() {
     },
     gisLatitude: "",
     gisLongitude: "",
+    price: "",
   });
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -72,13 +75,13 @@ export default function AddMachineContent() {
   ) => {
     const { name, value } = e.target;
     if (name.startsWith("address.")) {
-      const addressField = name.split(".")[1];
+      const addressField = name.split(".")[1] as keyof Address;
       setNewMachine((prev) => ({
         ...prev,
         address: { ...prev.address, [addressField]: value },
       }));
     } else {
-      setNewMachine((prev) => ({ ...prev, [name]: value }));
+      setNewMachine((prev) => ({ ...prev, [name as keyof NewMachine]: value }));
     }
   };
 
@@ -94,7 +97,9 @@ export default function AddMachineContent() {
         ...newMachine,
         installedDate: newMachine.installedDate?.toISOString(),
       };
+
       const result = await addMachine(machineData);
+
       console.log("New machine added:", result);
       toast.success(
         `${newMachine.name} has been successfully added with ID: ${result.id}`
@@ -114,6 +119,7 @@ export default function AddMachineContent() {
         },
         gisLatitude: "",
         gisLongitude: "",
+        price: "",
       });
     } catch (error) {
       console.error("Error adding machine:", error);
@@ -258,6 +264,18 @@ export default function AddMachineContent() {
                   value={newMachine.description}
                   onChange={handleMachineInputChange}
                   className="mt-2"
+                />
+              </div>
+              <div>
+                <Label htmlFor="price">Price</Label>
+                <Input
+                  id="price"
+                  name="price"
+                  type="text"
+                  value={newMachine.price}
+                  onChange={handleMachineInputChange}
+                  placeholder="Enter price"
+                  required
                 />
               </div>
             </div>

@@ -41,6 +41,7 @@ export default defineSchema({
     }),
     gisLatitude: v.string(),
     gisLongitude: v.string(),
+    price: v.optional(v.string()),
     status: v.string(),
     temperature: v.number(),
     rating: v.number(),

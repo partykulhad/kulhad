@@ -1,5 +1,7 @@
 import { mutation, query } from "./_generated/server";
 import { v } from "convex/values";
+import { ConvexError } from "convex/values"
+import type { Doc } from "./_generated/dataModel"
 
 // Helper functions
 function generateUserId(role: string, username: string): string {
@@ -200,3 +202,122 @@ export const getKitchenByUserId = query({
     return kitchen;
   },
 });
+
+// Helper function to calculate distance between two points
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371 // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180)
+  const dLon = (lon2 - lon1) * (Math.PI / 180)
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+export const declineAndReassign = mutation({
+  args: { userId: v.string(), requestId: v.string(), status: v.string() },
+  handler: async (ctx, args) => {
+    const { userId, requestId, status } = args
+
+    if (status !== "declined") {
+      throw new ConvexError("Invalid status. Only 'declined' is accepted.")
+    }
+
+    // Update the status for the declining kitchen
+    const updateResult = await ctx.db
+      .query("requestStatusUpdates")
+      .filter((q) => q.and(q.eq(q.field("requestId"), requestId), q.eq(q.field("userId"), userId)))
+      .first()
+
+    if (!updateResult) {
+      throw new ConvexError("No matching request found for the given userId and requestId")
+    }
+
+    await ctx.db.patch(updateResult._id, { status: "declined" })
+
+    // Fetch the original request to get machine location
+    const request = await ctx.db
+      .query("requests")
+      .filter((q) => q.eq(q.field("requestId"), requestId))
+      .first()
+
+    if (!request) {
+      throw new ConvexError("Original request not found")
+    }
+
+    const machineLat = request.dstLatitude
+    const machineLon = request.dstLongitude
+
+    if (typeof machineLat !== "number" || typeof machineLon !== "number") {
+      throw new ConvexError("Invalid machine coordinates")
+    }
+
+    // Search for new kitchens
+    const radiusRanges = [2, 3, 4, 5] // km
+    let newKitchens: Doc<"kitchens">[] = []
+
+    for (const radius of radiusRanges) {
+      newKitchens = await findNearbyKitchens(ctx, machineLat, machineLon, radius, requestId)
+
+      if (newKitchens.length > 0) {
+        break // Exit the loop if kitchens are found
+      }
+    }
+
+    if (newKitchens.length === 0) {
+      // Update the request status if no new kitchens were found
+      await ctx.db.patch(request._id, { requestStatus: "No Available Kitchens" })
+      return {
+        success: false,
+        message: "No new nearby kitchens found",
+      }
+    }
+
+    // Add new kitchens to requestStatusUpdates
+    for (const kitchen of newKitchens) {
+      await ctx.db.insert("requestStatusUpdates", {
+        requestId: requestId,
+        userId: kitchen.userId,
+        status: "Pending",
+        latitude: kitchen.latitude,
+        longitude: kitchen.longitude,
+        dateAndTime: new Date().toISOString(),
+        isProceedNext: false,
+      })
+    }
+
+    return {
+      success: true,
+      message: "Request declined and reassigned to new kitchens",
+      newKitchens: newKitchens.map((k) => k.userId),
+    }
+  },
+})
+
+async function findNearbyKitchens(
+  ctx: any,
+  machineLat: number,
+  machineLon: number,
+  radius: number,
+  requestId: string,
+): Promise<Doc<"kitchens">[]> {
+  const kitchens = await ctx.db.query("kitchens").collect()
+  const onlineKitchens = kitchens.filter((kitchen: Doc<"kitchens">) => kitchen.status === "online")
+
+  // Get all kitchens that have already been assigned to this request
+  const assignedKitchens = await ctx.db
+    .query("requestStatusUpdates")
+    .filter((q: { eq: (arg0: any, arg1: string) => any; field: (arg0: string) => any; }) => q.eq(q.field("requestId"), requestId))
+    .collect()
+
+  const assignedKitchenIds = new Set(assignedKitchens.map((k: Doc<"requestStatusUpdates">) => k.userId))
+
+  const nearbyKitchens = onlineKitchens.filter((kitchen: Doc<"kitchens">) => {
+    const distance = calculateDistance(machineLat, machineLon, kitchen.latitude, kitchen.longitude)
+    return distance <= radius && !assignedKitchenIds.has(kitchen.userId)
+  })
+
+  return nearbyKitchens
+}
+

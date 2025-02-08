@@ -6,18 +6,16 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
 export async function POST(req: NextRequest) {
   try {
-    const { machineId, canisterLevel } = await req.json()
+    const { userId, requestId, status } = await req.json()
 
-    if (!machineId || canisterLevel === undefined) {
-      return NextResponse.json(
-        { code: 400, message: "Missing required parameters: machineId or canisterLevel" },
-        { status: 400 }
-      )
+    if (!userId || !requestId || status !== "declined") {
+      return NextResponse.json({ code: 400, message: "Missing required parameters or invalid status" }, { status: 400 })
     }
 
-    const result = await convex.mutation(api.canister.checkCanisterLevel, {
-      machineId,
-      canisterLevel,
+    const result = await convex.mutation(api.kitchens.declineAndReassign, {
+      userId,
+      requestId,
+      status,
     })
 
     if (result.success) {
@@ -26,16 +24,16 @@ export async function POST(req: NextRequest) {
           code: 200,
           message: result.message,
           data: {
-            requestId: result.requestId,
+            newKitchens: result.newKitchens,
           },
         },
-        { status: 200 }
+        { status: 200 },
       )
     } else {
       return NextResponse.json({ code: 400, message: result.message }, { status: 400 })
     }
   } catch (error) {
-    console.error("Exception in checking canister level:", error)
+    console.error("Exception in declining kitchen request:", error)
     if (error instanceof Error) {
       return NextResponse.json({ code: 500, message: error.message }, { status: 500 })
     } else {
@@ -43,3 +41,4 @@ export async function POST(req: NextRequest) {
     }
   }
 }
+

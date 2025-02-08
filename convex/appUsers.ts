@@ -1,4 +1,4 @@
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
 const TOKEN_EXPIRY = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
@@ -217,6 +217,28 @@ export const getUserById = query({
       .first()
 
     return user
+  },
+})
+
+export const changePassword = mutation({
+  args: { userId: v.string(), newPassword: v.string() },
+  handler: async (ctx, args) => {
+    const { userId, newPassword } = args
+
+    // Find the user by userId
+    const user = await ctx.db
+      .query("appUser")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .first()
+
+    if (!user) {
+      throw new ConvexError("User not found")
+    }
+
+    // Update the user's password
+    await ctx.db.patch(user._id, { password: newPassword })
+
+    return { success: true }
   },
 })
 
