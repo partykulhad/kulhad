@@ -170,6 +170,18 @@ export default function AddMachineContent() {
                 />
               </div>
               <div>
+                <Label htmlFor="price">Price</Label>
+                <Input
+                  id="price"
+                  name="price"
+                  type="text"
+                  value={newMachine.price}
+                  onChange={handleMachineInputChange}
+                  placeholder="Enter price"
+                  required
+                />
+              </div>
+              <div>
                 <Label htmlFor="installedDate">Installation Date</Label>
                 <Popover open={isCalendarOpen} onOpenChange={setIsCalendarOpen}>
                   <PopoverTrigger asChild>
@@ -264,18 +276,6 @@ export default function AddMachineContent() {
                   value={newMachine.description}
                   onChange={handleMachineInputChange}
                   className="mt-2"
-                />
-              </div>
-              <div>
-                <Label htmlFor="price">Price</Label>
-                <Input
-                  id="price"
-                  name="price"
-                  type="text"
-                  value={newMachine.price}
-                  onChange={handleMachineInputChange}
-                  placeholder="Enter price"
-                  required
                 />
               </div>
             </div>

@@ -1,7 +1,7 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
-const TOKEN_EXPIRY = 30 * 24 * 60 * 60 * 1000; // 30 days in milliseconds
+const TOKEN_EXPIRY = 30 * 24 * 60 * 60 * 1000 // 30 days in milliseconds
 
 function generateUserId(role: string, username: string): string {
   const prefix = role === 'kitchen' ? 'KITCHEN_' : 'REFILLER_';
@@ -62,48 +62,35 @@ export const authenticateAppUser = mutation({
     const user = await ctx.db
       .query("appUser")
       .withIndex("by_username", (q) => q.eq("username", args.username))
-      .first();
+      .first()
 
     if (!user) {
-      return { success: false, error: "User not found" };
+      return { success: false, error: "User not found" }
     }
 
-    // Handle cases where salt doesn't exist (for old users)
-    if (!user.salt) {
-      if (user.password === args.password) {
-        // If old password matches, update with new salt and hashed password
-        const salt = await generateSalt();
-        const hashedPassword = await hashPassword(args.password, salt);
-        await ctx.db.patch(user._id, { salt: salt, password: hashedPassword });
-      } else {
-        return { success: false, error: "Invalid password" };
-      }
-    } else {
-      const hashedPassword = await hashPassword(args.password, user.salt);
-      if (user.password !== hashedPassword) {
-        return { success: false, error: "Invalid password" };
-      }
+    if (user.password !== args.password) {
+      return { success: false, error: "Invalid password" }
     }
 
-    const token = await generateToken();
-    const expirationDate = new Date(Date.now() + TOKEN_EXPIRY);
+    const token = await generateToken()
+    const expirationDate = new Date(Date.now() + TOKEN_EXPIRY)
 
-    await ctx.db.patch(user._id, { 
-      token: token, 
-      tokenExpiration: expirationDate.getTime()
-    });
+    await ctx.db.patch(user._id, {
+      token: token,
+      tokenExpiration: expirationDate.getTime(),
+    })
 
     return {
       success: true,
-      name:user.name,
+      name: user.name,
       userId: user.userId,
       role: user.role,
       token: token,
-      tokenExpireTime: `${TOKEN_EXPIRY / (24 * 60 * 60 * 1000)}d`,
+      tokenExpireTime: "30d", // Changed to 30 days
       tokenExpireDate: expirationDate.toISOString(),
-    };
+    }
   },
-});
+})
 
 export const verifyToken = query({
   args: { token: v.string() },

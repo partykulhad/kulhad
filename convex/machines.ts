@@ -80,3 +80,23 @@ export const getMachineDetails = query({
   },
 });
 
+export const getMachineData = query({
+  args: { machineId: v.string() },
+  handler: async (ctx, args) => {
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), args.machineId))
+      .first()
+
+    if (!machine) {
+      return { success: false, error: "Machine not found" }
+    }
+
+    return {
+      success: true,
+      machineId: machine.id,
+      price: machine.price || "N/A",
+      status: machine.status,
+    }
+  },
+})
