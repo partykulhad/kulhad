@@ -1,13 +1,17 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import type React from "react";
+
+import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
+import { toast } from "react-toastify";
 
 export default function AdminPage() {
   const [selectedMachine, setSelectedMachine] = useState("");
   const [selectedKitchen, setSelectedKitchen] = useState("");
   const [selectedRefiller, setSelectedRefiller] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
 
   const requests = useQuery(api.adminrequests.getAllRequests);
   const machines = useQuery(api.adminrequests.getMachines);
@@ -18,33 +22,87 @@ export default function AdminPage() {
   const assignKitchen = useMutation(api.adminrequests.assignKitchen);
   const assignRefiller = useMutation(api.adminrequests.assignRefiller);
 
+  const checkCanisterLevel = async (machineId: string): Promise<boolean> => {
+    try {
+      const response = await fetch("/api/proxy-canister-check", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          machineId,
+          canisterLevel: 15,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      return data.success;
+    } catch (error) {
+      console.error("Error checking canister level:", error);
+      throw error;
+    }
+  };
+
   const handleCreateRequest = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     const machine = machines?.find((m) => m.id === selectedMachine);
     if (machine) {
-      await createRequest({
-        machineId: machine.id,
-        dstAddress: `${machine.address.building}, ${machine.address.floor}, ${machine.address.area}, ${machine.address.district}, ${machine.address.state}`,
-        dstLatitude: parseFloat(machine.gisLatitude),
-        dstLongitude: parseFloat(machine.gisLongitude),
-        dstContactName: machine.name,
-        dstContactNumber: "",
-      });
-      setSelectedMachine("");
+      try {
+        const canisterCheckResult = await checkCanisterLevel(machine.id);
+        if (canisterCheckResult) {
+          await createRequest({
+            machineId: machine.id,
+            dstAddress: `${machine.address.building}, ${machine.address.floor}, ${machine.address.area}, ${machine.address.district}, ${machine.address.state}`,
+            dstLatitude: Number.parseFloat(machine.gisLatitude),
+            dstLongitude: Number.parseFloat(machine.gisLongitude),
+            dstContactName: machine.name,
+            dstContactNumber: "",
+          });
+          setSelectedMachine("");
+          toast.success("Request created successfully");
+        } else {
+          toast.error("Canister level check failed. Request not created.");
+        }
+      } catch (error) {
+        console.error("Error creating request:", error);
+        toast.error("Failed to create request. Please try again later.");
+      }
+    } else {
+      toast.error(
+        "No machine selected. Please select a machine and try again."
+      );
     }
+    setIsLoading(false);
   };
 
   const handleAssignKitchen = async (requestId: string) => {
     if (selectedKitchen) {
-      await assignKitchen({ requestId, kitchenUserId: selectedKitchen });
-      setSelectedKitchen("");
+      try {
+        await assignKitchen({ requestId, kitchenUserId: selectedKitchen });
+        setSelectedKitchen("");
+        toast.success("Kitchen assigned successfully");
+      } catch (error) {
+        console.error("Error assigning kitchen:", error);
+        toast.error("Failed to assign kitchen");
+      }
     }
   };
 
   const handleAssignRefiller = async (requestId: string) => {
     if (selectedRefiller) {
-      await assignRefiller({ requestId, agentUserId: selectedRefiller });
-      setSelectedRefiller("");
+      try {
+        await assignRefiller({ requestId, agentUserId: selectedRefiller });
+        setSelectedRefiller("");
+        toast.success("Refiller assigned successfully");
+      } catch (error) {
+        console.error("Error assigning refiller:", error);
+        toast.error("Failed to assign refiller");
+      }
     }
   };
 
@@ -70,8 +128,9 @@ export default function AdminPage() {
           <button
             type="submit"
             className="bg-blue-500 text-white px-4 py-2 rounded"
+            disabled={isLoading}
           >
-            Create Request
+            {isLoading ? "Creating..." : "Create Request"}
           </button>
         </div>
       </form>
@@ -83,8 +142,6 @@ export default function AdminPage() {
             <th className="border p-2">Request ID</th>
             <th className="border p-2">Machine ID</th>
             <th className="border p-2">Status</th>
-            {/* <th className="border p-2">Kitchen Status</th>
-            <th className="border p-2">Agent Status</th> */}
             <th className="border p-2">Actions</th>
           </tr>
         </thead>
@@ -94,12 +151,6 @@ export default function AdminPage() {
               <td className="border p-2">{request.requestId}</td>
               <td className="border p-2">{request.machineId}</td>
               <td className="border p-2">{request.requestStatus}</td>
-              {/* <td className="border p-2">
-                {request.kitchenStatus || "Not Assigned"}
-              </td>
-              <td className="border p-2">
-                {request.agentStatus || "Not Assigned"}
-              </td> */}
               <td className="border p-2">
                 {!request.kitchenUserId && (
                   <div className="flex items-center space-x-2">

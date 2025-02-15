@@ -49,26 +49,36 @@ export async function POST(req: NextRequest) {
       console.log("Request details:", requestDetails)
 
       if (requestDetails && requestDetails.refillerUserId) {
-        console.log("Fetching refiller user details")
-        const refillerUserDetails = await convex.query(api.appUsers.getUserById, {
-          userId: requestDetails.refillerUserId,
-        })
-        console.log("Refiller user details:", refillerUserDetails)
+        let refillerUserIds: string[] = []
 
-        if (refillerUserDetails && refillerUserDetails.fcmToken) {
-          console.log("Sending notification to refiller")
-          const notificationResult = await sendStatusNotification(
-            refillerUserDetails.fcmToken,
-            requestId,
-            status,
-            false, // isRefiller is false because the kitchen is updating the status
-          )
-          console.log("Notification result:", notificationResult)
-          if (!notificationResult.success) {
-            console.error("Failed to send notification:", notificationResult.message)
-          }
+        if (Array.isArray(requestDetails.refillerUserId)) {
+          refillerUserIds = requestDetails.refillerUserId
         } else {
-          console.log("No FCM token found for refiller")
+          refillerUserIds = [requestDetails.refillerUserId]
+        }
+
+        for (const refillerUserId of refillerUserIds) {
+          console.log(`Fetching refiller user details for userId: ${refillerUserId}`)
+          const refillerUserDetails = await convex.query(api.appUsers.getUserById, {
+            userId: refillerUserId,
+          })
+          console.log("Refiller user details:", refillerUserDetails)
+
+          if (refillerUserDetails && refillerUserDetails.fcmToken) {
+            console.log("Sending notification to refiller")
+            const notificationResult = await sendStatusNotification(
+              refillerUserDetails.fcmToken,
+              requestId,
+              status,
+              false, // isRefiller is false because the kitchen is updating the status
+            )
+            console.log("Notification result:", notificationResult)
+            if (!notificationResult.success) {
+              console.error("Failed to send notification:", notificationResult.message)
+            }
+          } else {
+            console.log(`No FCM token found for refiller with userId: ${refillerUserId}`)
+          }
         }
       } else {
         console.log("No refiller user ID found in request details")
@@ -77,7 +87,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           code: 200,
-          message: `${result.message} and notification sent to refiller`,
+          message: `${result.message} and notification sent to refiller(s)`,
         },
         { status: 200 },
       )

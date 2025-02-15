@@ -72,8 +72,7 @@ export const checkCanisterLevel = mutation({
       kitchenStatus: "Pending",
       agentStatus: "Pending",
       requestDateTime: new Date().toISOString(),
-      dstAddress:
-        machine.address.building +
+      dstAddress: machine.address.building +
         ", " +
         machine.address.floor +
         ", " +
@@ -85,7 +84,7 @@ export const checkCanisterLevel = mutation({
       dstLatitude: machineLat,
       dstLongitude: machineLon,
       dstContactName: machine.name,
-      // Remove the dstContactNumber field if it's not available on the machine object
+      agentUserId: ""
     })
 
     // Schedule the action to handle kitchen and agent responses

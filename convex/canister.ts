@@ -64,8 +64,7 @@ export const checkCanisterLevel = mutation({
       kitchenStatus: "Pending",
       agentStatus: "Pending",
       requestDateTime: new Date().toISOString(),
-      dstAddress:
-        machine.address.building +
+      dstAddress: machine.address.building +
         ", " +
         machine.address.floor +
         ", " +
@@ -76,7 +75,8 @@ export const checkCanisterLevel = mutation({
         machine.address.state,
       dstLatitude: machineLat,
       dstLongitude: machineLon,
-      kitchenUserId: [], // Initialize with an empty array
+      kitchenUserId: [],
+      agentUserId: ""
     })
 
     // Search for nearby kitchens

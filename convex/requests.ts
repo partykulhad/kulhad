@@ -1,6 +1,18 @@
 import { mutation, query } from "./_generated/server"
 import { v } from "convex/values"
 
+// Helper function to calculate distance between two points
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371 // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180)
+  const dLon = (lon2 - lon1) * (Math.PI / 180)
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
 export const getMyRequests = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
@@ -32,21 +44,31 @@ export const getMyRequests = query({
 export const getMyOrders = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    return await ctx.db
-      .query("requests")
-      .filter((q) =>
-        q.and(
-          q.eq(q.field("agentUserId"), args.userId),
-          q.not(
-            q.or(
-              q.eq(q.field("requestStatus"), "Completed"),
-              q.eq(q.field("requestStatus"), "Cancelled"),
-              q.eq(q.field("requestStatus"), "Accepted"),
-            ),
-          ),
-        ),
-      )
-      .collect()
+    console.log(`Fetching orders for userId: ${args.userId}`)
+
+    // First, let's get all requests without any filters
+    const allRequests = await ctx.db.query("requests").collect()
+    console.log(`Total requests in the database: ${allRequests.length}`)
+
+    // Now, let's apply our filters step by step
+    const requestsWithUserId = allRequests.filter(
+      (request) =>
+        request.agentUserId === args.userId ||
+        (Array.isArray(request.agentUserId) && request.agentUserId.includes(args.userId)),
+    )
+    console.log(`Requests matching agentUserId: ${requestsWithUserId.length}`)
+
+    const activeOrders = requestsWithUserId.filter(
+      (request) =>
+        request.requestStatus !== "Completed" &&
+        request.requestStatus !== "Cancelled" &&
+        request.requestStatus !== "Accepted",
+    )
+    console.log(`Active orders for userId: ${activeOrders.length}`)
+
+    console.log("Sample of active orders:", activeOrders.slice(0, 3))
+
+    return activeOrders
   },
 })
 
@@ -162,21 +184,21 @@ export const updateAgentStatus = mutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const { userId, requestId, latitude, longitude, status, dateAndTime, isProceedNext, reason } = args;
+    const { userId, requestId, latitude, longitude, status, dateAndTime, isProceedNext, reason } = args
 
     try {
       // Fetch the current request
       const currentRequest = await ctx.db
         .query("requests")
-        .filter(q => q.eq(q.field("requestId"), requestId))
-        .first();
+        .filter((q) => q.eq(q.field("requestId"), requestId))
+        .first()
 
       if (!currentRequest) {
-        return { success: false, message: "Request not found" };
+        return { success: false, message: "Request not found" }
       }
 
-      // Check if the request is already assigned
-      if (currentRequest.requestStatus === "Submitted") {
+      // Check if the request is already assigned or submitted
+      if (currentRequest.requestStatus === "Assigned" || currentRequest.requestStatus === "Submitted") {
         // Create a status update record without changing the request
         await ctx.db.insert("requestStatusUpdates", {
           requestId,
@@ -187,20 +209,37 @@ export const updateAgentStatus = mutation({
           dateAndTime,
           isProceedNext,
           reason,
-          message: "Request already Submitted"
-        });
+          message: `Request already ${currentRequest.requestStatus}`,
+        })
 
-        return { success: false, message: "Request already Submitted" };
+        return { success: false, message: `Request already ${currentRequest.requestStatus}` }
       }
 
-      // Update the request status and all provided information
-      await ctx.db.patch(currentRequest._id, { 
+      const updateData: any = {
         agentStatus: status,
         agentUserId: userId,
         requestStatus: status,
         requestDateTime: dateAndTime,
         reason: reason,
-      });
+      }
+
+      // If the status is "Assigned", fetch and add refiller details
+      if (status === "Assigned") {
+        const deliveryAgent = await ctx.db
+          .query("deliveryAgents")
+          .filter((q) => q.eq(q.field("userId"), userId))
+          .first()
+
+        if (deliveryAgent) {
+          updateData.assignRefillerName = deliveryAgent.name
+          updateData.assignRefillerContactNumber = deliveryAgent.mobile
+        } else {
+          return { success: false, message: "Delivery agent not found" }
+        }
+      }
+
+      // Update the request status and all provided information
+      await ctx.db.patch(currentRequest._id, updateData)
 
       // Create a status update record
       await ctx.db.insert("requestStatusUpdates", {
@@ -212,15 +251,16 @@ export const updateAgentStatus = mutation({
         dateAndTime,
         isProceedNext,
         reason,
-      });
+      })
 
-      return { success: true, message: `${status} status updated` };
+      return { success: true, message: `${status} status updated` }
     } catch (error) {
-      console.error('Error in updateAgentStatus:', error);
-      return { success: false, message: "Failed to update status" };
+      console.error("Error in updateAgentStatus:", error)
+      return { success: false, message: "Failed to update status" }
     }
   },
-});
+})
+
 
 export const updateRequestStatus = mutation({
   args: {
@@ -429,11 +469,37 @@ export const updateOrderReadyStatus = mutation({
         return { success: false, message: "Request not found" }
       }
 
-      await ctx.db.patch(request._id, {
-        requestStatus: args.status,
+      // Search for nearby delivery agents
+      const deliveryAgents = await ctx.db.query("deliveryAgents").collect()
+      let nearbyAgents = deliveryAgents.filter((agent) => {
+        // Only calculate distance if both latitude and longitude are present
+        if (agent.latitude !== undefined && agent.longitude !== undefined) {
+          const distance = calculateDistance(args.latitude, args.longitude, agent.latitude, agent.longitude)
+          return distance <= 100 // 3km radius
+        }
+        return false // Exclude agents without location data
       })
 
-      // Then, create a new record in requestStatusUpdates table
+      // If no agents found within 3km, extend search to 5km
+      if (nearbyAgents.length === 0) {
+        nearbyAgents = deliveryAgents.filter((agent) => {
+          if (agent.latitude !== undefined && agent.longitude !== undefined) {
+            const distance = calculateDistance(args.latitude, args.longitude, agent.latitude, agent.longitude)
+            return distance <= 5 // 5km radius
+          }
+          return false
+        })
+      }
+
+      const nearbyAgentIds = nearbyAgents.map((agent) => agent.userId)
+
+      // Update the request with the new status and nearby agent IDs
+      await ctx.db.patch(request._id, {
+        requestStatus: args.status,
+        agentUserId: nearbyAgentIds,
+      })
+
+      // Create a new record in requestStatusUpdates table
       await ctx.db.insert("requestStatusUpdates", {
         requestId: args.requestId,
         userId: args.userId,
@@ -446,13 +512,16 @@ export const updateOrderReadyStatus = mutation({
         message: "Order is ready for pickup",
       })
 
-      return { success: true }
+      return { success: true, nearbyAgentIds }
     } catch (error) {
       console.error("Error updating Order Ready status:", error)
       return { success: false, message: "Internal server error" }
     }
   },
 })
+
+
+
 
 export const getRequestByRequestId = query({
   args: { requestId: v.string() },

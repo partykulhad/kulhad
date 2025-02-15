@@ -37,13 +37,20 @@ export async function POST(req: NextRequest) {
       if (requestDetails) {
         const { refillerUserId, kitchenUserId } = requestDetails
 
+        // Helper function to get the first valid user ID from a string or array
+        const getFirstValidUserId = (id: string | string[] | undefined): string | undefined => {
+          if (typeof id === "string") return id
+          if (Array.isArray(id) && id.length > 0) return id[0]
+          return undefined
+        }
+
         // Determine which user to notify based on who initiated the action
         let userToNotify: string | undefined
 
-        if (userId === refillerUserId) {
-          userToNotify = Array.isArray(kitchenUserId) ? kitchenUserId[0] : kitchenUserId
+        if (userId === getFirstValidUserId(refillerUserId)) {
+          userToNotify = getFirstValidUserId(kitchenUserId)
         } else {
-          userToNotify = refillerUserId
+          userToNotify = getFirstValidUserId(refillerUserId)
         }
 
         if (userToNotify) {
@@ -56,7 +63,7 @@ export async function POST(req: NextRequest) {
               userDetails.fcmToken,
               requestId,
               status,
-              userId === refillerUserId, // isRefiller is true if the action was initiated by the refiller
+              userId === getFirstValidUserId(refillerUserId), // isRefiller is true if the action was initiated by the refiller
             )
             if (!notificationResult.success) {
               console.error("Failed to send notification:", notificationResult.message)

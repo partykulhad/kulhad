@@ -181,7 +181,7 @@ export default defineSchema({
     requestId: v.string(),
     machineId: v.string(),
     kitchenUserId: v.union(v.string(), v.array(v.string())),
-    agentUserId: v.optional(v.string()),
+    agentUserId: v.optional(v.union(v.string(), v.array(v.string()))),
     kitchenStatus: v.optional(v.string()),
     agentStatus: v.optional(v.string()),
     requestStatus: v.string(),

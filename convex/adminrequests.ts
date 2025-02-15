@@ -55,7 +55,8 @@ export const createRequest = mutation({
       dstLongitude: args.dstLongitude,
       dstContactName: args.dstContactName,
       dstContactNumber: args.dstContactNumber,
-      kitchenUserId: ""
+      kitchenUserId: "",
+      agentUserId: ""
     });
     return newRequest;
   },

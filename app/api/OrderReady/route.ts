@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
         {
           code: 200,
           message: "Order Ready status updated",
+          nearbyAgentIds: result.nearbyAgentIds,
         },
         { status: 200 },
       )
