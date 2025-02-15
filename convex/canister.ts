@@ -76,11 +76,13 @@ export const checkCanisterLevel = mutation({
         machine.address.state,
       dstLatitude: machineLat,
       dstLongitude: machineLon,
+      kitchenUserId: [], // Initialize with an empty array
     })
 
     // Search for nearby kitchens
     const radiusRanges = [2, 3, 4, 5] // km
     let foundKitchens = false
+    const foundKitchenUserIds: string[] = []
 
     for (const radius of radiusRanges) {
       const nearbyKitchens = await findNearbyKitchens(ctx, machineLat, machineLon, radius)
@@ -88,7 +90,7 @@ export const checkCanisterLevel = mutation({
       if (nearbyKitchens.length > 0) {
         foundKitchens = true
 
-        // Store found kitchens in requestStatusUpdates
+        // Store found kitchens in requestStatusUpdates and collect user IDs
         for (const kitchen of nearbyKitchens) {
           await ctx.db.insert("requestStatusUpdates", {
             requestId: customRequestId,
@@ -99,6 +101,7 @@ export const checkCanisterLevel = mutation({
             dateAndTime: new Date().toISOString(),
             isProceedNext: false,
           })
+          foundKitchenUserIds.push(kitchen.userId)
         }
 
         break // Exit the loop if kitchens are found
@@ -114,6 +117,9 @@ export const checkCanisterLevel = mutation({
         requestId: customRequestId,
       }
     }
+
+    // Update the request with found kitchen user IDs
+    await ctx.db.patch(requestId, { kitchenUserId: foundKitchenUserIds })
 
     return {
       success: true,

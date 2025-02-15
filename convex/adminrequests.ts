@@ -1,5 +1,5 @@
 import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { ConvexError, v } from "convex/values";
 import { getKitchenByUserId } from "./kitchens";
 
 export const getAllRequests = query({
@@ -55,6 +55,7 @@ export const createRequest = mutation({
       dstLongitude: args.dstLongitude,
       dstContactName: args.dstContactName,
       dstContactNumber: args.dstContactNumber,
+      kitchenUserId: ""
     });
     return newRequest;
   },
@@ -69,34 +70,46 @@ export const assignKitchen = mutation({
     const request = await ctx.db
       .query("requests")
       .filter((q) => q.eq(q.field("requestId"), args.requestId))
-      .first();
+      .first()
 
     if (!request) {
-      throw new Error("Request not found");
+      throw new ConvexError("Request not found")
     }
 
     const kitchen = await ctx.db
       .query("kitchens")
       .filter((q) => q.eq(q.field("userId"), args.kitchenUserId))
-      .first();
+      .first()
 
     if (!kitchen) {
-      throw new Error("Kitchen not found");
+      throw new ConvexError("Kitchen not found")
     }
 
+    // Initialize kitchenUserId array if it doesn't exist
+    const currentKitchenUserIds = request.kitchenUserId || []
+
+    // Check if the kitchen is already assigned
+    if (currentKitchenUserIds.includes(args.kitchenUserId)) {
+      throw new ConvexError("This kitchen is already assigned to this request")
+    }
+
+    // Add the new kitchenUserId to the array
+    const updatedKitchenUserIds = [...currentKitchenUserIds, args.kitchenUserId]
+
     await ctx.db.patch(request._id, {
-      kitchenUserId: args.kitchenUserId,
+      kitchenUserId: updatedKitchenUserIds,
       kitchenStatus: "Accepted",
       srcAddress: kitchen.address,
       srcLatitude: kitchen.latitude,
       srcLongitude: kitchen.longitude,
       srcContactName: kitchen.manager,
       srcContactNumber: kitchen.managerMobile,
-    });
+    })
 
-    return { success: true };
+    return { success: true }
   },
-});
+})
+
 
 export const assignRefiller = mutation({
   args: {

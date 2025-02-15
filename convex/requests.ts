@@ -1,45 +1,56 @@
-import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { mutation, query } from "./_generated/server"
+import { v } from "convex/values"
 
 export const getMyRequests = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    console.log(`Fetching requests for userId: ${args.userId}`);
-    const requests = await ctx.db
-      .query("requests")
-      .filter((q) => 
-        q.and(
-          q.eq(q.field("kitchenUserId"), args.userId),
-          q.not(q.or(
-            q.eq(q.field("requestStatus"), "Completed"),
-            q.eq(q.field("requestStatus"), "Cancelled")
-          ))
-        )
-      )
-      .collect();
-    console.log(`Found ${requests.length} active requests`);
-    return requests;
+    console.log(`Fetching requests for userId: ${args.userId}`)
+
+    // First, let's get all requests without any filters
+    const allRequests = await ctx.db.query("requests").collect()
+    console.log(`Total requests in the database: ${allRequests.length}`)
+
+    // Now, let's apply our filters step by step
+    const requestsWithUserId = allRequests.filter(
+      (request) =>
+        request.kitchenUserId === args.userId ||
+        (Array.isArray(request.kitchenUserId) && request.kitchenUserId.includes(args.userId)),
+    )
+    console.log(`Requests matching userId: ${requestsWithUserId.length}`)
+
+    const activeRequests = requestsWithUserId.filter(
+      (request) => request.requestStatus !== "Completed" && request.requestStatus !== "Cancelled",
+    )
+    console.log(`Active requests for userId: ${activeRequests.length}`)
+
+    console.log("Sample of active requests:", activeRequests.slice(0, 3))
+
+    return activeRequests
   },
-});
+})
 
 export const getMyOrders = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
     return await ctx.db
       .query("requests")
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.eq(q.field("agentUserId"), args.userId),
-          q.not(q.or(
-            q.eq(q.field("requestStatus"), "Completed"),
-            q.eq(q.field("requestStatus"), "Cancelled"),
-            q.eq(q.field("requestStatus"), "Accepted")
-          ))
-        )
+          q.not(
+            q.or(
+              q.eq(q.field("requestStatus"), "Completed"),
+              q.eq(q.field("requestStatus"), "Cancelled"),
+              q.eq(q.field("requestStatus"), "Accepted"),
+            ),
+          ),
+        ),
       )
-      .collect();
+      .collect()
   },
-});
+})
+
+
 
 export const updateKitchenStatus = mutation({
   args: {
@@ -53,20 +64,20 @@ export const updateKitchenStatus = mutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const { userId, requestId, latitude, longitude, status, dateAndTime, isProceedNext, reason } = args;
+    const { userId, requestId, latitude, longitude, status, dateAndTime, isProceedNext, reason } = args
 
     // Fetch the current request
     const currentRequest = await ctx.db
       .query("requests")
-      .filter(q => q.eq(q.field("requestId"), requestId))
-      .first();
+      .filter((q) => q.eq(q.field("requestId"), requestId))
+      .first()
 
     if (!currentRequest) {
-      throw new Error("Request not found");
+      return { success: false, message: `Request with ID ${requestId} not found` }
     }
 
-    // Check if the request is already Submitted
-    if (currentRequest.requestStatus === "Submitted") {
+    // Check if the request is already Accepted
+    if (currentRequest.requestStatus === "Accepted") {
       // Create a status update record without changing the request
       await ctx.db.insert("requestStatusUpdates", {
         requestId,
@@ -77,22 +88,45 @@ export const updateKitchenStatus = mutation({
         dateAndTime,
         isProceedNext,
         reason,
-        message: "Request already Submitted"
-      });
+        message: "Request already Accepted, cannot update status",
+      })
 
-      return { success: false, message: "Request already Submitted" };
+      return { success: false, message: "Request already Accepted, cannot update status" }
     }
 
-    // Update the request status and all provided information
-    await ctx.db.patch(currentRequest._id, { 
+    // If status is "Accepted", fetch kitchen details
+    let updateData: any = {
       kitchenStatus: status,
       kitchenUserId: userId,
-      // srcLatitude: latitude,
-      // srcLongitude: longitude,
       requestStatus: status,
       requestDateTime: dateAndTime,
       reason: reason,
-    });
+    }
+
+    if (status === "Accepted") {
+      // Fetch kitchen details
+      const kitchen = await ctx.db
+        .query("kitchens")
+        .filter((q) => q.eq(q.field("userId"), userId))
+        .first()
+
+      if (!kitchen) {
+        return { success: false, message: "Kitchen details not found" }
+      }
+
+      // Add kitchen details to update data
+      updateData = {
+        ...updateData,
+        srcAddress: kitchen.address,
+        srcLatitude: kitchen.latitude,
+        srcLongitude: kitchen.longitude,
+        srcContactName: kitchen.manager,
+        srcContactNumber: kitchen.managerMobile,
+      }
+    }
+
+    // Update the request with all information
+    await ctx.db.patch(currentRequest._id, updateData)
 
     // Create a status update record
     await ctx.db.insert("requestStatusUpdates", {
@@ -104,11 +138,17 @@ export const updateKitchenStatus = mutation({
       dateAndTime,
       isProceedNext,
       reason,
-    });
+    })
 
-    return { success: true, message: `${status} status updated` };
+    return {
+      success: true,
+      message: status === "Accepted" ? "Request accepted and kitchen details updated" : `${status} status updated`,
+    }
   },
-});
+})
+
+
+
 
 export const updateAgentStatus = mutation({
   args: {

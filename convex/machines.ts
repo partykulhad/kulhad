@@ -24,6 +24,10 @@ export const add = mutation({
     gisLatitude: v.string(),
     gisLongitude: v.string(),
     price:v.optional(v.string()),
+    startTime:  v.optional(v.string()),
+    endTime:  v.optional(v.string()),
+    flushTimeMinutes:  v.optional(v.number()),
+    mlToDispense:  v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     const machineId = await ctx.db.insert("machines", {
@@ -97,6 +101,11 @@ export const getMachineData = query({
       machineId: machine.id,
       price: machine.price || "N/A",
       status: machine.status,
+      startTime: machine.startTime,
+      endTime: machine.endTime,
+      flushTimeMinutes: machine.flushTimeMinutes,
+      mlToDispense: machine.mlToDispense,
     }
   },
 })
+

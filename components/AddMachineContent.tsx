@@ -45,6 +45,10 @@ interface NewMachine {
   gisLatitude: string;
   gisLongitude: string;
   price: string;
+  startTime: string;
+  endTime: string;
+  flushTimeMinutes: number;
+  mlToDispense: number;
 }
 
 export default function AddMachineContent() {
@@ -64,6 +68,10 @@ export default function AddMachineContent() {
     gisLatitude: "",
     gisLongitude: "",
     price: "",
+    startTime: "",
+    endTime: "",
+    flushTimeMinutes: 0,
+    mlToDispense: 0,
   });
 
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -81,7 +89,15 @@ export default function AddMachineContent() {
         address: { ...prev.address, [addressField]: value },
       }));
     } else {
-      setNewMachine((prev) => ({ ...prev, [name as keyof NewMachine]: value }));
+      setNewMachine((prev) => ({
+        ...prev,
+        [name as keyof NewMachine]:
+          name === "flushTimeMinutes" || name === "mlToDispense"
+            ? value === ""
+              ? 0
+              : Number.parseInt(value, 10)
+            : value,
+      }));
     }
   };
 
@@ -120,6 +136,10 @@ export default function AddMachineContent() {
         gisLatitude: "",
         gisLongitude: "",
         price: "",
+        startTime: "",
+        endTime: "",
+        flushTimeMinutes: 0,
+        mlToDispense: 0,
       });
     } catch (error) {
       console.error("Error adding machine:", error);
@@ -139,6 +159,7 @@ export default function AddMachineContent() {
         <CardContent>
           <form onSubmit={handleMachineSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {/* Existing fields */}
               <div>
                 <Label htmlFor="id">ID</Label>
                 <Input
@@ -230,6 +251,51 @@ export default function AddMachineContent() {
                   value={newMachine.gisLongitude}
                   onChange={handleMachineInputChange}
                   placeholder="Longitude"
+                  required
+                />
+              </div>
+              {/* New fields */}
+              <div>
+                <Label htmlFor="startTime">Start Time</Label>
+                <Input
+                  id="startTime"
+                  name="startTime"
+                  type="time"
+                  value={newMachine.startTime}
+                  onChange={handleMachineInputChange}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="endTime">End Time</Label>
+                <Input
+                  id="endTime"
+                  name="endTime"
+                  type="time"
+                  value={newMachine.endTime}
+                  onChange={handleMachineInputChange}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="flushTimeMinutes">Flush Time (minutes)</Label>
+                <Input
+                  id="flushTimeMinutes"
+                  name="flushTimeMinutes"
+                  type="number"
+                  value={newMachine.flushTimeMinutes}
+                  onChange={handleMachineInputChange}
+                  required
+                />
+              </div>
+              <div>
+                <Label htmlFor="mlToDispense">ML to Dispense</Label>
+                <Input
+                  id="mlToDispense"
+                  name="mlToDispense"
+                  type="number"
+                  value={newMachine.mlToDispense}
+                  onChange={handleMachineInputChange}
                   required
                 />
               </div>
