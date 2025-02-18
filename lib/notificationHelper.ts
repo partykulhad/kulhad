@@ -12,7 +12,7 @@ const notificationTypes: { [key: string]: NotificationDetails } = {
     title: "New Request",
     message: "New Request Assigned",
   },
-  Accepted: {
+  OrderReady: {
     type: "notify_new_order",
     title: "New Order",
     message: "New Order Assigned",

@@ -1,6 +1,7 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { ConvexHttpClient } from "convex/browser"
 import { api } from "../../../convex/_generated/api"
+import { sendStatusNotification } from "@/lib/notificationHelper"
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
@@ -41,11 +42,36 @@ export async function POST(req: NextRequest) {
       reason: reason || undefined,
     })
 
-    if (result.success) {
+    if (result.success && result.nearbyAgentIds) {
+      // Send notifications to all nearby agents
+      const notificationPromises = result.nearbyAgentIds.map(async (agentId) => {
+        const userDetails = await convex.query(api.appUsers.getUserById, { userId: agentId })
+        if (userDetails && userDetails.fcmToken) {
+          return sendStatusNotification(
+            userDetails.fcmToken,
+            requestId,
+            "OrderReady",
+            false, // isRefiller is false as this is for agents
+          )
+        }
+        return { success: false, message: `FCM token not found for agent: ${agentId}` }
+      })
+
+      const notificationResults = await Promise.all(notificationPromises)
+
+      // Log any failed notifications
+      notificationResults.forEach((notificationResult, index) => {
+        if (!notificationResult.success) {
+          console.error(
+            `Failed to send notification to agent ${result.nearbyAgentIds![index]}: ${notificationResult.message}`,
+          )
+        }
+      })
+
       return NextResponse.json(
         {
           code: 200,
-          message: "Order Ready status updated",
+          message: "Order Ready status updated and notifications sent",
           nearbyAgentIds: result.nearbyAgentIds,
         },
         { status: 200 },
@@ -64,7 +90,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(
       {
         code: 400,
-        message: "Exception Message",
+        message: error instanceof Error ? error.message : "Exception in updating Order Ready status",
       },
       { status: 400 },
     )

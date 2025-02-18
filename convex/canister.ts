@@ -115,6 +115,7 @@ export const checkCanisterLevel = mutation({
         success: false,
         message: "No nearby kitchens found",
         requestId: customRequestId,
+        kitchenUserIds: [],
       }
     }
 
@@ -125,6 +126,8 @@ export const checkCanisterLevel = mutation({
       success: true,
       message: "Request created and nearby kitchens identified",
       requestId: customRequestId,
+      kitchenUserIds: foundKitchenUserIds,
+
     }
   },
 })
