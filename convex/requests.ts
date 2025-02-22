@@ -473,7 +473,7 @@ export const updateOrderReadyStatus = mutation({
       const deliveryAgents = await ctx.db.query("deliveryAgents").collect()
       let nearbyAgents = deliveryAgents.filter((agent) => {
         // Only calculate distance if both latitude and longitude are present
-        if (agent.latitude !== undefined && agent.longitude !== undefined) {
+        if (agent.latitude !== undefined && agent.longitude !== undefined && agent.status !== "offline") {
           const distance = calculateDistance(args.latitude, args.longitude, agent.latitude, agent.longitude)
           return distance <= 100 // 3km radius
         }
@@ -483,7 +483,7 @@ export const updateOrderReadyStatus = mutation({
       // If no agents found within 3km, extend search to 5km
       if (nearbyAgents.length === 0) {
         nearbyAgents = deliveryAgents.filter((agent) => {
-          if (agent.latitude !== undefined && agent.longitude !== undefined) {
+          if (agent.latitude !== undefined && agent.longitude !== undefined && agent.status !== "offline") {
             const distance = calculateDistance(args.latitude, args.longitude, agent.latitude, agent.longitude)
             return distance <= 5 // 5km radius
           }

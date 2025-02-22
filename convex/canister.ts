@@ -80,7 +80,7 @@ export const checkCanisterLevel = mutation({
     })
 
     // Search for nearby kitchens
-    const radiusRanges = [2, 3, 4, 5] // km
+    const radiusRanges = [2, 3, 4, 5, 10] // km
     let foundKitchens = false
     const foundKitchenUserIds: string[] = []
 
