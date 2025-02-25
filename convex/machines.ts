@@ -109,3 +109,40 @@ export const getMachineData = query({
   },
 })
 
+export const update = mutation({
+  args: {
+    machineId: v.id("machines"),
+    name: v.string(),
+    description: v.string(),
+    model: v.string(),
+    installedDate: v.optional(v.string()),
+    address: v.object({
+      building: v.string(),
+      floor: v.string(),
+      area: v.string(),
+      district: v.string(),
+      state: v.string(),
+    }),
+    gisLatitude: v.string(),
+    gisLongitude: v.string(),
+    price: v.optional(v.string()),
+    startTime: v.optional(v.string()),
+    endTime: v.optional(v.string()),
+    flushTimeMinutes: v.optional(v.number()),
+    mlToDispense: v.optional(v.number()),
+  },
+  handler: async (ctx, args) => {
+    const { machineId, ...updates } = args
+    await ctx.db.patch(machineId, updates)
+    return { id: machineId }
+  },
+})
+
+export const remove = mutation({
+  args: { id: v.id("machines") },
+  handler: async (ctx, args) => {
+    await ctx.db.delete(args.id)
+    return { success: true }
+  },
+})
+

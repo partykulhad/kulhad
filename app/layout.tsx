@@ -1,12 +1,10 @@
-import type {Metadata} from "next";
-import {Lora} from "next/font/google";
+import type { Metadata } from "next";
+import { Lora } from "next/font/google";
 import "./globals.css";
 import ConvexClientProvider from "@app/ConvexClientProvider";
-import Header from "@/components/header";
 
 const lora = Lora({
   subsets: ["latin"],
-  // weight: "700",
   variable: "--font-lora",
 });
 
@@ -22,7 +20,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body className={`${lora.className}`}>
+      <body className={lora.className}>
         <ConvexClientProvider>{children}</ConvexClientProvider>
       </body>
     </html>
