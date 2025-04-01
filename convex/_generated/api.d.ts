@@ -25,6 +25,7 @@ import type * as kitchens from "../kitchens.js";
 import type * as machines from "../machines.js";
 import type * as migrateAppUsers from "../migrateAppUsers.js";
 import type * as requests from "../requests.js";
+import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
 import type * as vendors from "../vendors.js";
 
@@ -49,6 +50,7 @@ declare const fullApi: ApiFromModules<{
   machines: typeof machines;
   migrateAppUsers: typeof migrateAppUsers;
   requests: typeof requests;
+  transactions: typeof transactions;
   users: typeof users;
   vendors: typeof vendors;
 }>;

@@ -219,5 +219,40 @@ export default defineSchema({
     reason: v.optional(v.string()),
     message: v.optional(v.string()),
   }).index("by_requestId", ["requestId"]),
+
+  transactions: defineTable({
+    // Razorpay QR code ID
+    transactionId: v.string(),
+    // QR code image URL
+    imageUrl: v.string(),
+    // Amount in rupees
+    amount: v.number(),
+    // Number of cups
+    cups: v.number(),
+    // Price per cup
+    amountPerCup: v.number(),
+    // Machine ID
+    machineId: v.string(),
+    // Transaction description
+    description: v.string(),
+    // Transaction status (active, paid, expired, failed)
+    status: v.string(),
+    // Razorpay payment ID (when payment is completed)
+    paymentId: v.optional(v.string()),
+    // Virtual Payment Address used for payment
+    vpa: v.optional(v.string()),
+    // Reason for failure if transaction failed
+    failureReason: v.optional(v.string()),
+    // QR code expiry timestamp
+    expiresAt: v.number(),
+    // Created timestamp
+    createdAt: v.number(),
+    // Updated timestamp
+    updatedAt: v.number(),
+  })
+    .index("by_transactionId", ["transactionId"])
+    .index("by_machineId", ["machineId"])
+    .index("by_status", ["status"]),
 });
+
 
