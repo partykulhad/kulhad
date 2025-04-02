@@ -39,6 +39,11 @@ export async function POST(request: NextRequest) {
     // Set expiry time (30 minutes from now)
     const closeBy = Math.floor(Date.now() / 1000) + 1800 // 30 minutes in seconds
 
+    // Generate a unique transaction ID that will be used both in Razorpay and our database
+    const uniqueTransactionId = `${machineId}-${Date.now()}`
+
+    console.log("Generated unique transaction ID:", uniqueTransactionId)
+
     // Prepare request body for Razorpay API
     const razorpayRequest = {
       type: "upi_qr",
@@ -52,8 +57,11 @@ export async function POST(request: NextRequest) {
         machineId: machineId,
         numberOfCups: numberOfCups.toString(),
         amountPerCup: amountPerCup.toString(),
+        transactionId: uniqueTransactionId, // Add our unique transaction ID to notes
       },
     }
+
+    console.log("Sending request to Razorpay:", JSON.stringify(razorpayRequest))
 
     // Make request to Razorpay API
     const response = await fetch("https://api.razorpay.com/v1/payments/qr_codes", {
@@ -80,11 +88,17 @@ export async function POST(request: NextRequest) {
 
     // Parse the response
     const razorpayResponse = await response.json()
+    console.log("Razorpay response:", JSON.stringify(razorpayResponse))
+
+    // We'll use the Razorpay QR code ID as our transaction ID in the database
+    const qrCodeId = razorpayResponse.id
+
+    console.log("Using QR code ID as transaction ID:", qrCodeId)
 
     // Create a clean response object
     const transactionData = {
       success: true,
-      id: razorpayResponse.id,
+      id: qrCodeId,
       imageUrl: razorpayResponse.image_url,
       amount: razorpayResponse.payment_amount / 100, // Convert back to rupees for display
       description: razorpayResponse.description,
@@ -94,11 +108,14 @@ export async function POST(request: NextRequest) {
       machineId,
       numberOfCups,
       amountPerCup,
+      transactionId: uniqueTransactionId, // Include our unique transaction ID in the response
     }
 
-    // Store transaction in Convex
-    await convex.mutation(api.transactions.createTransaction, {
-      transactionId: razorpayResponse.id,
+    // Store transaction in Convex with BOTH IDs
+    // This is crucial - we store both the QR code ID and our unique transaction ID
+    const dbTransaction = await convex.mutation(api.transactions.createTransaction, {
+      transactionId: qrCodeId, // Primary ID - the QR code ID from Razorpay
+      customTransactionId: uniqueTransactionId, // Our custom ID as a secondary reference
       imageUrl: razorpayResponse.image_url,
       amount: razorpayResponse.payment_amount / 100,
       cups: Number(numberOfCups),
@@ -106,8 +123,10 @@ export async function POST(request: NextRequest) {
       machineId: machineId,
       description: razorpayResponse.description,
       status: razorpayResponse.status,
-      expiresAt: razorpayResponse.close_by,
+      expiresAt: razorpayResponse.close_by * 1000, // Convert to milliseconds
     })
+
+    console.log("Transaction stored in database:", dbTransaction)
 
     // Return the clean response
     return NextResponse.json(transactionData)

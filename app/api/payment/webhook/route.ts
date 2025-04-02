@@ -19,13 +19,13 @@ export async function POST(request: NextRequest) {
 
     // Get the raw body
     const rawBody = await request.text()
-    console.log("Webhook raw body:", rawBody)
+    console.log("Webhook raw body length:", rawBody.length)
 
     // Parse the webhook payload
     let payload
     try {
       payload = JSON.parse(rawBody)
-      console.log("Webhook payload:", JSON.stringify(payload, null, 2))
+      console.log("Webhook event type:", payload.event)
     } catch (e) {
       console.error("Failed to parse webhook payload:", e)
       return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 })
@@ -63,45 +63,101 @@ export async function POST(request: NextRequest) {
     // Handle different webhook events
     if (event === "payment.authorized" || event === "payment.captured") {
       const payment = payload.payload.payment.entity
-      console.log("Payment details:", payment)
+      console.log("Payment ID:", payment.id)
 
-      // Try to get transactionId from different possible locations in the notes
-      const transactionId = payment.notes?.qr_code_id || payment.notes?.machineId || payment.notes?.transactionId
+      // Extract payment details
+      const paymentId = payment.id
+      const paymentNotes = payment.notes || {}
 
-      if (transactionId) {
-        console.log("Found transactionId/machineId:", transactionId)
+      // Log all available notes for debugging
+      console.log("Payment notes:", JSON.stringify(paymentNotes))
+
+      // Try multiple possible fields for transaction ID
+      const possibleTransactionIds = [
+        payment.qr_code_id, // QR code ID directly from payment
+        paymentNotes.transactionId, // Our custom transaction ID
+        paymentNotes.machineId, // Machine ID as fallback
+      ].filter(Boolean) // Remove undefined/null values
+
+      console.log("Possible transaction IDs:", possibleTransactionIds)
+
+      // Try each possible transaction ID
+      let transactionFound = false
+
+      for (const transactionId of possibleTransactionIds) {
+        if (!transactionId) continue
+
+        console.log("Checking transaction ID:", transactionId)
 
         try {
-          // First, check if the transaction exists
-          const transaction = await convex.query(api.transactions.getTransactionByTxnId, {
+          // First try to find by transactionId (QR code ID)
+          let transaction = await convex.query(api.transactions.getTransactionByTxnId, {
             transactionId,
           })
 
+          // If not found and we're checking a custom ID, try by customTransactionId
+          if (!transaction && transactionId === paymentNotes.transactionId) {
+            transaction = await convex.query(api.transactions.getTransactionByCustomId, {
+              customTransactionId: transactionId,
+            })
+          }
+
           if (transaction) {
-            console.log("Found existing transaction:", transaction._id)
+            console.log("Found transaction with ID:", transaction._id)
+            transactionFound = true
 
             // Update the transaction with payment details
             await convex.mutation(api.transactions.updateTransactionStatus, {
               id: transaction._id,
               status: "paid",
-              paymentId: payment.id,
+              paymentId: paymentId,
               vpa: payment.vpa || "",
             })
 
             console.log("Transaction updated successfully")
-          } else {
-            console.log("Transaction not found, cannot update")
+            break // Exit the loop once we've found and updated a transaction
           }
         } catch (dbError) {
-          console.error("Database operation failed:", dbError)
-          // Continue processing to return 200 to Razorpay
+          console.error(`Error checking transaction ID ${transactionId}:`, dbError)
         }
-      } else {
-        console.error("No transactionId/machineId found in payment notes:", payment.notes)
+      }
+
+      if (!transactionFound) {
+        console.error("Transaction not found for any possible ID")
+
+        // If we have a machineId, try to create a fallback transaction
+        if (paymentNotes.machineId) {
+          try {
+            console.log("Creating fallback transaction for machine:", paymentNotes.machineId)
+
+            const amount = payment.amount / 100 // Convert from paise to rupees
+            const cups = Number.parseInt(paymentNotes.numberOfCups || "1", 10)
+            const amountPerCup = amount / cups
+
+            const fallbackTransactionId = `fallback-${paymentId}`
+
+            await convex.mutation(api.transactions.createTransaction, {
+              transactionId: fallbackTransactionId,
+              customTransactionId: paymentNotes.transactionId || fallbackTransactionId,
+              imageUrl: "", // No QR image for fallback
+              amount: amount,
+              cups: cups,
+              amountPerCup: amountPerCup,
+              machineId: paymentNotes.machineId,
+              description: `Fallback transaction for payment ${paymentId}`,
+              status: "paid", // Already paid
+              expiresAt: Date.now() + 24 * 60 * 60 * 1000, // 24 hours from now
+            })
+
+            console.log("Fallback transaction created successfully")
+          } catch (fallbackError) {
+            console.error("Failed to create fallback transaction:", fallbackError)
+          }
+        }
       }
     } else if (event === "qr_code.closed") {
       const qrCode = payload.payload.qr_code.entity
-      console.log("QR code closed:", qrCode)
+      console.log("QR code closed:", qrCode.id)
 
       try {
         // Get the transaction using the QR code ID as the transaction ID
@@ -126,7 +182,6 @@ export async function POST(request: NextRequest) {
         }
       } catch (dbError) {
         console.error("Database operation failed:", dbError)
-        // Continue processing to return 200 to Razorpay
       }
     } else {
       console.log("Unhandled event type:", event)

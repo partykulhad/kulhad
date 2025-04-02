@@ -5,6 +5,7 @@ import { v } from "convex/values"
 export const createTransaction = mutation({
   args: {
     transactionId: v.string(),
+    customTransactionId: v.optional(v.string()), // Add support for our custom transaction ID
     imageUrl: v.string(),
     amount: v.number(),
     cups: v.number(),
@@ -16,8 +17,12 @@ export const createTransaction = mutation({
   },
   handler: async (ctx, args) => {
     const now = Date.now()
+
+    // Create the transaction object with all properties at once
+    // Include customTransactionId conditionally
     return await ctx.db.insert("transactions", {
       transactionId: args.transactionId,
+      ...(args.customTransactionId ? { customTransactionId: args.customTransactionId } : {}), // Conditionally add the property
       imageUrl: args.imageUrl,
       amount: args.amount,
       cups: args.cups,
@@ -41,6 +46,19 @@ export const getTransactionByTxnId = query({
     return await ctx.db
       .query("transactions")
       .withIndex("by_transactionId", (q) => q.eq("transactionId", args.transactionId))
+      .first()
+  },
+})
+
+// Get a transaction by custom transaction ID
+export const getTransactionByCustomId = query({
+  args: {
+    customTransactionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("transactions")
+      .withIndex("by_customTransactionId", (q) => q.eq("customTransactionId", args.customTransactionId))
       .first()
   },
 })
