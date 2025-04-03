@@ -68,7 +68,10 @@ export default defineSchema({
       responseTime: v.number(),
       availabilityTarget: v.number(),
     })),
-  }),
+    
+  })
+  .index("by_machineId", ["id"])
+    .index("by_status", ["status"]),
 
   vendors: defineTable({
     id: v.string(),

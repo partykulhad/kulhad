@@ -9,18 +9,46 @@ export async function POST(request: NextRequest) {
   try {
     // Parse request body
     const body = await request.json()
-    const { machineId, amountPerCup, numberOfCups } = body
+    const { machineId, numberOfCups } = body
 
     // Validate required parameters
-    if (!machineId || !amountPerCup || !numberOfCups) {
+    if (!machineId || !numberOfCups) {
+      return NextResponse.json({ error: "Missing required parameters: machineId or numberOfCups" }, { status: 400 })
+    }
+
+    // Fetch machine details from the database to get the price
+    const machine = await convex.query(api.machines.getMachineById, {
+      machineId,
+    })
+
+    if (!machine) {
+      return NextResponse.json({ error: `Machine not found with ID: ${machineId}` }, { status: 404 })
+    }
+
+    // Get the price from the machine details and convert to number if it's a string
+    let amountPerCup: number
+
+    if (typeof machine.price === "number") {
+      amountPerCup = machine.price
+    } else if (typeof machine.price === "string") {
+      // Convert string price to number
+      amountPerCup = Number.parseFloat(machine.price)
+    } else {
+      return NextResponse.json({ error: `Price not found for machine: ${machineId}` }, { status: 400 })
+    }
+
+    // Validate the converted price
+    if (isNaN(amountPerCup) || amountPerCup <= 0) {
       return NextResponse.json(
-        { error: "Missing required parameters: machineId, amountPerCup, or numberOfCups" },
+        { error: `Invalid price value for machine: ${machineId}, price: ${machine.price}` },
         { status: 400 },
       )
     }
 
+    console.log(`Using price ${amountPerCup} from machine ${machineId} (original: ${machine.price})`)
+
     // Calculate total amount
-    const calculatedAmount = Number.parseFloat(amountPerCup) * Number.parseInt(numberOfCups)
+    const calculatedAmount = amountPerCup * Number.parseInt(numberOfCups)
 
     // Convert to paise (multiply by 100) as Razorpay requires amount in paise
     const amountInPaise = Math.round(calculatedAmount * 100)
@@ -56,7 +84,7 @@ export async function POST(request: NextRequest) {
       notes: {
         machineId: machineId,
         numberOfCups: numberOfCups.toString(),
-        amountPerCup: amountPerCup.toString(),
+        amountPerCup: String(amountPerCup),
         transactionId: uniqueTransactionId, // Add our unique transaction ID to notes
       },
     }
@@ -119,7 +147,7 @@ export async function POST(request: NextRequest) {
       imageUrl: razorpayResponse.image_url,
       amount: razorpayResponse.payment_amount / 100,
       cups: Number(numberOfCups),
-      amountPerCup: Number(amountPerCup),
+      amountPerCup: amountPerCup,
       machineId: machineId,
       description: razorpayResponse.description,
       status: razorpayResponse.status,
