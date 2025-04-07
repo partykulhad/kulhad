@@ -1,9 +1,35 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { ConvexHttpClient } from "convex/browser"
 import { api } from "@/convex/_generated/api"
+import sharp from 'sharp'
 
 // Initialize Convex client
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
+
+// Function to extract QR code as hex
+async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
+  try {
+    // Follow any redirects to get the actual image URL
+    const response = await fetch(imageUrl, { redirect: 'follow' });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`);
+    }
+    
+    // Get the image as a buffer
+    const imageBuffer = await response.arrayBuffer();
+    
+    // Process the image with sharp
+    const processedImage = await sharp(Buffer.from(imageBuffer))
+      .toBuffer();
+    
+    // Convert the buffer to hex string
+    return processedImage.toString('hex');
+  } catch (error) {
+    console.error('Error extracting QR code:', error);
+    throw error;
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
@@ -118,6 +144,11 @@ export async function POST(request: NextRequest) {
     const razorpayResponse = await response.json()
     console.log("Razorpay response:", JSON.stringify(razorpayResponse))
 
+    // Extract the QR code image and convert to hex
+    console.log("Extracting QR code from:", razorpayResponse.image_url);
+    const qrHexData = await extractQRCodeAsHex(razorpayResponse.image_url);
+    console.log("QR code extracted successfully");
+
     // We'll use the Razorpay QR code ID as our transaction ID in the database
     const qrCodeId = razorpayResponse.id
 
@@ -128,6 +159,7 @@ export async function POST(request: NextRequest) {
       success: true,
       id: qrCodeId,
       imageUrl: razorpayResponse.image_url,
+      qrHexData: qrHexData, // Include the hex data in the response
       amount: razorpayResponse.payment_amount / 100, // Convert back to rupees for display
       description: razorpayResponse.description,
       status: razorpayResponse.status,
@@ -145,6 +177,7 @@ export async function POST(request: NextRequest) {
       transactionId: qrCodeId, // Primary ID - the QR code ID from Razorpay
       customTransactionId: uniqueTransactionId, // Our custom ID as a secondary reference
       imageUrl: razorpayResponse.image_url,
+      //qrHexData: qrHexData, // Also store the hex data in the database
       amount: razorpayResponse.payment_amount / 100,
       cups: Number(numberOfCups),
       amountPerCup: amountPerCup,
@@ -170,4 +203,3 @@ export async function POST(request: NextRequest) {
     )
   }
 }
-
