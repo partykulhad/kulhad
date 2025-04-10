@@ -689,3 +689,58 @@ export const getMyOrdersHistory = query({
     return orderDetails
   },
 })
+
+export const getByMachineId = query({
+  args: { machineId: v.string() },
+  handler: async (ctx, args) => {
+    const requests = await ctx.db
+      .query("requests")
+      .filter((q) => q.eq(q.field("machineId"), args.machineId))
+      .order("desc")
+      .take(10)
+
+    return requests
+  },
+})
+
+export const getByKitchenUserId = query({
+  args: { kitchenUserId: v.string() },
+  handler: async (ctx, args) => {
+    const requests = await ctx.db
+      .query("requests")
+      .filter((q) => q.eq(q.field("kitchenUserId"), args.kitchenUserId))
+      .order("desc")
+      .take(10)
+
+    return requests
+  },
+})
+
+// Add these new functions for delivery agents
+export const getByAgentUserId = query({
+  args: { agentUserId: v.string() },
+  handler: async (ctx, args) => {
+    const requests = await ctx.db
+      .query("requests")
+      .filter((q) =>
+        q.and(q.eq(q.field("agentUserId"), args.agentUserId), q.neq(q.field("requestStatus"), "completed")),
+      )
+      .order("desc")
+      .take(10)
+
+    return requests
+  },
+})
+
+export const getCompletedByAgentUserId = query({
+  args: { agentUserId: v.string() },
+  handler: async (ctx, args) => {
+    const requests = await ctx.db
+      .query("requests")
+      .filter((q) => q.and(q.eq(q.field("agentUserId"), args.agentUserId), q.eq(q.field("requestStatus"), "completed")))
+      .order("desc")
+      .take(20)
+
+    return requests
+  },
+})

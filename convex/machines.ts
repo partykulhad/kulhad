@@ -158,3 +158,18 @@ export const getMachineById = query({
       .first()
   },
 })
+
+
+
+export const getByMachineId = query({
+  args: { machineId: v.string() },
+  handler: async (ctx, args) => {
+    const machineData = await ctx.db
+      .query("machine_data")
+      .filter((q) => q.eq(q.field("machineId"), args.machineId))
+      .order("desc")
+      .take(10)
+
+    return machineData
+  },
+})

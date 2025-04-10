@@ -2,6 +2,8 @@ import { type NextRequest, NextResponse } from "next/server"
 import { ConvexHttpClient } from "convex/browser"
 import { api } from "@/convex/_generated/api"
 import sharp from 'sharp'
+import { createCanvas, loadImage } from 'canvas'
+import jsQR from 'jsqr'
 
 // Initialize Convex client
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
@@ -17,17 +19,156 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
     }
     
     // Get the image as a buffer
-    const imageBuffer = await response.arrayBuffer();
+    const imageBuffer = Buffer.from(await response.arrayBuffer());
     
-    // Process the image with sharp
-    const processedImage = await sharp(Buffer.from(imageBuffer))
+    // Load the image using canvas
+    const image = await loadImage(imageBuffer);
+    const canvas = createCanvas(image.width, image.height);
+    const ctx = canvas.getContext('2d');
+    ctx.drawImage(image, 0, 0);
+    
+    // Get image data for QR code detection
+    const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    
+    // Use jsQR to find the QR code
+    const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
+    
+    if (!qrCode) {
+      console.log("No QR code found, using image processing to extract");
+      
+      // If jsQR fails, try to extract the QR code using image processing
+      // This approach looks for a square region with high contrast (likely the QR code)
+      const processedImage = await sharp(imageBuffer)
+        .grayscale()
+        .threshold(128)
+        .toBuffer();
+      
+      // Create a new canvas with the processed image
+      const processedCanvas = createCanvas(image.width, image.height);
+      const processedCtx = processedCanvas.getContext('2d');
+      const processedImageObj = await loadImage(processedImage);
+      processedCtx.drawImage(processedImageObj, 0, 0);
+      
+      // Look for the QR code in the center area (where it's typically located)
+      // This is a simplified approach - we're assuming the QR code is roughly in the center
+      const centerX = Math.floor(image.width / 2);
+      const centerY = Math.floor(image.height / 2);
+      const searchRadius = Math.floor(Math.min(image.width, image.height) / 4);
+      
+      // Extract a region around the center
+      const qrRegion = processedCtx.getImageData(
+        centerX - searchRadius, 
+        centerY - searchRadius, 
+        searchRadius * 2, 
+        searchRadius * 2
+      );
+      
+      // Convert to buffer and return as hex
+      const qrBuffer = await sharp(qrRegion.data, {
+        raw: {
+          width: qrRegion.width,
+          height: qrRegion.height,
+          channels: 4
+        }
+      }).toBuffer();
+      
+      return qrBuffer.toString('hex');
+    }
+    
+    // If jsQR found the QR code, extract its location
+    console.log("QR code found at location:", qrCode.location);
+    
+    // Calculate the bounding box with padding
+    const padding = 10;
+    
+    // Round all values to integers to avoid Sharp errors
+    const minX = Math.floor(Math.max(0, Math.min(
+      qrCode.location.topLeftCorner.x,
+      qrCode.location.bottomLeftCorner.x
+    ) - padding));
+    
+    const minY = Math.floor(Math.max(0, Math.min(
+      qrCode.location.topLeftCorner.y,
+      qrCode.location.topRightCorner.y
+    ) - padding));
+    
+    const maxX = Math.ceil(Math.min(image.width, Math.max(
+      qrCode.location.topRightCorner.x,
+      qrCode.location.bottomRightCorner.x
+    ) + padding));
+    
+    const maxY = Math.ceil(Math.min(image.height, Math.max(
+      qrCode.location.bottomLeftCorner.y,
+      qrCode.location.bottomRightCorner.y
+    ) + padding));
+    
+    const width = maxX - minX;
+    const height = maxY - minY;
+    
+    console.log("Extracting QR code with dimensions:", { left: minX, top: minY, width, height });
+    
+    // Extract just the QR code region
+    const qrCodeBuffer = await sharp(imageBuffer)
+      .extract({ 
+        left: minX, 
+        top: minY, 
+        width, 
+        height 
+      })
       .toBuffer();
     
-    // Convert the buffer to hex string
-    return processedImage.toString('hex');
+    // Convert to hex
+    return qrCodeBuffer.toString('hex');
   } catch (error) {
     console.error('Error extracting QR code:', error);
-    throw error;
+    
+    try {
+      // Fallback: try to extract the central portion of the image
+      // This assumes the QR code is roughly in the center
+      const image = await sharp(Buffer.from(await (await fetch(imageUrl)).arrayBuffer()));
+      const metadata = await image.metadata();
+      
+      if (!metadata.width || !metadata.height) {
+        throw new Error("Could not get image dimensions");
+      }
+      
+      // Calculate a region in the center that's likely to contain the QR code
+      // For Razorpay QR codes, the QR is usually in a white box in the middle
+      const centerX = Math.floor(metadata.width / 2);
+      const centerY = Math.floor(metadata.height / 2);
+      
+      // QR code is typically square and about 40% of the image height for Razorpay
+      const qrSize = Math.floor(metadata.height * 0.4);
+      
+      // Ensure all values are integers
+      const left = Math.floor(centerX - qrSize/2);
+      const top = Math.floor(centerY - qrSize/2);
+      const size = Math.floor(qrSize);
+      
+      console.log("Fallback extraction with dimensions:", { left, top, width: size, height: size });
+      
+      const qrBuffer = await image
+        .extract({
+          left,
+          top,
+          width: size,
+          height: size
+        })
+        .toBuffer();
+      
+      return qrBuffer.toString('hex');
+    } catch (fallbackError) {
+      console.error('Fallback extraction failed:', fallbackError);
+      
+      // Last resort: just return the entire image as hex
+      try {
+        const fullImageBuffer = await (await fetch(imageUrl)).arrayBuffer();
+        return Buffer.from(fullImageBuffer).toString('hex');
+      } catch (e) {
+        console.error('All extraction methods failed:', e);
+        return ""; // Return empty string if all extraction methods fail
+      }
+    }
   }
 }
 

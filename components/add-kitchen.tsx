@@ -1,17 +1,12 @@
 "use client";
 
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "react-toastify";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +20,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { CalendarIcon, PlusIcon, Pencil, Trash2 } from "lucide-react";
+import {
+  CalendarIcon,
+  PlusIcon,
+  Pencil,
+  Trash2,
+  ExternalLink,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -67,11 +68,14 @@ interface Kitchen {
   longitude: number;
   capacity: number;
   username: string;
+  userId: string;
   password: string;
   members: KitchenMember[];
+  status?: string;
 }
 
 export default function AddKitchen() {
+  const router = useRouter();
   const [kitchen, setKitchen] = useState<Kitchen>({
     name: "",
     address: "",
@@ -81,6 +85,7 @@ export default function AddKitchen() {
     longitude: 0,
     capacity: 0,
     username: "",
+    userId: "",
     password: "",
     members: [],
   });
@@ -172,6 +177,7 @@ export default function AddKitchen() {
         longitude: Number(kitchen.longitude),
         capacity: Number(kitchen.capacity),
         username: kitchen.username,
+        userId: kitchen.userId,
         password: kitchen.password,
         members: updatedMembers,
       };
@@ -193,6 +199,7 @@ export default function AddKitchen() {
         longitude: 0,
         capacity: 0,
         username: "",
+        userId: "",
         password: "",
         members: [],
       });
@@ -286,6 +293,10 @@ export default function AddKitchen() {
     setKitchen((prev) => ({ ...prev, members: updatedMembers }));
   };
 
+  const navigateToKitchenDetails = (kitchen: Kitchen) => {
+    router.push(`/kitchens/${kitchen.userId}`);
+  };
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
@@ -305,6 +316,7 @@ export default function AddKitchen() {
                 longitude: 0,
                 capacity: 0,
                 username: "",
+                userId: "",
                 password: "",
                 members: [],
               });
@@ -398,6 +410,16 @@ export default function AddKitchen() {
                     id="username"
                     name="username"
                     value={kitchen.username}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="userId">User ID</Label>
+                  <Input
+                    id="userId"
+                    name="userId"
+                    value={kitchen.userId}
                     onChange={handleInputChange}
                     required
                   />
@@ -660,11 +682,9 @@ export default function AddKitchen() {
               <TableHead>Kitchen Name</TableHead>
               <TableHead>Manager</TableHead>
               <TableHead>Username</TableHead>
-              <TableHead>Password</TableHead>
+              <TableHead>User ID</TableHead>
               <TableHead>Manager Mobile</TableHead>
               <TableHead>Address</TableHead>
-              <TableHead>Latitude</TableHead>
-              <TableHead>Longitude</TableHead>
               <TableHead>Capacity</TableHead>
               <TableHead>Members</TableHead>
               <TableHead>Actions</TableHead>
@@ -672,33 +692,50 @@ export default function AddKitchen() {
           </TableHeader>
           <TableBody>
             {kitchens.map((kitchen) => (
-              <TableRow key={kitchen._id}>
+              <TableRow
+                key={kitchen._id}
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => navigateToKitchenDetails(kitchen)}
+              >
                 <TableCell>{kitchen.name}</TableCell>
                 <TableCell>{kitchen.manager}</TableCell>
                 <TableCell>{kitchen.username}</TableCell>
-                <TableCell>{kitchen.password}</TableCell>
+                <TableCell>{kitchen.userId}</TableCell>
                 <TableCell>{kitchen.managerMobile}</TableCell>
                 <TableCell>{kitchen.address}</TableCell>
-                <TableCell>{kitchen.latitude}</TableCell>
-                <TableCell>{kitchen.longitude}</TableCell>
                 <TableCell>{kitchen.capacity}</TableCell>
-
                 <TableCell>{kitchen.members.length}</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleEdit(kitchen)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click event
+                        handleEdit(kitchen);
+                      }}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDelete(kitchen._id)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click event
+                        handleDelete(kitchen._id);
+                      }}
                     >
                       <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click event
+                        navigateToKitchenDetails(kitchen);
+                      }}
+                    >
+                      <ExternalLink className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>
@@ -741,7 +778,7 @@ function PhotoDisplay({
 
   return (
     <img
-      src={photoUrl}
+      src={photoUrl || "/placeholder.svg"}
       alt={name}
       className="w-10 h-10 rounded-full object-cover"
     />

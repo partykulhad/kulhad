@@ -1,17 +1,12 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import type React from "react";
+import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { Id } from "@/convex/_generated/dataModel";
+import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "react-toastify";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +26,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, PlusIcon, Pencil, Trash2 } from "lucide-react";
+import {
+  CalendarIcon,
+  PlusIcon,
+  Pencil,
+  Trash2,
+  ExternalLink,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -51,6 +52,7 @@ interface DeliveryAgent {
   adhaar: string;
   address: string;
   uid: string;
+  userId: string;
   startingDate: string;
   company: string;
   pan: string;
@@ -61,6 +63,7 @@ interface DeliveryAgent {
 }
 
 export default function AddDeliveryAgent() {
+  const router = useRouter();
   const [agent, setAgent] = useState<DeliveryAgent>({
     name: "",
     mobile: "",
@@ -68,6 +71,7 @@ export default function AddDeliveryAgent() {
     adhaar: "",
     address: "",
     uid: "",
+    userId: "",
     startingDate: "",
     company: "",
     pan: "",
@@ -135,6 +139,7 @@ export default function AddDeliveryAgent() {
         adhaar: agent.adhaar,
         address: agent.address,
         uid: agent.uid,
+        userId: agent.userId,
         startingDate: agent.startingDate,
         company: agent.company,
         pan: agent.pan,
@@ -158,6 +163,7 @@ export default function AddDeliveryAgent() {
         adhaar: "",
         address: "",
         uid: "",
+        userId: "",
         startingDate: "",
         company: "",
         pan: "",
@@ -196,6 +202,10 @@ export default function AddDeliveryAgent() {
     }
   };
 
+  const navigateToAgentDetails = (agent: DeliveryAgent) => {
+    router.push(`/delivery-agents/${agent.userId}`);
+  };
+
   return (
     <div className="container mx-auto p-4">
       <div className="flex justify-between items-center mb-6">
@@ -213,6 +223,7 @@ export default function AddDeliveryAgent() {
                 adhaar: "",
                 address: "",
                 uid: "",
+                userId: "",
                 startingDate: "",
                 company: "",
                 pan: "",
@@ -292,6 +303,16 @@ export default function AddDeliveryAgent() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <Label htmlFor="userId">User ID</Label>
+                  <Input
+                    id="userId"
+                    name="userId"
+                    value={agent.userId}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
                   <Label htmlFor="company">Company</Label>
                   <Input
                     id="company"
@@ -311,7 +332,42 @@ export default function AddDeliveryAgent() {
                     required
                   />
                 </div>
-
+                <div className="space-y-2">
+                  <Label htmlFor="startingDate">Starting Date</Label>
+                  <Popover
+                    open={isCalendarOpen}
+                    onOpenChange={setIsCalendarOpen}
+                  >
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !agent.startingDate && "text-muted-foreground"
+                        )}
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {agent.startingDate ? (
+                          format(new Date(agent.startingDate), "PPP")
+                        ) : (
+                          <span>Pick a date</span>
+                        )}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={
+                          agent.startingDate
+                            ? new Date(agent.startingDate)
+                            : undefined
+                        }
+                        onSelect={handleDateSelect}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                </div>
                 <div className="space-y-2">
                   <Label htmlFor="photo">Photo</Label>
                   <Input
@@ -340,7 +396,7 @@ export default function AddDeliveryAgent() {
                     type="password"
                     value={agent.password}
                     onChange={handleInputChange}
-                    required
+                    required={!isEditing}
                   />
                 </div>
               </div>
@@ -371,18 +427,21 @@ export default function AddDeliveryAgent() {
               <TableHead>Photo</TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Username</TableHead>
-              <TableHead>Password</TableHead>
               <TableHead>Mobile</TableHead>
               <TableHead>Email</TableHead>
               <TableHead>Address</TableHead>
-              <TableHead>UID</TableHead>
+              <TableHead>User ID</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {deliveryAgents.map((agent) => (
-              <TableRow key={agent._id}>
-                <TableCell>
+              <TableRow
+                key={agent._id}
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => navigateToAgentDetails(agent)}
+              >
+                <TableCell onClick={(e) => e.stopPropagation()}>
                   <PhotoDisplay
                     storageId={agent.photoStorageId}
                     name={agent.name}
@@ -390,26 +449,41 @@ export default function AddDeliveryAgent() {
                 </TableCell>
                 <TableCell>{agent.name}</TableCell>
                 <TableCell>{agent.username}</TableCell>
-                <TableCell>{agent.password}</TableCell>
                 <TableCell>{agent.mobile}</TableCell>
                 <TableCell>{agent.email}</TableCell>
                 <TableCell>{agent.address}</TableCell>
-                <TableCell>{agent.uid}</TableCell>
+                <TableCell>{agent.userId}</TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleEdit(agent)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click event
+                        handleEdit(agent);
+                      }}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDelete(agent._id)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click event
+                        handleDelete(agent._id);
+                      }}
                     >
                       <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click event
+                        navigateToAgentDetails(agent);
+                      }}
+                    >
+                      <ExternalLink className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>
@@ -435,16 +509,24 @@ function PhotoDisplay({
   );
 
   if (photoUrl === undefined) {
-    return <div>Loading...</div>;
+    return (
+      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+        ...
+      </div>
+    );
   }
 
   if (photoUrl === null) {
-    return <div>No photo</div>;
+    return (
+      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+        {name.charAt(0).toUpperCase()}
+      </div>
+    );
   }
 
   return (
     <img
-      src={photoUrl}
+      src={photoUrl || "/placeholder.svg"}
       alt={name}
       className="w-10 h-10 rounded-full object-cover"
     />

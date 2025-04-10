@@ -1,12 +1,12 @@
 "use client";
 
 import type React from "react";
-
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
 import { toast } from "react-toastify";
+import { useRouter } from "next/navigation";
 import {
   Dialog,
   DialogContent,
@@ -35,7 +35,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { CalendarIcon, PlusIcon, Pencil, Trash2 } from "lucide-react";
+import {
+  CalendarIcon,
+  PlusIcon,
+  Pencil,
+  Trash2,
+  ExternalLink,
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 
@@ -72,6 +78,7 @@ interface Machine {
 }
 
 export default function AddMachineContent() {
+  const router = useRouter();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
@@ -243,6 +250,10 @@ export default function AddMachineContent() {
       console.error("Error updating machine status:", error);
       toast.error("Failed to update machine status. Please try again.");
     }
+  };
+
+  const navigateToMachineDetails = (machineId: string) => {
+    router.push(`/machines/${machineId}`);
   };
 
   return (
@@ -574,7 +585,11 @@ export default function AddMachineContent() {
           </TableHeader>
           <TableBody>
             {machines.map((machine) => (
-              <TableRow key={machine._id}>
+              <TableRow
+                key={machine._id}
+                className="cursor-pointer hover:bg-muted/50 transition-colors"
+                onClick={() => navigateToMachineDetails(machine.id)}
+              >
                 <TableCell>{machine.id}</TableCell>
                 <TableCell>{machine.name}</TableCell>
                 <TableCell>{machine.model}</TableCell>
@@ -587,7 +602,10 @@ export default function AddMachineContent() {
                       machine.status === "online" ? "success" : "secondary"
                     }
                     className="cursor-pointer"
-                    onClick={() => handleToggleStatus(machine._id)}
+                    onClick={(e) => {
+                      e.stopPropagation(); // Prevent row click event
+                      handleToggleStatus(machine._id);
+                    }}
                   >
                     {machine.status}
                   </Badge>
@@ -600,16 +618,32 @@ export default function AddMachineContent() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleEdit(machine)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click event
+                        handleEdit(machine);
+                      }}
                     >
                       <Pencil className="h-4 w-4" />
                     </Button>
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleDelete(machine._id)}
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click event
+                        handleDelete(machine._id);
+                      }}
                     >
                       <Trash2 className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent row click event
+                        navigateToMachineDetails(machine.id);
+                      }}
+                    >
+                      <ExternalLink className="h-4 w-4" />
                     </Button>
                   </div>
                 </TableCell>

@@ -321,3 +321,28 @@ async function findNearbyKitchens(
   return nearbyKitchens
 }
 
+// export const getByKitchenId = query({
+//   args: { kitchenId: v.id("kitchens") },
+//   handler: async (ctx, args) => {
+//     const notifications = await ctx.db
+//       .query("notifications")
+//       .filter((q) => q.eq(q.field("kitchenId"), args.kitchenId))
+//       .order("desc")
+//       .take(10)
+
+//     return notifications
+//   },
+// })
+
+export const getByKitchenId = query({
+  args: { kitchenId: v.string() },
+  handler: async (ctx, args) => {
+    const notifications = await ctx.db
+      .query("notifications")
+      .filter((q) => q.eq(q.field("kitchenId"), args.kitchenId))
+      .order("desc")
+      .take(10)
+
+    return notifications
+  },
+})
