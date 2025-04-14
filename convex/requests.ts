@@ -632,6 +632,8 @@ export const getMyRequestsHistory = query({
           requestDateTime: update.dateAndTime || null,
           srcAddress: request?.srcAddress || null,
           machineId: request?.machineId || null,
+          teaType: request?.teaType || "",
+          quantity: request?.quantity || 0.0,
           srcLatitude: request?.srcLatitude || null,
           srcLongitude: request?.srcLongitude || null,
           srcContactName: request?.srcContactName || null,

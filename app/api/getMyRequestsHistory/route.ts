@@ -25,6 +25,8 @@ export async function GET(req: NextRequest) {
             requestDateTime: request.requestDateTime,
             srcAddress: request.srcAddress,
             machineId: request.machineId,
+            teaType:request.teaType ?? "",
+            quantity:request.quantity ?? 0.0,
             srcLatitude: request.srcLatitude,
             srcLongitude: request.srcLongitude,
             srcContactName: request.srcContactName,
