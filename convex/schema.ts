@@ -202,6 +202,8 @@ export default defineSchema({
     assignRefillerName: v.optional(v.string()),
     assignRefillerContactNumber: v.optional(v.string()),
     reason: v.optional(v.string()),
+    teaType:v.optional(v.string()),
+    quantity: v.optional(v.number()),
     statusMessage: v.optional(v.string()),
   }).index("by_machineId", ["machineId"])
   .index("by_requestId", ["requestId"])
@@ -219,6 +221,8 @@ export default defineSchema({
     longitude: v.number(),
     dateAndTime: v.string(),
     isProceedNext: v.boolean(),
+    teaType:v.optional(v.string()),
+    quantity: v.optional(v.number()),
     reason: v.optional(v.string()),
     message: v.optional(v.string()),
   }).index("by_requestId", ["requestId"]),

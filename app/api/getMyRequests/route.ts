@@ -37,6 +37,8 @@ export async function GET(req: NextRequest) {
         srcLatitude: request.srcLatitude ?? 0.0,
         srcLongitude: request.srcLongitude ?? 0.0,
         srcContactName: request.srcContactName ?? "",
+        teaType:request.teaType ?? "",
+        quantity:request.quantity ?? 0.0,
         srcContactNumber: request.srcContactNumber ?? null,
         dstAddress: request.dstAddress ?? null,
         dstLatitude: request.dstLatitude ?? 0.0,

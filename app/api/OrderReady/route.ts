@@ -8,7 +8,7 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json()
-    const { userId, requestId, latitude, longitude, status, dateAndTime, isProceedNext, reason } = body
+    const { userId, requestId, latitude, longitude, status, dateAndTime, isProceedNext, reason, teaType, quantity } = body
 
     // Validate required fields
     if (!userId || !requestId || !latitude || !longitude || !status || !dateAndTime) {
@@ -40,6 +40,8 @@ export async function POST(req: NextRequest) {
       dateAndTime,
       isProceedNext,
       reason: reason || undefined,
+      teaType: teaType || undefined,
+      quantity: quantity || undefined,
     })
 
     if (result.success && result.nearbyAgentIds) {
@@ -96,4 +98,3 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-

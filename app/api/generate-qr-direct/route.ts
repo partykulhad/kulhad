@@ -70,7 +70,9 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
           height: qrRegion.height,
           channels: 4
         }
-      }).toBuffer();
+      })
+      .resize(174, 174, { fit: 'fill' }) // Resize to exactly 174x174 pixels
+      .toBuffer();
       
       return qrBuffer.toString('hex');
     }
@@ -107,7 +109,7 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
     
     console.log("Extracting QR code with dimensions:", { left: minX, top: minY, width, height });
     
-    // Extract just the QR code region
+    // Extract just the QR code region and resize to 174x174
     const qrCodeBuffer = await sharp(imageBuffer)
       .extract({ 
         left: minX, 
@@ -115,6 +117,7 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
         width, 
         height 
       })
+      .resize(174, 174, { fit: 'fill' }) // Resize to exactly 174x174 pixels
       .toBuffer();
     
     // Convert to hex
@@ -154,16 +157,20 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
           width: size,
           height: size
         })
+        .resize(174, 174, { fit: 'fill' }) // Resize to exactly 174x174 pixels
         .toBuffer();
       
       return qrBuffer.toString('hex');
     } catch (fallbackError) {
       console.error('Fallback extraction failed:', fallbackError);
       
-      // Last resort: just return the entire image as hex
+      // Last resort: just return the entire image resized to 174x174
       try {
         const fullImageBuffer = await (await fetch(imageUrl)).arrayBuffer();
-        return Buffer.from(fullImageBuffer).toString('hex');
+        const resizedBuffer = await sharp(Buffer.from(fullImageBuffer))
+          .resize(174, 174, { fit: 'fill' }) // Resize to exactly 174x174 pixels
+          .toBuffer();
+        return resizedBuffer.toString('hex');
       } catch (e) {
         console.error('All extraction methods failed:', e);
         return ""; // Return empty string if all extraction methods fail
@@ -318,7 +325,7 @@ export async function POST(request: NextRequest) {
       transactionId: qrCodeId, // Primary ID - the QR code ID from Razorpay
       customTransactionId: uniqueTransactionId, // Our custom ID as a secondary reference
       imageUrl: razorpayResponse.image_url,
-      //qrHexData: qrHexData, // Also store the hex data in the database
+     // qrHexData: qrHexData, // Also store the hex data in the database
       amount: razorpayResponse.payment_amount / 100,
       cups: Number(numberOfCups),
       amountPerCup: amountPerCup,

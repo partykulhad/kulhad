@@ -38,6 +38,8 @@ export async function GET(req: NextRequest) {
         srcLongitude: order.srcLongitude || null,
         srcContactName: order.srcContactName || null,
         srcContactNumber: order.srcContactNumber || null,
+        teaType:order.teaType ?? "",
+        quantity:order.quantity ?? 0.0,
         dstAddress: order.dstAddress || null,
         dstLatitude: order.dstLatitude || null,
         dstLongitude: order.dstLongitude || null,

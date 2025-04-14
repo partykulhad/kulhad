@@ -448,6 +448,8 @@ export const updateOrderReadyStatus = mutation({
     dateAndTime: v.string(),
     isProceedNext: v.boolean(),
     reason: v.optional(v.string()),
+    teaType: v.optional(v.string()),
+    quantity: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
     try {
@@ -493,10 +495,12 @@ export const updateOrderReadyStatus = mutation({
 
       const nearbyAgentIds = nearbyAgents.map((agent) => agent.userId)
 
-      // Update the request with the new status and nearby agent IDs
+      // Update the request with the new status, nearby agent IDs, and the new fields
       await ctx.db.patch(request._id, {
         requestStatus: args.status,
         agentUserId: nearbyAgentIds,
+        teaType: args.teaType,
+        quantity: args.quantity,
       })
 
       // Create a new record in requestStatusUpdates table
@@ -509,6 +513,8 @@ export const updateOrderReadyStatus = mutation({
         dateAndTime: args.dateAndTime,
         isProceedNext: args.isProceedNext,
         reason: args.reason,
+        teaType: args.teaType,
+        quantity: args.quantity,
         message: "Order is ready for pickup",
       })
 
