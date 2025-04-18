@@ -204,6 +204,7 @@ export default defineSchema({
     reason: v.optional(v.string()),
     teaType:v.optional(v.string()),
     quantity: v.optional(v.number()),
+    totalDistance: v.optional(v.number()),
     statusMessage: v.optional(v.string()),
   }).index("by_machineId", ["machineId"])
   .index("by_requestId", ["requestId"])
@@ -225,6 +226,7 @@ export default defineSchema({
     quantity: v.optional(v.number()),
     reason: v.optional(v.string()),
     message: v.optional(v.string()),
+    totalDistance: v.optional(v.number()),
   }).index("by_requestId", ["requestId"]),
 
   transactions: defineTable({

@@ -20,25 +20,27 @@ export async function GET(req: NextRequest) {
     console.log("First request (if any):", requests[0])
 
     if (requests.length > 0) {
-      const mappedRequests = requests.map((request) => ({
+      // Sort requests by requestId in descending order
+      const sortedRequests = [...requests].sort((a, b) => {
+        // Extract numeric part from requestId (e.g., "REQ-0004" -> 4)
+        const numA = a.requestId ? parseInt(a.requestId.split('-')[1]) : 0
+        const numB = b.requestId ? parseInt(b.requestId.split('-')[1]) : 0
+        return numB - numA // Descending order
+      })
+
+      console.log("Sorted by requestId (descending order)")
+
+      const mappedRequests = sortedRequests.map((request) => ({
         requestId: request.requestId,
         requestStatus: request.requestStatus,
-        requestDateTime: new Date(request._creationTime).toLocaleString("en-GB", {
-          day: "2-digit",
-          month: "2-digit",
-          year: "numeric",
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-          hour12: true,
-        }),
+        requestDateTime: request.requestDateTime,
         srcAddress: request.srcAddress ?? null,
         machineId: request.machineId ?? null,
         srcLatitude: request.srcLatitude ?? 0.0,
         srcLongitude: request.srcLongitude ?? 0.0,
         srcContactName: request.srcContactName ?? "",
-        teaType:request.teaType ?? "",
-        quantity:request.quantity ?? 0.0,
+        teaType: request.teaType ?? "",
+        quantity: request.quantity ?? 0.0,
         srcContactNumber: request.srcContactNumber ?? null,
         dstAddress: request.dstAddress ?? null,
         dstLatitude: request.dstLatitude ?? 0.0,
@@ -81,4 +83,3 @@ export async function GET(req: NextRequest) {
     )
   }
 }
-

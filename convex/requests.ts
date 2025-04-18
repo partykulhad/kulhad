@@ -169,9 +169,6 @@ export const updateKitchenStatus = mutation({
   },
 })
 
-
-
-
 export const updateAgentStatus = mutation({
   args: {
     userId: v.string(),
@@ -182,9 +179,10 @@ export const updateAgentStatus = mutation({
     dateAndTime: v.string(),
     isProceedNext: v.boolean(),
     reason: v.string(),
+    totalDistance: v.optional(v.number()), // Add optional totalDistance parameter
   },
   handler: async (ctx, args) => {
-    const { userId, requestId, latitude, longitude, status, dateAndTime, isProceedNext, reason } = args
+    const { userId, requestId, latitude, longitude, status, dateAndTime, isProceedNext, reason, totalDistance } = args
 
     try {
       // Fetch the current request
@@ -223,6 +221,11 @@ export const updateAgentStatus = mutation({
         reason: reason,
       }
 
+      // If totalDistance is provided, add it to the update data
+      if (totalDistance !== undefined) {
+        updateData.totalDistance = totalDistance // Using totalDistance field from schema
+      }
+
       // If the status is "Assigned", fetch and add refiller details
       if (status === "Assigned") {
         const deliveryAgent = await ctx.db
@@ -251,6 +254,7 @@ export const updateAgentStatus = mutation({
         dateAndTime,
         isProceedNext,
         reason,
+        totalDistance, // Also store the distance in the status update record
       })
 
       return { success: true, message: `${status} status updated` }
@@ -260,6 +264,29 @@ export const updateAgentStatus = mutation({
     }
   },
 })
+
+// Add this new query function to get kitchen details by user ID
+export const getKitchenByUserId = query({
+  args: { userId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("kitchens")
+      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .first()
+  },
+})
+
+// Add this query function to get request details by requestId
+export const getRequestByRequestI = query({
+  args: { requestId: v.string() },
+  handler: async (ctx, args) => {
+    return await ctx.db
+      .query("requests")
+      .filter((q) => q.eq(q.field("requestId"), args.requestId))
+      .first()
+  },
+})
+
 
 
 export const updateRequestStatus = mutation({
@@ -610,93 +637,220 @@ export const getRequestByRequestId = query({
 export const getMyRequestsHistory = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    const requestStatusUpdates = await ctx.db
+    // 1. Get cancelled requests from requestStatusUpdates table
+    const cancelledStatusUpdates = await ctx.db
       .query("requestStatusUpdates")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("userId"), args.userId),
+          q.eq(q.field("status"), "Cancelled")
+        )
+      )
       .collect()
 
-    const completedOrCancelledRequests = requestStatusUpdates.filter(
-      (update) => update.status === "Completed" || update.status === "Cancelled",
-    )
+    // 2. Get completed requests directly from requests table where userId matches kitchenUserId OR agentUserId
+    const completedRequests = await ctx.db
+      .query("requests")
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("requestStatus"), "Completed"),
+          q.or(
+            q.eq(q.field("kitchenUserId"), args.userId),
+            q.eq(q.field("agentUserId"), args.userId)
+          )
+        )
+      )
+      .collect()
 
-    const requestDetails = await Promise.all(
-      completedOrCancelledRequests.map(async (update) => {
+    // 3. Process cancelled requests
+    const cancelledRequestDetails = await Promise.all(
+      cancelledStatusUpdates.map(async (update) => {
         const request = await ctx.db
           .query("requests")
           .filter((q) => q.eq(q.field("requestId"), update.requestId))
           .first()
 
+        if (!request) return null; // Skip if request not found
+
         return {
           requestId: update.requestId || null,
-          requestStatus: update.status || null,
+          requestStatus: "Cancelled",
           requestDateTime: update.dateAndTime || null,
-          srcAddress: request?.srcAddress || null,
-          machineId: request?.machineId || null,
-          teaType: request?.teaType || "",
-          quantity: request?.quantity || 0.0,
-          srcLatitude: request?.srcLatitude || null,
-          srcLongitude: request?.srcLongitude || null,
-          srcContactName: request?.srcContactName || null,
-          srcContactNumber: request?.srcContactNumber || null,
-          dstAddress: request?.dstAddress || null,
-          dstLatitude: request?.dstLatitude || null,
-          dstLongitude: request?.dstLongitude || null,
-          dstContactName: request?.dstContactName || null,
-          dstContactNumber: request?.dstContactNumber || null,
-          assgnRefillerName: update.status === "Completed" ? request?.assignRefillerName || null : null,
-          assignRefillerContactNumber:
-            update.status === "Completed" ? request?.assignRefillerContactNumber || null : null,
-        }
-      }),
-    )
+          srcAddress: request.srcAddress || null,
+          machineId: request.machineId || null,
+          teaType: request.teaType || "",
+          quantity: request.quantity || 0.0,
+          srcLatitude: request.srcLatitude || null,
+          srcLongitude: request.srcLongitude || null,
+          srcContactName: request.srcContactName || null,
+          srcContactNumber: request.srcContactNumber || null,
+          dstAddress: request.dstAddress || null,
+          dstLatitude: request.dstLatitude || null,
+          dstLongitude: request.dstLongitude || null,
+          dstContactName: request.dstContactName || null,
+          dstContactNumber: request.dstContactNumber || null,
+          assgnRefillerName: null,
+          assignRefillerContactNumber: null,
+          cancellationReason: update.reason || null,
+        };
+      })
+    );
 
-    return requestDetails
+    // 4. Process completed requests
+    const completedRequestDetails = await Promise.all(
+      completedRequests.map(async (request) => {
+        // Find the most recent completed status update to get the timestamp
+        const statusUpdate = await ctx.db
+          .query("requestStatusUpdates")
+          .filter((q) => 
+            q.and(
+              q.eq(q.field("requestId"), request.requestId),
+              q.eq(q.field("status"), "Completed")
+            )
+          )
+          .first();
+
+        return {
+          requestId: request.requestId || null,
+          requestStatus: "Completed",
+          requestDateTime: statusUpdate?.dateAndTime || null,
+          srcAddress: request.srcAddress || null,
+          machineId: request.machineId || null,
+          teaType: request.teaType || "",
+          quantity: request.quantity || 0.0,
+          srcLatitude: request.srcLatitude || null,
+          srcLongitude: request.srcLongitude || null,
+          srcContactName: request.srcContactName || null,
+          srcContactNumber: request.srcContactNumber || null,
+          dstAddress: request.dstAddress || null,
+          dstLatitude: request.dstLatitude || null,
+          dstLongitude: request.dstLongitude || null,
+          dstContactName: request.dstContactName || null,
+          dstContactNumber: request.dstContactNumber || null,
+          assgnRefillerName: request.assignRefillerName || null,
+          assignRefillerContactNumber: request.assignRefillerContactNumber || null,
+        };
+      })
+    );
+
+    // 5. Combine results, filter out any null values, and return
+    const allRequestDetails = [
+      ...cancelledRequestDetails.filter(Boolean),
+      ...completedRequestDetails.filter(Boolean)
+    ];
+
+    return allRequestDetails;
   },
-})
+});
 
 export const getMyOrdersHistory = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
-    const requestStatusUpdates = await ctx.db
+    // 1. Get cancelled orders from requestStatusUpdates table
+    const cancelledStatusUpdates = await ctx.db
       .query("requestStatusUpdates")
-      .filter((q) => q.eq(q.field("userId"), args.userId))
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("userId"), args.userId),
+          q.eq(q.field("status"), "Cancelled")
+        )
+      )
       .collect()
 
-    const completedOrCancelledOrders = requestStatusUpdates.filter(
-      (update) => update.status === "Completed" || update.status === "Cancelled",
-    )
+    // 2. Get completed orders directly from requests table where userId matches kitchenUserId OR agentUserId
+    const completedOrders = await ctx.db
+      .query("requests")
+      .filter((q) => 
+        q.and(
+          q.eq(q.field("requestStatus"), "Completed"),
+          q.or(
+            q.eq(q.field("kitchenUserId"), args.userId),
+            q.eq(q.field("agentUserId"), args.userId)
+          )
+        )
+      )
+      .collect()
 
-    const orderDetails = await Promise.all(
-      completedOrCancelledOrders.map(async (update) => {
+    // 3. Process cancelled orders
+    const cancelledOrderDetails = await Promise.all(
+      cancelledStatusUpdates.map(async (update) => {
         const order = await ctx.db
           .query("requests")
           .filter((q) => q.eq(q.field("requestId"), update.requestId))
           .first()
 
+        if (!order) return null; // Skip if order not found
+
         return {
           requestId: update.requestId || null,
-          requestStatus: update.status || null,
+          requestStatus: "Cancelled",
           requestDateTime: update.dateAndTime || null,
-          srcAddress: order?.srcAddress || null,
-          machineId: order?.machineId || null,
-          srcLatitude: order?.srcLatitude || null,
-          srcLongitude: order?.srcLongitude || null,
-          srcContactName: order?.srcContactName || null,
-          srcContactNumber: order?.srcContactNumber || null,
-          dstAddress: order?.dstAddress || null,
-          dstLatitude: order?.dstLatitude || null,
-          dstLongitude: order?.dstLongitude || null,
-          dstContactName: order?.dstContactName || null,
-          dstContactNumber: order?.dstContactNumber || null,
-          assgnRefillerName: order?.assignRefillerName || null,
-          assignRefillerContactNumber: order?.assignRefillerContactNumber || null,
-        }
-      }),
-    )
+          srcAddress: order.srcAddress || null,
+          machineId: order.machineId || null,
+          teaType: order.teaType || "",
+          quantity: order.quantity || 0.0,
+          srcLatitude: order.srcLatitude || null,
+          srcLongitude: order.srcLongitude || null,
+          srcContactName: order.srcContactName || null,
+          srcContactNumber: order.srcContactNumber || null,
+          dstAddress: order.dstAddress || null,
+          dstLatitude: order.dstLatitude || null,
+          dstLongitude: order.dstLongitude || null,
+          dstContactName: order.dstContactName || null,
+          dstContactNumber: order.dstContactNumber || null,
+          assgnRefillerName: null,
+          assignRefillerContactNumber: null,
+          cancellationReason: update.reason || null,
+        };
+      })
+    );
 
-    return orderDetails
+    // 4. Process completed orders
+    const completedOrderDetails = await Promise.all(
+      completedOrders.map(async (order) => {
+        // Find the most recent completed status update to get the timestamp
+        const statusUpdate = await ctx.db
+          .query("requestStatusUpdates")
+          .filter((q) => 
+            q.and(
+              q.eq(q.field("requestId"), order.requestId),
+              q.eq(q.field("status"), "Completed")
+            )
+          )
+          .first();
+
+        return {
+          requestId: order.requestId || null,
+          requestStatus: "Completed",
+          requestDateTime: statusUpdate?.dateAndTime || null,
+          srcAddress: order.srcAddress || null,
+          machineId: order.machineId || null,
+          teaType: order.teaType || "",
+          quantity: order.quantity || 0.0,
+          srcLatitude: order.srcLatitude || null,
+          srcLongitude: order.srcLongitude || null,
+          srcContactName: order.srcContactName || null,
+          srcContactNumber: order.srcContactNumber || null,
+          dstAddress: order.dstAddress || null,
+          dstLatitude: order.dstLatitude || null,
+          dstLongitude: order.dstLongitude || null,
+          dstContactName: order.dstContactName || null,
+          dstContactNumber: order.dstContactNumber || null,
+          assgnRefillerName: order.assignRefillerName || null,
+          assignRefillerContactNumber: order.assignRefillerContactNumber || null,
+        };
+      })
+    );
+
+    // 5. Combine results, filter out any null values, and return
+    const allOrderDetails = [
+      ...cancelledOrderDetails.filter((item): item is NonNullable<typeof item> => item !== null),
+      ...completedOrderDetails.filter((item): item is NonNullable<typeof item> => item !== null)
+    ];
+
+    return allOrderDetails;
   },
-})
+});
 
 export const getByMachineId = query({
   args: { machineId: v.string() },

@@ -14,6 +14,64 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ code: 400, message: "Missing required parameters" }, { status: 400 })
     }
 
+    // If status is "Assigned", we need to calculate the distance
+    let distanceData = {}
+
+    if (status === "Assigned") {
+      // Fetch the request details to get the kitchen and destination coordinates
+      const requestDetails = await convex.query(api.requests.getRequestByRequestI, { requestId })
+
+      if (requestDetails) {
+        // Get kitchen coordinates
+        let kitchenCoordinates = null
+
+        if (requestDetails.kitchenUserId) {
+          // Handle both string and array cases for kitchenUserId
+          const kitchenId = Array.isArray(requestDetails.kitchenUserId)
+            ? requestDetails.kitchenUserId[0] // Take the first kitchen ID if it's an array
+            : requestDetails.kitchenUserId
+
+          if (kitchenId) {
+            // Fetch kitchen details to get coordinates
+            const kitchenDetails = await convex.query(api.kitchens.getKitchenByUserId, { userId: kitchenId })
+
+            if (kitchenDetails && kitchenDetails.latitude && kitchenDetails.longitude) {
+              kitchenCoordinates = {
+                latitude: kitchenDetails.latitude,
+                longitude: kitchenDetails.longitude,
+              }
+            }
+          }
+        }
+
+        // Get destination coordinates from the request
+        // According to your schema, use dstLatitude and dstLongitude
+        const destinationCoordinates = {
+          latitude: requestDetails.dstLatitude,
+          longitude: requestDetails.dstLongitude,
+        }
+
+        // If we have all coordinates, calculate the distance
+        if (kitchenCoordinates && destinationCoordinates.latitude && destinationCoordinates.longitude) {
+          // Import the distance calculation function
+          const { calculateTotalTripDistance } = await import("@/lib/distanceCalculator")
+
+          // Calculate total trip distance
+          const totalDistance = calculateTotalTripDistance(
+            latitude, // Agent's current latitude
+            longitude, // Agent's current longitude
+            kitchenCoordinates.latitude,
+            kitchenCoordinates.longitude,
+            destinationCoordinates.latitude,
+            destinationCoordinates.longitude,
+          )
+
+          // Add distance to the data to be sent to the mutation
+          distanceData = { totalDistance }
+        }
+      }
+    }
+
     const result = await convex.mutation(api.requests.updateAgentStatus, {
       userId,
       requestId,
@@ -23,6 +81,7 @@ export async function POST(req: NextRequest) {
       dateAndTime,
       isProceedNext,
       reason: reason || "",
+      ...distanceData, // Include the calculated distance if available
     })
 
     if (result.success) {
@@ -87,4 +146,3 @@ export async function POST(req: NextRequest) {
     )
   }
 }
-

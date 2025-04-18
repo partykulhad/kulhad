@@ -63,8 +63,10 @@ export const checkCanisterLevel = mutation({
       requestStatus: "Pending",
       kitchenStatus: "Pending",
       agentStatus: "Pending",
-      requestDateTime: new Date().toISOString(),
-      dstAddress: machine.address.building +
+      requestDateTime: new Date().toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+      }),
+        dstAddress: machine.address.building +
         ", " +
         machine.address.floor +
         ", " +

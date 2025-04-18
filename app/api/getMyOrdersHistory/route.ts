@@ -19,24 +19,30 @@ export async function GET(req: NextRequest) {
         {
           code: 200,
           message: "Order History Available",
-          orderHistoryList: orders.map((order) => ({
-            requestId: order.requestId,
-            requestStatus: order.requestStatus,
-            requestDateTime: order.requestDateTime,
-            srcAddress: order.srcAddress,
-            machineId: order.machineId,
-            srcLatitude: order.srcLatitude,
-            srcLongitude: order.srcLongitude,
-            srcContactName: order.srcContactName,
-            srcContactNumber: order.srcContactNumber,
-            dstAddress: order.dstAddress,
-            dstLatitude: order.dstLatitude,
-            dstLongitude: order.dstLongitude,
-            dstContactName: order.dstContactName,
-            dstContactNumber: order.dstContactNumber,
-            assgnRefillerName: order.assgnRefillerName,
-            assignRefillerContactNumber: order.assignRefillerContactNumber,
-          })),
+          orderHistoryList: orders
+            .filter((order): order is NonNullable<typeof order> => order !== null)
+            .map((order) => ({
+              requestId: order.requestId,
+              requestStatus: order.requestStatus,
+              requestDateTime: order.requestDateTime,
+              srcAddress: order.srcAddress,
+              machineId: order.machineId,
+              teaType: order.teaType ?? "",
+              quantity: order.quantity ?? 0.0,
+              srcLatitude: order.srcLatitude,
+              srcLongitude: order.srcLongitude,
+              srcContactName: order.srcContactName,
+              srcContactNumber: order.srcContactNumber,
+              dstAddress: order.dstAddress,
+              dstLatitude: order.dstLatitude,
+              dstLongitude: order.dstLongitude,
+              dstContactName: order.dstContactName,
+              dstContactNumber: order.dstContactNumber,
+              assgnRefillerName: order.assgnRefillerName,
+              assignRefillerContactNumber: order.assignRefillerContactNumber,
+              // Include cancellation reason for cancelled orders
+              // cancellationReason: order.requestStatus === "Cancelled" ? order.cancellationReason : null,
+            })),
         },
         { status: 200 },
       )
@@ -55,11 +61,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         code: 400,
-        message: "Exception Message",
+        message: error instanceof Error ? error.message : "Exception in getting order history",
         orderHistoryList: [],
       },
       { status: 400 },
     )
   }
 }
-

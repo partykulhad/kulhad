@@ -19,26 +19,30 @@ export async function GET(req: NextRequest) {
         {
           code: 200,
           message: "Request History Available",
-          requestHistoryList: requests.map((request) => ({
-            requestId: request.requestId,
-            requestStatus: request.requestStatus,
-            requestDateTime: request.requestDateTime,
-            srcAddress: request.srcAddress,
-            machineId: request.machineId,
-            teaType:request.teaType ?? "",
-            quantity:request.quantity ?? 0.0,
-            srcLatitude: request.srcLatitude,
-            srcLongitude: request.srcLongitude,
-            srcContactName: request.srcContactName,
-            srcContactNumber: request.srcContactNumber,
-            dstAddress: request.dstAddress,
-            dstLatitude: request.dstLatitude,
-            dstLongitude: request.dstLongitude,
-            dstContactName: request.dstContactName,
-            dstContactNumber: request.dstContactNumber,
-            assgnRefillerName: request.assgnRefillerName,
-            assignRefillerContactNumber: request.assignRefillerContactNumber,
-          })),
+          requestHistoryList: requests
+            .filter((request): request is NonNullable<typeof request> => request !== null)
+            .map((request) => ({
+              requestId: request.requestId,
+              requestStatus: request.requestStatus,
+              requestDateTime: request.requestDateTime,
+              srcAddress: request.srcAddress,
+              machineId: request.machineId,
+              teaType: request.teaType ?? "",
+              quantity: request.quantity ?? 0.0,
+              srcLatitude: request.srcLatitude,
+              srcLongitude: request.srcLongitude,
+              srcContactName: request.srcContactName,
+              srcContactNumber: request.srcContactNumber,
+              dstAddress: request.dstAddress,
+              dstLatitude: request.dstLatitude,
+              dstLongitude: request.dstLongitude,
+              dstContactName: request.dstContactName,
+              dstContactNumber: request.dstContactNumber,
+              assgnRefillerName: request.assgnRefillerName,
+              assignRefillerContactNumber: request.assignRefillerContactNumber,
+              // Include cancellation reason for cancelled requests
+              // cancellationReason: request.requestStatus === "Cancelled" ? request.cancellationReason : null,
+            })),
         },
         { status: 200 },
       )
@@ -57,11 +61,10 @@ export async function GET(req: NextRequest) {
     return NextResponse.json(
       {
         code: 400,
-        message: "Exception Message",
+        message: error instanceof Error ? error.message : "Exception in getting request history",
         requestHistoryList: [],
       },
       { status: 400 },
     )
   }
 }
-

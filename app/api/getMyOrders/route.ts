@@ -21,17 +21,7 @@ export async function GET(req: NextRequest) {
       const formattedOrders = orders.map(order => ({
         requestId: order.requestId || null,
         requestStatus: order.requestStatus || null,
-        requestDateTime: order._creationTime 
-          ? new Date(order._creationTime).toLocaleString('en-GB', { 
-            day: '2-digit', 
-            month: '2-digit', 
-            year: 'numeric', 
-            hour: '2-digit', 
-            minute: '2-digit', 
-            second: '2-digit', 
-            hour12: true 
-            })
-          : null,
+        requestDateTime: order.requestDateTime || null,
         srcAddress: order.srcAddress || null,
         machineId: order.machineId || null,
         srcLatitude: order.srcLatitude || null,
