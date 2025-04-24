@@ -28,6 +28,7 @@ export default defineSchema({
 
   machines: defineTable({
     id: v.string(),
+    kitchenId:v.optional(v.string()),
     name: v.string(),
     description: v.string(),
     model: v.string(),

@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           code: 200,
-          message: "Request created, nearby kitchens identified, and notifications sent",
+          message: "Request created, mapped kitchen identified, and notifications sent",
           data: {
             requestId: result.requestId,
             kitchenUserIds: result.kitchenUserIds,
@@ -62,7 +62,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           code: 400,
-          message: result.message || "Failed to create request or identify kitchens",
+          message: result.message || "Failed to create request or identify kitchen",
         },
         { status: 400 },
       )
@@ -76,4 +76,3 @@ export async function POST(req: NextRequest) {
     }
   }
 }
-

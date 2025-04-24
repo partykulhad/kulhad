@@ -1,7 +1,6 @@
 import { mutation } from "./_generated/server"
 import { v } from "convex/values"
 import { ConvexError } from "convex/values"
-import type { Doc } from "./_generated/dataModel"
 
 // Helper function to calculate distance between two points
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -47,6 +46,16 @@ export const checkCanisterLevel = mutation({
       throw new ConvexError("Machine not found")
     }
 
+    // Check if kitchenId exists in the machine record
+    if (!machine.kitchenId) {
+      return {
+        success: false,
+        message: "No kitchen mapped to this machine",
+        requestId: null,
+        kitchenUserIds: [],
+      }
+    }
+
     const machineLat = Number.parseFloat(machine.gisLatitude)
     const machineLon = Number.parseFloat(machine.gisLongitude)
 
@@ -55,6 +64,60 @@ export const checkCanisterLevel = mutation({
     }
 
     const customRequestId = await generateRequestId(ctx)
+
+    // Get the kitchenId from the machine record
+    // It could be a single string or an array of strings
+    const kitchenIds = Array.isArray(machine.kitchenId) ? machine.kitchenId : [machine.kitchenId]
+
+    // Get the kitchen user IDs from the kitchens table
+    const kitchenUserIds: string[] = []
+
+    for (const kitchenId of kitchenIds) {
+      const kitchen = await ctx.db
+        .query("kitchens")
+        .filter((q) => q.eq(q.field("userId"), kitchenId))
+        .first()
+
+      if (kitchen && kitchen.userId && kitchen.status === "online") {
+        kitchenUserIds.push(kitchen.userId)
+      }
+    }
+
+    // If no online kitchens found
+    if (kitchenUserIds.length === 0) {
+      // Update the request status if no kitchens were found
+      const requestId = await ctx.db.insert("requests", {
+        requestId: customRequestId,
+        machineId: machineId,
+        requestStatus: "No Kitchens Found",
+        kitchenStatus: "Pending",
+        agentStatus: "Pending",
+        requestDateTime: new Date().toLocaleString("en-IN", {
+          timeZone: "Asia/Kolkata",
+        }),
+        dstAddress:
+          machine.address.building +
+          ", " +
+          machine.address.floor +
+          ", " +
+          machine.address.area +
+          ", " +
+          machine.address.district +
+          ", " +
+          machine.address.state,
+        dstLatitude: machineLat,
+        dstLongitude: machineLon,
+        kitchenUserId: [],
+        agentUserId: "",
+      })
+
+      return {
+        success: false,
+        message: "No online kitchens found for this machine",
+        requestId: customRequestId,
+        kitchenUserIds: [],
+      }
+    }
 
     // Create initial request with basic information
     const requestId = await ctx.db.insert("requests", {
@@ -66,7 +129,8 @@ export const checkCanisterLevel = mutation({
       requestDateTime: new Date().toLocaleString("en-IN", {
         timeZone: "Asia/Kolkata",
       }),
-        dstAddress: machine.address.building +
+      dstAddress:
+        machine.address.building +
         ", " +
         machine.address.floor +
         ", " +
@@ -77,77 +141,35 @@ export const checkCanisterLevel = mutation({
         machine.address.state,
       dstLatitude: machineLat,
       dstLongitude: machineLon,
-      kitchenUserId: [],
-      agentUserId: ""
+      kitchenUserId: kitchenUserIds,
+      agentUserId: "",
     })
 
-    // Search for nearby kitchens
-    const radiusRanges = [2, 3, 4, 5, 10] // km
-    let foundKitchens = false
-    const foundKitchenUserIds: string[] = []
+    // Store mapped kitchens in requestStatusUpdates
+    for (const kitchenId of kitchenIds) {
+      const kitchen = await ctx.db
+        .query("kitchens")
+        .filter((q) => q.eq(q.field("userId"), kitchenId))
+        .first()
 
-    for (const radius of radiusRanges) {
-      const nearbyKitchens = await findNearbyKitchens(ctx, machineLat, machineLon, radius)
-
-      if (nearbyKitchens.length > 0) {
-        foundKitchens = true
-
-        // Store found kitchens in requestStatusUpdates and collect user IDs
-        for (const kitchen of nearbyKitchens) {
-          await ctx.db.insert("requestStatusUpdates", {
-            requestId: customRequestId,
-            userId: kitchen.userId,
-            status: "Pending",
-            latitude: kitchen.latitude,
-            longitude: kitchen.longitude,
-            dateAndTime: new Date().toISOString(),
-            isProceedNext: false,
-          })
-          foundKitchenUserIds.push(kitchen.userId)
-        }
-
-        break // Exit the loop if kitchens are found
+      if (kitchen && kitchen.userId && kitchen.status === "online") {
+        await ctx.db.insert("requestStatusUpdates", {
+          requestId: customRequestId,
+          userId: kitchen.userId,
+          status: "Pending",
+          latitude: kitchen.latitude,
+          longitude: kitchen.longitude,
+          dateAndTime: new Date().toISOString(),
+          isProceedNext: false,
+        })
       }
     }
-
-    if (!foundKitchens) {
-      // Update the request status if no kitchens were found
-      await ctx.db.patch(requestId, { requestStatus: "No Kitchens Found" })
-      return {
-        success: false,
-        message: "No nearby kitchens found",
-        requestId: customRequestId,
-        kitchenUserIds: [],
-      }
-    }
-
-    // Update the request with found kitchen user IDs
-    await ctx.db.patch(requestId, { kitchenUserId: foundKitchenUserIds })
 
     return {
       success: true,
-      message: "Request created and nearby kitchens identified",
+      message: "Request created and mapped kitchens identified",
       requestId: customRequestId,
-      kitchenUserIds: foundKitchenUserIds,
-
+      kitchenUserIds: kitchenUserIds,
     }
   },
 })
-
-async function findNearbyKitchens(
-  ctx: any,
-  machineLat: number,
-  machineLon: number,
-  radius: number,
-): Promise<Doc<"kitchens">[]> {
-  const kitchens = await ctx.db.query("kitchens").collect()
-  const onlineKitchens = kitchens.filter((kitchen: Doc<"kitchens">) => kitchen.status === "online")
-
-  const nearbyKitchens = onlineKitchens.filter((kitchen: Doc<"kitchens">) => {
-    const distance = calculateDistance(machineLat, machineLon, kitchen.latitude, kitchen.longitude)
-    return distance <= radius
-  })
-
-  return nearbyKitchens
-}
-

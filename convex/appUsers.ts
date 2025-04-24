@@ -195,6 +195,61 @@ export const updateFCMToken = mutation({
   },
 })
 
+export const logoutUser = mutation({
+  args: {
+    userId: v.string(),
+    fcmToken: v.string(),
+    userDevice: v.string(),
+    appVersion: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { userId, fcmToken } = args
+
+    try {
+      // Find the user by userId
+      const user = await ctx.db
+        .query("appUser")
+        .filter((q) => q.eq(q.field("userId"), userId))
+        .first()
+
+      if (!user) {
+        // Even if user not found, return success as per requirements
+        return {
+          code: 200,
+          success: true,
+          message: "User logout updated successfully",
+        }
+      }
+
+      // Check if the provided FCM token matches the one in the database
+      if (user.fcmToken === fcmToken) {
+        // If tokens match, remove the FCM token by setting it to empty string
+        await ctx.db.patch(user._id, {
+          fcmToken: "", // Remove the token
+          userDevice:"",
+          appVersion:"",
+        })
+      }
+
+      // Return success regardless of whether token was removed or not
+      return {
+        code: 200,
+        success: true,
+        message: "User logout updated successfully",
+      }
+    } catch (error) {
+      console.error("Error processing user logout:", error)
+      // Still return success as per requirements
+      return {
+        code: 200,
+        success: true,
+        message: "User logout updated successfully",
+      }
+    }
+  },
+})
+
+
 export const getUserById = query({
   args: { userId: v.string() },
   handler: async (ctx, args) => {
