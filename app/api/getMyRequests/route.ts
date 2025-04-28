@@ -34,6 +34,7 @@ export async function GET(req: NextRequest) {
         requestId: request.requestId,
         requestStatus: request.requestStatus,
         requestDateTime: request.requestDateTime,
+        priority: request.priority ?? null,
         srcAddress: request.srcAddress ?? null,
         machineId: request.machineId ?? null,
         srcLatitude: request.srcLatitude ?? 0.0,

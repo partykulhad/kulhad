@@ -22,6 +22,7 @@ export async function GET(req: NextRequest) {
         requestId: order.requestId || null,
         requestStatus: order.requestStatus || null,
         requestDateTime: order.requestDateTime || null,
+        priority: order.priority|| null,
         srcAddress: order.srcAddress || null,
         machineId: order.machineId || null,
         srcLatitude: order.srcLatitude || null,

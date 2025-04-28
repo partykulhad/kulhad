@@ -1,5 +1,6 @@
 import { ConvexError, v } from "convex/values";
 import { mutation, query } from "./_generated/server";
+import { Doc } from "./_generated/dataModel";
 
 const TOKEN_EXPIRY = 30 * 24 * 60 * 60 * 1000 // 30 days in milliseconds
 
@@ -265,22 +266,44 @@ export const getUserById = query({
 export const changePassword = mutation({
   args: { userId: v.string(), newPassword: v.string() },
   handler: async (ctx, args) => {
-    const { userId, newPassword } = args
+    const { userId, newPassword } = args;
 
-    // Find the user by userId
-    const user = await ctx.db
+    // Find the user by userId with proper type annotation
+    const user: Doc<"appUser"> | null = await ctx.db
       .query("appUser")
       .filter((q) => q.eq(q.field("userId"), userId))
-      .first()
+      .first();
 
     if (!user) {
-      throw new ConvexError("User not found")
+      throw new ConvexError("User not found");
     }
 
-    // Update the user's password
-    await ctx.db.patch(user._id, { password: newPassword })
+    // Update the user's password in appUser table
+    await ctx.db.patch(user._id, { password: newPassword });
 
-    return { success: true }
+    // Check and update password in deliveryAgents table if userId exists
+    const deliveryAgent = await ctx.db
+      .query("deliveryAgents")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .first();
+
+    if (deliveryAgent) {
+      await ctx.db.patch(deliveryAgent._id, { password: newPassword });
+    }
+
+    // Check and update password in kitchens table if userId exists
+    const kitchen = await ctx.db
+      .query("kitchens")
+      .filter((q) => q.eq(q.field("userId"), userId))
+      .first();
+
+    if (kitchen) {
+      await ctx.db.patch(kitchen._id, { password: newPassword });
+    }
+
+    return { 
+      success: true,
+      message: "Password updated successfully in all relevant tables" 
+    };
   },
-})
-
+});
