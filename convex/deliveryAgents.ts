@@ -237,3 +237,33 @@ export const updateAgentInfo = mutation({
   },
 });
 
+
+
+// Get delivery agents by status
+export const getByStatus = query({
+  args: { status: v.string() },
+  handler: async (ctx, args) => {
+    const { status } = args
+
+    return await ctx.db
+      .query("deliveryAgents")
+      .filter((q) => q.eq(q.field("status"), status))
+      .collect()
+  },
+})
+
+// Get active delivery agents (with location data)
+export const getActiveAgents = query({
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("deliveryAgents")
+      .filter((q) =>
+        q.and(
+          q.eq(q.field("status"), "active"),
+          q.neq(q.field("latitude"), undefined),
+          q.neq(q.field("longitude"), undefined),
+        ),
+      )
+      .collect()
+  },
+})

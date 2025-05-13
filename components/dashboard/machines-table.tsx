@@ -165,7 +165,7 @@ export function MachinesTable({
                         variant={
                           machine.temperature > 75
                             ? "destructive"
-                            : machine.temperature < 65
+                            : machine.temperature < 80
                               ? "warning"
                               : "default"
                         }

@@ -14,6 +14,7 @@ import type {
   FunctionReference,
 } from "convex/server";
 import type * as adminrequests from "../adminrequests.js";
+import type * as agentLocations from "../agentLocations.js";
 import type * as appUsers from "../appUsers.js";
 import type * as canister from "../canister.js";
 import type * as canisterCheck from "../canisterCheck.js";
@@ -24,6 +25,7 @@ import type * as iot from "../iot.js";
 import type * as kitchens from "../kitchens.js";
 import type * as machines from "../machines.js";
 import type * as migrateAppUsers from "../migrateAppUsers.js";
+import type * as requestStatusUpdates from "../requestStatusUpdates.js";
 import type * as requests from "../requests.js";
 import type * as transactions from "../transactions.js";
 import type * as users from "../users.js";
@@ -39,6 +41,7 @@ import type * as vendors from "../vendors.js";
  */
 declare const fullApi: ApiFromModules<{
   adminrequests: typeof adminrequests;
+  agentLocations: typeof agentLocations;
   appUsers: typeof appUsers;
   canister: typeof canister;
   canisterCheck: typeof canisterCheck;
@@ -49,6 +52,7 @@ declare const fullApi: ApiFromModules<{
   kitchens: typeof kitchens;
   machines: typeof machines;
   migrateAppUsers: typeof migrateAppUsers;
+  requestStatusUpdates: typeof requestStatusUpdates;
   requests: typeof requests;
   transactions: typeof transactions;
   users: typeof users;

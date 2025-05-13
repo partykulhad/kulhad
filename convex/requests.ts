@@ -301,23 +301,23 @@ export const updateRequestStatus = mutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const { userId, requestId, latitude, longitude, status, dateAndTime, isProceedNext, reason } = args;
+    const { userId, requestId, latitude, longitude, status, dateAndTime, isProceedNext, reason } = args
 
     // Fetch the current request
     const currentRequest = await ctx.db
       .query("requests")
-      .filter(q => q.eq(q.field("requestId"), requestId))
-      .first();
+      .filter((q) => q.eq(q.field("requestId"), requestId))
+      .first()
 
     if (!currentRequest) {
-      return { success: false, message: "Request not found" };
+      return { success: false, message: "Request not found" }
     }
 
-    // Update only the requestStatus in the requests table
-    await ctx.db.patch(currentRequest._id, { 
+    // Update the requestStatus in the requests table
+    await ctx.db.patch(currentRequest._id, {
       requestStatus: status,
       requestDateTime: dateAndTime,
-    });
+    })
 
     // Create a status update record
     await ctx.db.insert("requestStatusUpdates", {
@@ -329,11 +329,28 @@ export const updateRequestStatus = mutation({
       dateAndTime,
       isProceedNext,
       reason,
-    });
+    })
 
-    return { success: true, message: `${status} status updated` };
+    // If the status is "completed", update the lastFulfilled field in the machines table
+    if (status === "Refilled" && currentRequest.machineId) {
+      // Find the machine with this machineId
+      const machine = await ctx.db
+        .query("machines")
+        .filter((q) => q.eq(q.field("id"), currentRequest.machineId))
+        .first()
+
+      if (machine) {
+        // Update the lastFulfilled field with the current dateAndTime
+        await ctx.db.patch(machine._id, {
+          lastFulfilled: dateAndTime,
+        })
+      }
+    }
+
+    return { success: true, message: `${status} status updated` }
   },
-});
+})
+
 
 export const updateCompleteOrCancel = mutation({
   args: {
@@ -360,7 +377,7 @@ export const updateCompleteOrCancel = mutation({
     }
 
     // Check if the current status is "Submitted" or "NotSubmitted"
-    if (currentRequest.requestStatus !== "Submitted" && currentRequest.requestStatus !== "NotSubmitted") {
+    if (currentRequest.requestStatus !== "Submitted" && currentRequest.requestStatus !== "NotSubmitted" && currentRequest.requestStatus !== "Refilled") {
       await ctx.db.insert("requestStatusUpdates", {
         requestId,
         userId,
@@ -576,63 +593,6 @@ export const getRequestByRequestId = query({
   },
 });
 
-// export const getMyRequestsHistory = query({
-//   args: { userId: v.string() },
-//   handler: async (ctx, args) => {
-//     const requests = await ctx.db
-//       .query("requests")
-//       .filter((q) => q.eq(q.field("kitchenUserId"), args.userId))
-//       .collect()
-
-//     const completedOrCancelledRequests = []
-
-//     for (const request of requests) {
-//       const latestStatus = await ctx.db
-//         .query("requestStatusUpdates")
-//         .filter((q) => q.eq(q.field("requestId"), request.requestId))
-//         .order("desc")
-//         .first()
-
-//       if (latestStatus && (latestStatus.status === "Completed" || latestStatus.status === "Cancelled")) {
-//         completedOrCancelledRequests.push({
-//           ...request,
-//           requestStatus: latestStatus.status,
-//         })
-//       }
-//     }
-
-//     return completedOrCancelledRequests
-//   },
-// })
-
-// export const getMyOrdersHistory = query({
-//   args: { userId: v.string() },
-//   handler: async (ctx, args) => {
-//     const orders = await ctx.db
-//       .query("requests")
-//       .filter((q) => q.eq(q.field("agentUserId"), args.userId))
-//       .collect()
-
-//     const completedOrCancelledOrders: any[] | PromiseLike<any[]> = []
-
-//     for (const order of orders) {
-//       const latestStatus = await ctx.db
-//         .query("requestStatusUpdates")
-//         .filter((q) => q.eq(q.field("requestId"), order.requestId))
-//         .order("desc")
-//         .first()
-
-//       if (latestStatus && (latestStatus.status === "Completed" || latestStatus.status === "Cancelled")) {
-//         completedOrCancelledOrders.push({
-//           ...order,
-//           requestStatus: latestStatus.status,
-//         })
-//       }
-//     }
-
-//     return completedOrCancelledOrders
-//   },
-// })
 
 export const getMyRequestsHistory = query({
   args: { userId: v.string() },
@@ -801,6 +761,7 @@ export const getMyOrdersHistory = query({
           assgnRefillerName: null,
           assignRefillerContactNumber: null,
           cancellationReason: update.reason || null,
+          totalDistance: order.totalDistance || null,
         };
       })
     );
@@ -838,6 +799,7 @@ export const getMyOrdersHistory = query({
           dstContactNumber: order.dstContactNumber || null,
           assgnRefillerName: order.assignRefillerName || null,
           assignRefillerContactNumber: order.assignRefillerContactNumber || null,
+          totalDistance: order.totalDistance || null,
         };
       })
     );
@@ -906,3 +868,45 @@ export const getCompletedByAgentUserId = query({
     return requests
   },
 })
+
+
+
+// Get all requests
+export const list = query({
+  handler: async (ctx) => {
+    return await ctx.db.query("requests").collect()
+  },
+})
+
+
+
+// Get request by requestId
+export const getByRequestId = query({
+  args: { requestId: v.string() },
+  handler: async (ctx, args) => {
+    const { requestId } = args
+
+    return await ctx.db
+      .query("requests")
+      .withIndex("by_requestId", (q) => q.eq("requestId", requestId))
+      .first()
+  },
+})
+
+
+// Get completed requests by agentUserId
+
+
+// Get requests by status
+export const getByStatus = query({
+  args: { status: v.string() },
+  handler: async (ctx, args) => {
+    const { status } = args
+
+    return await ctx.db
+      .query("requests")
+      .withIndex("by_requestStatus", (q) => q.eq("requestStatus", status))
+      .collect()
+  },
+})
+

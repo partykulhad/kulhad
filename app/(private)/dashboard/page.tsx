@@ -57,9 +57,7 @@ export default function DashboardPage() {
   const totalSales = 1234.56;
   const alerts = {
     low: machines.filter((m) => m.canisterLevel < 20).length,
-    maintenance: machines.filter(
-      (m) => m.temperature > 75 || m.temperature < 65
-    ).length,
+    maintenance: machines.filter((m) => m.temperature <= 80).length,
   };
 
   // Prepare chart data

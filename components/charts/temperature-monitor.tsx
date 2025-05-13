@@ -34,7 +34,7 @@ export function TemperatureMonitor({
   machineName,
 }: TemperatureMonitorProps) {
   const currentTemp = data[data.length - 1]?.temperature || 0;
-  const isOptimal = currentTemp >= 65 && currentTemp <= 75;
+  const isOptimal = currentTemp >= 80 && currentTemp <= 83;
 
   return (
     <Card>

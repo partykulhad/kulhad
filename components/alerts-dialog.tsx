@@ -54,7 +54,7 @@ export function AlertsDialog({
   );
   const temperatureAlerts = machines.filter((m) => {
     const temp = m.temperature || 0;
-    return temp > 75 || temp < 65;
+    return temp <= 80;
   });
 
   const handleMachineClick = (machineId: string) => {

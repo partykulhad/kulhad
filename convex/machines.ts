@@ -23,11 +23,17 @@ export const add = mutation({
     }),
     gisLatitude: v.string(),
     gisLongitude: v.string(),
-    price:v.optional(v.string()),
-    startTime:  v.optional(v.string()),
-    endTime:  v.optional(v.string()),
-    flushTimeMinutes:  v.optional(v.number()),
-    mlToDispense:  v.optional(v.number()),
+    price: v.optional(v.string()),
+    startTime: v.optional(v.string()),
+    endTime: v.optional(v.string()),
+    flushTimeMinutes: v.optional(v.number()),
+    mlToDispense: v.optional(v.number()),
+    // New fields
+    managerName: v.optional(v.string()),
+    contactNo: v.optional(v.string()),
+    email: v.optional(v.string()),
+    machineType: v.optional(v.string()),
+    breakTime: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const machineId = await ctx.db.insert("machines", {
@@ -43,8 +49,6 @@ export const add = mutation({
     return { id: machineId };
   },
 });
-
-
 
 export const toggleStatus = mutation({
   args: { id: v.id("machines") },
@@ -105,6 +109,12 @@ export const getMachineData = query({
       endTime: machine.endTime,
       flushTimeMinutes: machine.flushTimeMinutes,
       mlToDispense: machine.mlToDispense,
+      // Include new fields in the response
+      managerName: machine.managerName,
+      contactNo: machine.contactNo,
+      email: machine.email,
+      machineType: machine.machineType,
+      breakTime: machine.breakTime,
     }
   },
 })
@@ -130,6 +140,12 @@ export const update = mutation({
     endTime: v.optional(v.string()),
     flushTimeMinutes: v.optional(v.number()),
     mlToDispense: v.optional(v.number()),
+    // New fields
+    managerName: v.optional(v.string()),
+    contactNo: v.optional(v.string()),
+    email: v.optional(v.string()),
+    machineType: v.optional(v.string()),
+    breakTime: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { machineId, ...updates } = args
@@ -158,8 +174,6 @@ export const getMachineById = query({
       .first()
   },
 })
-
-
 
 export const getByMachineId = query({
   args: { machineId: v.string() },

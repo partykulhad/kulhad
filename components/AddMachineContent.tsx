@@ -75,6 +75,11 @@ interface Machine {
   replenishmentOrder?: { status: string; eta: string | null };
   deliveryBoy?: any | null;
   lastFulfilled?: string;
+  managerName?: string;
+  contactNo?: string;
+  email?: string;
+  machineType?: string;
+  breakTime?: string;
 }
 
 export default function AddMachineContent() {
@@ -102,6 +107,11 @@ export default function AddMachineContent() {
     flushTimeMinutes: 0,
     mlToDispense: 0,
     installedDate: undefined,
+    managerName: "",
+    contactNo: "",
+    email: "",
+    machineType: "Full Time",
+    breakTime: "",
   });
 
   const machines = useQuery(api.machines.list) || [];
@@ -159,6 +169,11 @@ export default function AddMachineContent() {
           endTime: machine.endTime,
           flushTimeMinutes: machine.flushTimeMinutes,
           mlToDispense: machine.mlToDispense,
+          managerName: machine.managerName,
+          contactNo: machine.contactNo,
+          email: machine.email,
+          machineType: machine.machineType,
+          breakTime: machine.breakTime,
         });
         toast.success("Machine updated successfully");
       } else {
@@ -176,6 +191,11 @@ export default function AddMachineContent() {
           endTime: machine.endTime,
           flushTimeMinutes: machine.flushTimeMinutes,
           mlToDispense: machine.mlToDispense,
+          managerName: machine.managerName,
+          contactNo: machine.contactNo,
+          email: machine.email,
+          machineType: machine.machineType,
+          breakTime: machine.breakTime,
         });
         toast.success(`Machine added successfully with ID: ${result.id}`);
       }
@@ -200,6 +220,11 @@ export default function AddMachineContent() {
         flushTimeMinutes: 0,
         mlToDispense: 0,
         installedDate: undefined,
+        managerName: "",
+        contactNo: "",
+        email: "",
+        machineType: "Full Time",
+        breakTime: "",
       });
       setIsDialogOpen(false);
       setIsEditing(false);
@@ -225,6 +250,11 @@ export default function AddMachineContent() {
       },
       gisLatitude: editMachine.gisLatitude || "",
       gisLongitude: editMachine.gisLongitude || "",
+      managerName: editMachine.managerName || "",
+      contactNo: editMachine.contactNo || "",
+      email: editMachine.email || "",
+      machineType: editMachine.machineType || "Full Time",
+      breakTime: editMachine.breakTime || "",
     });
     setIsEditing(true);
     setIsDialogOpen(true);
@@ -286,6 +316,11 @@ export default function AddMachineContent() {
                 flushTimeMinutes: 0,
                 mlToDispense: 0,
                 installedDate: undefined,
+                managerName: "",
+                contactNo: "",
+                email: "",
+                machineType: "Full Time",
+                breakTime: "",
               });
             }
           }}
@@ -463,6 +498,69 @@ export default function AddMachineContent() {
                       value={machine.mlToDispense}
                       onChange={handleInputChange}
                       min="0"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Manager Information Section */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold border-b pb-2">
+                  Manager Information
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="managerName">Manager Name</Label>
+                    <Input
+                      id="managerName"
+                      name="managerName"
+                      value={machine.managerName}
+                      onChange={handleInputChange}
+                      placeholder="Enter manager name"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="contactNo">Contact Number</Label>
+                    <Input
+                      id="contactNo"
+                      name="contactNo"
+                      value={machine.contactNo}
+                      onChange={handleInputChange}
+                      placeholder="Enter contact number"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">Email</Label>
+                    <Input
+                      id="email"
+                      name="email"
+                      type="email"
+                      value={machine.email}
+                      onChange={handleInputChange}
+                      placeholder="Enter email address"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="machineType">Machine Type</Label>
+                    <select
+                      id="machineType"
+                      name="machineType"
+                      value={machine.machineType}
+                      onChange={handleInputChange as any}
+                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      <option value="Full Time">Full Time</option>
+                      <option value="Peek Time">Peek Time</option>
+                    </select>
+                  </div>
+                  <div className="space-y-2 md:col-span-2">
+                    <Label htmlFor="breakTime">Break Time</Label>
+                    <Input
+                      id="breakTime"
+                      name="breakTime"
+                      value={machine.breakTime}
+                      onChange={handleInputChange}
+                      placeholder="e.g. 1 PM to 5 PM"
                     />
                   </div>
                 </div>

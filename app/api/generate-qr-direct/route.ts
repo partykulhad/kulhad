@@ -8,7 +8,14 @@ import jsQR from 'jsqr'
 // Initialize Convex client
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
-// Function to extract QR code as hex
+// Prepare Razorpay auth header once (outside the handler)
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID
+const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET
+const authHeader = razorpayKeyId && razorpayKeySecret 
+  ? `Basic ${Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString("base64")}`
+  : null
+
+// Function to extract QR code as hex - optimized for speed
 async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
   try {
     // Follow any redirects to get the actual image URL
@@ -34,8 +41,6 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
     const qrCode = jsQR(imageData.data, imageData.width, imageData.height);
     
     if (!qrCode) {
-      console.log("No QR code found, using image processing to extract");
-      
       // If jsQR fails, try to extract the QR code using image processing
       // This approach looks for a square region with high contrast (likely the QR code)
       const processedImage = await sharp(imageBuffer)
@@ -50,7 +55,6 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
       processedCtx.drawImage(processedImageObj, 0, 0);
       
       // Look for the QR code in the center area (where it's typically located)
-      // This is a simplified approach - we're assuming the QR code is roughly in the center
       const centerX = Math.floor(image.width / 2);
       const centerY = Math.floor(image.height / 2);
       const searchRadius = Math.floor(Math.min(image.width, image.height) / 4);
@@ -78,8 +82,6 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
     }
     
     // If jsQR found the QR code, extract its location
-    console.log("QR code found at location:", qrCode.location);
-    
     // Calculate the bounding box with padding
     const padding = 10;
     
@@ -107,8 +109,6 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
     const width = maxX - minX;
     const height = maxY - minY;
     
-    console.log("Extracting QR code with dimensions:", { left: minX, top: minY, width, height });
-    
     // Extract just the QR code region and resize to 174x174
     const qrCodeBuffer = await sharp(imageBuffer)
       .extract({ 
@@ -123,11 +123,8 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
     // Convert to hex
     return qrCodeBuffer.toString('hex');
   } catch (error) {
-    console.error('Error extracting QR code:', error);
-    
+    // Fallback: try to extract the central portion of the image
     try {
-      // Fallback: try to extract the central portion of the image
-      // This assumes the QR code is roughly in the center
       const image = await sharp(Buffer.from(await (await fetch(imageUrl)).arrayBuffer()));
       const metadata = await image.metadata();
       
@@ -136,7 +133,6 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
       }
       
       // Calculate a region in the center that's likely to contain the QR code
-      // For Razorpay QR codes, the QR is usually in a white box in the middle
       const centerX = Math.floor(metadata.width / 2);
       const centerY = Math.floor(metadata.height / 2);
       
@@ -147,8 +143,6 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
       const left = Math.floor(centerX - qrSize/2);
       const top = Math.floor(centerY - qrSize/2);
       const size = Math.floor(qrSize);
-      
-      console.log("Fallback extraction with dimensions:", { left, top, width: size, height: size });
       
       const qrBuffer = await image
         .extract({
@@ -162,8 +156,6 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
       
       return qrBuffer.toString('hex');
     } catch (fallbackError) {
-      console.error('Fallback extraction failed:', fallbackError);
-      
       // Last resort: just return the entire image resized to 174x174
       try {
         const fullImageBuffer = await (await fetch(imageUrl)).arrayBuffer();
@@ -172,7 +164,6 @@ async function extractQRCodeAsHex(imageUrl: string | URL | Request) {
           .toBuffer();
         return resizedBuffer.toString('hex');
       } catch (e) {
-        console.error('All extraction methods failed:', e);
         return ""; // Return empty string if all extraction methods fail
       }
     }
@@ -190,22 +181,48 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing required parameters: machineId or numberOfCups" }, { status: 400 })
     }
 
-    // Fetch machine details from the database to get the price
-    const machine = await convex.query(api.machines.getMachineById, {
-      machineId,
-    })
+    // Check Razorpay credentials early
+    if (!authHeader) {
+      return NextResponse.json({ error: "Razorpay credentials not configured" }, { status: 500 })
+    }
+
+    // Generate a unique transaction ID
+    const uniqueTransactionId = `${machineId}-${Date.now()}`
+    
+    // Set expiry time (30 minutes from now)
+    const closeBy = Math.floor(Date.now() / 1000) + 1800 // 30 minutes in seconds
+
+    // Start fetching machine details early
+    const machinePromise = convex.query(api.machines.getMachineById, { machineId })
+
+    // Prepare request body for Razorpay API while waiting for machine details
+    const razorpayRequestBase = {
+      type: "upi_qr",
+      name: `Coffee Machine ${machineId}`,
+      usage: "single_use",
+      fixed_amount: true,
+      description: `${numberOfCups} cup(s) of coffee from Machine ${machineId}`,
+      close_by: closeBy,
+      notes: {
+        machineId,
+        numberOfCups: numberOfCups.toString(),
+        transactionId: uniqueTransactionId,
+      },
+    }
+
+    // Get machine details
+    const machine = await machinePromise
 
     if (!machine) {
       return NextResponse.json({ error: `Machine not found with ID: ${machineId}` }, { status: 404 })
     }
 
-    // Get the price from the machine details and convert to number if it's a string
+    // Get the price from the machine details
     let amountPerCup: number
 
     if (typeof machine.price === "number") {
       amountPerCup = machine.price
     } else if (typeof machine.price === "string") {
-      // Convert string price to number
       amountPerCup = Number.parseFloat(machine.price)
     } else {
       return NextResponse.json({ error: `Price not found for machine: ${machineId}` }, { status: 400 })
@@ -219,51 +236,19 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`Using price ${amountPerCup} from machine ${machineId} (original: ${machine.price})`)
-
-    // Calculate total amount
+    // Calculate total amount and convert to paise
     const calculatedAmount = amountPerCup * Number.parseInt(numberOfCups)
-
-    // Convert to paise (multiply by 100) as Razorpay requires amount in paise
     const amountInPaise = Math.round(calculatedAmount * 100)
 
-    // Get Razorpay credentials from environment variables
-    const razorpayKeyId = process.env.RAZORPAY_KEY_ID
-    const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET
-
-    if (!razorpayKeyId || !razorpayKeySecret) {
-      return NextResponse.json({ error: "Razorpay credentials not configured" }, { status: 500 })
-    }
-
-    // Create authorization header for Razorpay API
-    const authHeader = `Basic ${Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString("base64")}`
-
-    // Set expiry time (30 minutes from now)
-    const closeBy = Math.floor(Date.now() / 1000) + 1800 // 30 minutes in seconds
-
-    // Generate a unique transaction ID that will be used both in Razorpay and our database
-    const uniqueTransactionId = `${machineId}-${Date.now()}`
-
-    console.log("Generated unique transaction ID:", uniqueTransactionId)
-
-    // Prepare request body for Razorpay API
+    // Complete the Razorpay request with price information
     const razorpayRequest = {
-      type: "upi_qr",
-      name: `Coffee Machine ${machineId}`,
-      usage: "single_use",
-      fixed_amount: true,
+      ...razorpayRequestBase,
       payment_amount: amountInPaise,
-      description: `${numberOfCups} cup(s) of coffee from Machine ${machineId}`,
-      close_by: closeBy,
       notes: {
-        machineId: machineId,
-        numberOfCups: numberOfCups.toString(),
+        ...razorpayRequestBase.notes,
         amountPerCup: String(amountPerCup),
-        transactionId: uniqueTransactionId, // Add our unique transaction ID to notes
       },
     }
-
-    console.log("Sending request to Razorpay:", JSON.stringify(razorpayRequest))
 
     // Make request to Razorpay API
     const response = await fetch("https://api.razorpay.com/v1/payments/qr_codes", {
@@ -278,7 +263,6 @@ export async function POST(request: NextRequest) {
     // Check if the request was successful
     if (!response.ok) {
       const errorData = await response.json()
-      console.error("Razorpay API error:", errorData)
       return NextResponse.json(
         {
           error: "Failed to create Razorpay QR code",
@@ -290,17 +274,19 @@ export async function POST(request: NextRequest) {
 
     // Parse the response
     const razorpayResponse = await response.json()
-    console.log("Razorpay response:", JSON.stringify(razorpayResponse))
-
-    // Extract the QR code image and convert to hex
-    console.log("Extracting QR code from:", razorpayResponse.image_url);
-    const qrHexData = await extractQRCodeAsHex(razorpayResponse.image_url);
-    console.log("QR code extracted successfully");
-
-    // We'll use the Razorpay QR code ID as our transaction ID in the database
     const qrCodeId = razorpayResponse.id
 
-    console.log("Using QR code ID as transaction ID:", qrCodeId)
+    // Extract the QR code image and convert to hex
+    // This is still needed as per requirements
+    const qrHexData = await extractQRCodeAsHex(razorpayResponse.image_url)
+    
+    // If QR extraction fails completely, don't proceed
+    if (!qrHexData) {
+      return NextResponse.json(
+        { error: "Failed to extract QR code from image" },
+        { status: 500 }
+      )
+    }
 
     // Create a clean response object
     const transactionData = {
@@ -319,23 +305,24 @@ export async function POST(request: NextRequest) {
       transactionId: uniqueTransactionId, // Include our unique transaction ID in the response
     }
 
-    // Store transaction in Convex with BOTH IDs
-    // This is crucial - we store both the QR code ID and our unique transaction ID
-    const dbTransaction = await convex.mutation(api.transactions.createTransaction, {
-      transactionId: qrCodeId, // Primary ID - the QR code ID from Razorpay
-      customTransactionId: uniqueTransactionId, // Our custom ID as a secondary reference
+    // Store transaction in Convex without waiting for it to complete
+    // This makes the response faster while still ensuring data is stored
+    convex.mutation(api.transactions.createTransaction, {
+      transactionId: qrCodeId,
+      customTransactionId: uniqueTransactionId,
       imageUrl: razorpayResponse.image_url,
-     // qrHexData: qrHexData, // Also store the hex data in the database
+      // Don't store qrHexData in the database as per requirements
       amount: razorpayResponse.payment_amount / 100,
       cups: Number(numberOfCups),
       amountPerCup: amountPerCup,
       machineId: machineId,
       description: razorpayResponse.description,
       status: razorpayResponse.status,
-      expiresAt: razorpayResponse.close_by * 1000, // Convert to milliseconds
+      expiresAt: razorpayResponse.close_by * 1000,
+    }).catch(error => {
+      // Just log the error but don't block the response
+      console.error("Error storing transaction:", error)
     })
-
-    console.log("Transaction stored in database:", dbTransaction)
 
     // Return the clean response
     return NextResponse.json(transactionData)
@@ -345,7 +332,6 @@ export async function POST(request: NextRequest) {
       {
         error: "Failed to process payment request",
         details: error instanceof Error ? error.message : "Unknown error",
-        stack: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : undefined) : undefined,
       },
       { status: 500 },
     )

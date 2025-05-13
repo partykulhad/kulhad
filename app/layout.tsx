@@ -20,6 +20,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        <script
+          async
+          defer
+          src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAwBeTSbKcvuLQQsvGnVzGK2D_a4-ypPGA&libraries=visualization"
+        ></script>
+      </head>
       <body className={lora.className}>
         <ConvexClientProvider>{children}</ConvexClientProvider>
       </body>

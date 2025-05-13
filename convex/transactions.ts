@@ -175,3 +175,65 @@ export const getTransactionsByStatus = query({
   },
 })
 
+
+// Get all transactions
+export const list = query({
+  handler: async (ctx) => {
+    return await ctx.db.query("transactions").collect()
+  },
+})
+
+// Get transactions by machineId
+export const getByMachineId = query({
+  args: { machineId: v.string() },
+  handler: async (ctx, args) => {
+    const { machineId } = args
+
+    // Query transactions table with the machineId index
+    const transactions = await ctx.db
+      .query("transactions")
+      .withIndex("by_machineId", (q) => q.eq("machineId", machineId))
+      .collect()
+
+    return transactions
+  },
+})
+
+// Get transaction by transactionId
+export const getById = query({
+  args: { transactionId: v.string() },
+  handler: async (ctx, args) => {
+    const { transactionId } = args
+
+    return await ctx.db
+      .query("transactions")
+      .withIndex("by_transactionId", (q) => q.eq("transactionId", transactionId))
+      .first()
+  },
+})
+
+// Get transactions by status
+export const getByStatus = query({
+  args: { status: v.string() },
+  handler: async (ctx, args) => {
+    const { status } = args
+
+    return await ctx.db
+      .query("transactions")
+      .withIndex("by_status", (q) => q.eq("status", status))
+      .collect()
+  },
+})
+
+// Get transactions by custom transaction ID
+export const getByCustomTransactionId = query({
+  args: { customTransactionId: v.string() },
+  handler: async (ctx, args) => {
+    const { customTransactionId } = args
+
+    return await ctx.db
+      .query("transactions")
+      .withIndex("by_customTransactionId", (q) => q.eq("customTransactionId", customTransactionId))
+      .first()
+  },
+})
