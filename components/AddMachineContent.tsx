@@ -66,6 +66,8 @@ interface Machine {
   price?: string;
   startTime?: string;
   endTime?: string;
+  teaFillStartQuantity?: number; // Changed from teaFillStartTime to quantity
+  teaFillEndQuantity?: number; // Changed from teaFillEndTime to quantity
   flushTimeMinutes?: number;
   mlToDispense?: number;
   status?: string;
@@ -104,6 +106,8 @@ export default function AddMachineContent() {
     price: "",
     startTime: "",
     endTime: "",
+    teaFillStartQuantity: 0, // Initialize with 0
+    teaFillEndQuantity: 0, // Initialize with 0
     flushTimeMinutes: 0,
     mlToDispense: 0,
     installedDate: undefined,
@@ -134,7 +138,10 @@ export default function AddMachineContent() {
       setMachine((prev) => ({
         ...prev,
         [name]:
-          name === "flushTimeMinutes" || name === "mlToDispense"
+          name === "flushTimeMinutes" ||
+          name === "mlToDispense" ||
+          name === "teaFillStartQuantity" ||
+          name === "teaFillEndQuantity"
             ? value === ""
               ? undefined
               : Number.parseInt(value, 10)
@@ -167,6 +174,8 @@ export default function AddMachineContent() {
           price: machine.price,
           startTime: machine.startTime,
           endTime: machine.endTime,
+          teaFillStartQuantity: machine.teaFillStartQuantity, // Updated field
+          teaFillEndQuantity: machine.teaFillEndQuantity, // Updated field
           flushTimeMinutes: machine.flushTimeMinutes,
           mlToDispense: machine.mlToDispense,
           managerName: machine.managerName,
@@ -189,6 +198,8 @@ export default function AddMachineContent() {
           price: machine.price,
           startTime: machine.startTime,
           endTime: machine.endTime,
+          teaFillStartQuantity: machine.teaFillStartQuantity, // Updated field
+          teaFillEndQuantity: machine.teaFillEndQuantity, // Updated field
           flushTimeMinutes: machine.flushTimeMinutes,
           mlToDispense: machine.mlToDispense,
           managerName: machine.managerName,
@@ -217,6 +228,8 @@ export default function AddMachineContent() {
         price: "",
         startTime: "",
         endTime: "",
+        teaFillStartQuantity: 0, // Reset with 0
+        teaFillEndQuantity: 0, // Reset with 0
         flushTimeMinutes: 0,
         mlToDispense: 0,
         installedDate: undefined,
@@ -250,6 +263,8 @@ export default function AddMachineContent() {
       },
       gisLatitude: editMachine.gisLatitude || "",
       gisLongitude: editMachine.gisLongitude || "",
+      teaFillStartQuantity: editMachine.teaFillStartQuantity ?? 0,
+      teaFillEndQuantity: editMachine.teaFillEndQuantity ?? 0,
       managerName: editMachine.managerName || "",
       contactNo: editMachine.contactNo || "",
       email: editMachine.email || "",
@@ -313,6 +328,8 @@ export default function AddMachineContent() {
                 price: "",
                 startTime: "",
                 endTime: "",
+                teaFillStartQuantity: 0, // Reset with 0
+                teaFillEndQuantity: 0, // Reset with 0
                 flushTimeMinutes: 0,
                 mlToDispense: 0,
                 installedDate: undefined,
@@ -467,6 +484,34 @@ export default function AddMachineContent() {
                       onChange={handleInputChange}
                     />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="teaFillStartQuantity">
+                      Initial Tea Fill Quantity (ml)
+                    </Label>
+                    <Input
+                      id="teaFillStartQuantity"
+                      name="teaFillStartQuantity"
+                      type="number"
+                      value={machine.teaFillStartQuantity}
+                      onChange={handleInputChange}
+                      min="0"
+                      placeholder="Initial quantity of tea to fill"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="teaFillEndQuantity">
+                      Final Tea Fill Quantity (ml)
+                    </Label>
+                    <Input
+                      id="teaFillEndQuantity"
+                      name="teaFillEndQuantity"
+                      type="number"
+                      value={machine.teaFillEndQuantity}
+                      onChange={handleInputChange}
+                      min="0"
+                      placeholder="Final quantity of tea to fill"
+                    />
+                  </div>
                 </div>
               </div>
 
@@ -478,7 +523,7 @@ export default function AddMachineContent() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label htmlFor="flushTimeMinutes">
-                      Flush Time (minutes)
+                      Flush Time (minutes)(optional)
                     </Label>
                     <Input
                       id="flushTimeMinutes"

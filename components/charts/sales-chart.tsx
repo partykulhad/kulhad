@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useMemo } from "react";
 import {
   Line,
   LineChart,
@@ -23,7 +24,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useState } from "react";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { format, subDays, startOfDay, endOfDay } from "date-fns";
 
 interface SalesData {
   date: string;
@@ -31,12 +34,57 @@ interface SalesData {
   cups: number;
 }
 
-interface SalesChartProps {
-  data: SalesData[];
-}
-
-export function SalesChart({ data }: SalesChartProps) {
+export function SalesChart() {
   const [timeRange, setTimeRange] = useState("7d");
+
+  // Fetch transactions from Convex
+  const transactions = useQuery(api.transactions.list) || [];
+
+  // Process transactions based on selected time range - using useMemo to avoid unnecessary recalculations
+  const chartData = useMemo(() => {
+    // Filter paid transactions
+    const paidTransactions = transactions.filter(
+      (transaction) => transaction.status === "paid"
+    );
+
+    const days = timeRange === "7d" ? 7 : timeRange === "14d" ? 14 : 30;
+    const today = new Date();
+
+    // Create an array of the last N days
+    const daysArray = Array.from({ length: days }, (_, i) => {
+      const date = subDays(today, days - i - 1);
+      return {
+        date: format(date, "MMM dd"),
+        timestamp: startOfDay(date).getTime(),
+        endTimestamp: endOfDay(date).getTime(),
+        sales: 0,
+        cups: 0,
+      };
+    });
+
+    // Aggregate transactions by day
+    paidTransactions.forEach((transaction) => {
+      const transactionDate = new Date(transaction.createdAt);
+
+      const dayIndex = daysArray.findIndex(
+        (day) =>
+          transactionDate >= new Date(day.timestamp) &&
+          transactionDate <= new Date(day.endTimestamp)
+      );
+
+      if (dayIndex !== -1) {
+        daysArray[dayIndex].sales += transaction.amount;
+        daysArray[dayIndex].cups += transaction.cups;
+      }
+    });
+
+    // Format data for the chart
+    return daysArray.map((day) => ({
+      date: day.date,
+      sales: Number.parseFloat(day.sales.toFixed(2)),
+      cups: day.cups,
+    }));
+  }, [timeRange, transactions]);
 
   return (
     <Card>
@@ -59,7 +107,7 @@ export function SalesChart({ data }: SalesChartProps) {
       <CardContent>
         <div className="h-[300px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={data}>
+            <LineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
               <XAxis dataKey="date" className="text-sm" />
               <YAxis yAxisId="left" className="text-sm" />

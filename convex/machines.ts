@@ -1,11 +1,11 @@
-import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { mutation, query } from "./_generated/server"
+import { v } from "convex/values"
 
 export const list = query({
   handler: async (ctx) => {
-    return await ctx.db.query("machines").collect();
+    return await ctx.db.query("machines").collect()
   },
-});
+})
 
 export const add = mutation({
   args: {
@@ -26,6 +26,8 @@ export const add = mutation({
     price: v.optional(v.string()),
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
+    teaFillStartQuantity: v.optional(v.number()), // Added new field
+    teaFillEndQuantity: v.optional(v.number()), // Added new field
     flushTimeMinutes: v.optional(v.number()),
     mlToDispense: v.optional(v.number()),
     // New fields
@@ -45,22 +47,22 @@ export const add = mutation({
       replenishmentOrder: { status: "Not required", eta: null },
       deliveryBoy: null,
       lastFulfilled: new Date().toISOString(),
-    });
-    return { id: machineId };
+    })
+    return { id: machineId }
   },
-});
+})
 
 export const toggleStatus = mutation({
   args: { id: v.id("machines") },
   handler: async (ctx, args) => {
-    const machine = await ctx.db.get(args.id);
-    if (!machine) throw new Error("Machine not found");
-    
-    const newStatus = machine.status === "online" ? "offline" : "online";
-    await ctx.db.patch(args.id, { status: newStatus });
-    return { id: args.id, status: newStatus };
+    const machine = await ctx.db.get(args.id)
+    if (!machine) throw new Error("Machine not found")
+
+    const newStatus = machine.status === "online" ? "offline" : "online"
+    await ctx.db.patch(args.id, { status: newStatus })
+    return { id: args.id, status: newStatus }
   },
-});
+})
 
 export const updateMachineData = mutation({
   args: {
@@ -70,23 +72,23 @@ export const updateMachineData = mutation({
     canisterLevel: v.number(),
   },
   handler: async (ctx, args) => {
-    const { id, temperature, rating, canisterLevel } = args;
-    const machine = await ctx.db.get(id);
-    if (!machine) throw new Error("Machine not found");
+    const { id, temperature, rating, canisterLevel } = args
+    const machine = await ctx.db.get(id)
+    if (!machine) throw new Error("Machine not found")
 
-    await ctx.db.patch(id, { temperature, rating, canisterLevel });
-    return { id, temperature, rating, canisterLevel };
+    await ctx.db.patch(id, { temperature, rating, canisterLevel })
+    return { id, temperature, rating, canisterLevel }
   },
-});
+})
 
 export const getMachineDetails = query({
   args: { id: v.id("machines") },
   handler: async (ctx, args) => {
-    const machine = await ctx.db.get(args.id);
-    if (!machine) throw new Error("Machine not found");
-    return machine;
+    const machine = await ctx.db.get(args.id)
+    if (!machine) throw new Error("Machine not found")
+    return machine
   },
-});
+})
 
 export const getMachineData = query({
   args: { machineId: v.string() },
@@ -107,6 +109,8 @@ export const getMachineData = query({
       status: machine.status,
       startTime: machine.startTime,
       endTime: machine.endTime,
+      teaFillStartQuantity: machine.teaFillStartQuantity, // Added new field
+      teaFillEndQuantity: machine.teaFillEndQuantity, // Added new field
       flushTimeMinutes: machine.flushTimeMinutes,
       mlToDispense: machine.mlToDispense,
       // Include new fields in the response
@@ -138,6 +142,8 @@ export const update = mutation({
     price: v.optional(v.string()),
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
+    teaFillStartQuantity: v.optional(v.number()), // Added new field
+    teaFillEndQuantity: v.optional(v.number()), // Added new field
     flushTimeMinutes: v.optional(v.number()),
     mlToDispense: v.optional(v.number()),
     // New fields

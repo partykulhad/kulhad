@@ -52,6 +52,8 @@ export default defineSchema({
     endTime:  v.optional(v.string()),
     flushTimeMinutes:  v.optional(v.number()),
     mlToDispense:  v.optional(v.number()),
+    teaFillStartQuantity:  v.optional(v.number()),
+    teaFillEndQuantity:  v.optional(v.number()),
     status: v.string(),
     temperature: v.number(),
     rating: v.number(),

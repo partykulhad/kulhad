@@ -203,7 +203,6 @@ export default function EditKitchenPage() {
         longitude: Number(kitchen.longitude),
         capacity: Number(kitchen.capacity),
         username: kitchen.username,
-        userId: kitchen.userId,
         password: kitchen.password,
         members: updatedMembers,
       };
@@ -418,9 +417,12 @@ export default function EditKitchenPage() {
                   id="userId"
                   name="userId"
                   value={kitchen.userId}
-                  onChange={handleInputChange}
-                  required
+                  readOnly
+                  className="bg-muted"
                 />
+                <p className="text-xs text-muted-foreground">
+                  User ID cannot be changed
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
