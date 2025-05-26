@@ -260,6 +260,28 @@ export default defineSchema({
     .index("by_customTransactionId", ["customTransactionId"]) // Add this index
     .index("by_machineId", ["machineId"])
     .index("by_status", ["status"]),
+
+    jobExecutionLogs: defineTable({
+      jobName: v.string(),
+      success: v.boolean(),
+      message: v.string(),
+      processedMachines: v.number(),
+      successfulRequests: v.number(),
+      failedRequests: v.number(),
+      totalNotificationsSent: v.number(),
+      totalNotifications: v.number(),
+      executedAt: v.number(),
+      results: v.array(
+        v.object({
+          machineId: v.string(),
+          success: v.boolean(),
+          message: v.string(),
+          requestId: v.optional(v.string()),
+          notificationsSent: v.number(),
+          totalNotifications: v.number(),
+        }),
+      ),
+    }).index("by_jobName", ["jobName"]),
 });
 
 
