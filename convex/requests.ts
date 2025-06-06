@@ -544,7 +544,7 @@ export const updateOrderReadyStatus = mutation({
         requestStatus: args.status,
         agentUserId: nearbyAgentIds,
         teaType: args.teaType,
-        quantity: args.quantity,
+        // quantity: args.quantity,
       })
 
       // Create a new record in requestStatusUpdates table
@@ -910,3 +910,23 @@ export const getByStatus = query({
   },
 })
 
+
+export const getAllActiveRequests = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get all active requests that might need delivery agents
+    // You can modify this filter based on your specific requirements
+    const activeRequests = await ctx.db
+      .query("requests")
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("requestStatus"), "Completed"),
+          q.neq(q.field("requestStatus"), "Cancelled"),
+          q.neq(q.field("requestStatus"), "No Kitchens Found"),
+        ),
+      )
+      .collect()
+
+    return activeRequests
+  },
+})

@@ -193,3 +193,17 @@ export const getByMachineId = query({
     return machineData
   },
 })
+
+
+export const getAllActiveMachines = query({
+  args: {},
+  handler: async (ctx) => {
+    // Get all active machines
+    const machines = await ctx.db
+      .query("machines")
+      .filter((q) => q.neq(q.field("status"), "offline"))
+      .collect()
+
+    return machines
+  },
+})

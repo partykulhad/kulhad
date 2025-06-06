@@ -267,3 +267,268 @@ export const getActiveAgents = query({
       .collect()
   },
 })
+
+// Helper function to calculate distance between two points
+function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
+  const R = 6371 // Radius of the Earth in km
+  const dLat = (lat2 - lat1) * (Math.PI / 180)
+  const dLon = (lon2 - lon1) * (Math.PI / 180)
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2)
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))
+  return R * c
+}
+
+// Helper function to generate custom request ID
+async function generateRequestId(ctx: any): Promise<string> {
+  const prefix = "REQ"
+  const lastRequest = await ctx.db.query("requests").order("desc").first()
+
+  let counter = 1
+  if (lastRequest && lastRequest.requestId) {
+    const lastCounter = Number.parseInt(lastRequest.requestId.split("-")[1])
+    counter = isNaN(lastCounter) ? 1 : lastCounter + 1
+  }
+
+  return `${prefix}-${counter.toString().padStart(4, "0")}`
+}
+
+export const createOrderReadyRequest = mutation({
+  args: {
+    machineId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    try {
+      // Get machine details
+      const machine = await ctx.db
+        .query("machines")
+        .filter((q) => q.eq(q.field("id"), args.machineId))
+        .first()
+
+      if (!machine) {
+        return { success: false, message: "Machine not found" }
+      }
+
+      // Check if kitchenId exists in the machine record
+      if (!machine.kitchenId) {
+        return { success: false, message: "No kitchen mapped to this machine" }
+      }
+
+      // Get the kitchenId from the machine record
+      const kitchenIds = Array.isArray(machine.kitchenId) ? machine.kitchenId : [machine.kitchenId]
+
+      // Get kitchen details
+      let kitchen = null
+      for (const kitchenId of kitchenIds) {
+        const kitchenData = await ctx.db
+          .query("kitchens")
+          .filter((q) => q.eq(q.field("userId"), kitchenId))
+          .first()
+
+        if (kitchenData && kitchenData.status === "online") {
+          kitchen = kitchenData
+          break
+        }
+      }
+
+      if (!kitchen) {
+        return { success: false, message: "No online kitchen found for this machine" }
+      }
+
+      // Get machine coordinates
+      const machineLat = Number.parseFloat(machine.gisLatitude)
+      const machineLon = Number.parseFloat(machine.gisLongitude)
+
+      if (isNaN(machineLat) || isNaN(machineLon)) {
+        return { success: false, message: "Invalid machine coordinates" }
+      }
+
+      // Get kitchen coordinates
+      const kitchenLat = kitchen.latitude
+      const kitchenLon = kitchen.longitude
+
+      if (isNaN(kitchenLat) || isNaN(kitchenLon)) {
+        return { success: false, message: "Invalid kitchen coordinates" }
+      }
+
+      // Determine quantity based on machine type
+      let quantity: number
+      if (machine.machineType === "Full Time") {
+        quantity = machine.teaFillStartQuantity || 0
+      } else if (machine.machineType === "Part Time") {
+        quantity = machine.teaFillEndQuantity || 0
+      } else {
+        // Default case for machines without specified type
+        quantity = machine.teaFillStartQuantity || 0
+      }
+
+      // Generate a request ID
+      const customRequestId = await generateRequestId(ctx)
+
+      // Current date and time in IST format
+      const currentDateTime = new Date().toLocaleString("en-IN", {
+        timeZone: "Asia/Kolkata",
+      })
+
+      // Format machine address
+      const machineAddress = machine.address
+        ? `${machine.address.building || ""}, ${machine.address.floor || ""}, ${machine.address.area || ""}, ${
+            machine.address.district || ""
+          }, ${machine.address.state || ""}`
+        : "Unknown machine address"
+
+      // Format kitchen address
+     // Format kitchen address
+const kitchenAddress = kitchen.address ? kitchen.address : "Unknown kitchen address";
+
+
+      // Create request with OrderReady status
+      // IMPORTANT: For delivery agents, the source is the kitchen and destination is the machine
+      const requestId = await ctx.db.insert("requests", {
+        requestId: customRequestId,
+        machineId: args.machineId,
+        requestStatus: "OrderReady", // Set status as OrderReady
+        kitchenStatus: "Accepted", // Kitchen has already accepted
+        agentStatus: "Pending",
+        requestDateTime: currentDateTime,
+        // Source is the kitchen
+        srcAddress: kitchenAddress,
+        srcLatitude: kitchenLat,
+        srcLongitude: kitchenLon,
+        srcContactName: kitchen.manager || "",
+        srcContactNumber: kitchen.managerMobile || "",
+        // Destination is the machine
+        dstAddress: machineAddress,
+        dstLatitude: machineLat,
+        dstLongitude: machineLon,
+        dstContactName: machine.managerName || "",
+        dstContactNumber: machine.contactNo || "",
+        kitchenUserId: kitchen.userId,
+        agentUserId: [],
+        priority: 3, // Set priority as 3 for this API call
+        quantity: quantity,
+        // teaType: machine.teaType || "Regular Tea",
+      })
+
+      // Now search for nearby delivery agents
+      // Progressive search distances: 2km, 3km, 5km, 8km, 10km
+      const searchDistances = [2, 3, 5, 8, 10]
+      let nearbyAgents: any[] = []
+      let usedDistance = 0
+
+      // Get all delivery agents
+      const deliveryAgents = await ctx.db.query("deliveryAgents").collect()
+
+      // Filter agents with valid coordinates and online status
+      const validAgents = deliveryAgents.filter((agent) => {
+        return (
+          agent.latitude !== undefined &&
+          agent.longitude !== undefined &&
+          typeof agent.latitude === "number" &&
+          typeof agent.longitude === "number" &&
+          !isNaN(agent.latitude) &&
+          !isNaN(agent.longitude) &&
+          agent.status !== "offline"
+        )
+      })
+
+      // Search in loop with increasing distances
+      for (const distance of searchDistances) {
+        console.log(`Searching for agents within ${distance}km radius of kitchen`)
+
+        nearbyAgents = validAgents.filter((agent) => {
+          // Use kitchen coordinates as source for delivery agents
+          const agentDistance = calculateDistance(
+            kitchenLat,
+            kitchenLon,
+            agent.latitude as number,
+            agent.longitude as number,
+          )
+          return agentDistance <= distance
+        })
+
+        if (nearbyAgents.length > 0) {
+          usedDistance = distance
+          console.log(`Found ${nearbyAgents.length} agents within ${distance}km radius of kitchen`)
+          break
+        } else {
+          console.log(`No agents found within ${distance}km radius of kitchen, trying next distance`)
+        }
+      }
+
+      // If no agents found after all distances
+      if (nearbyAgents.length === 0) {
+        console.log(`No delivery agents found within maximum 10km radius for request ${customRequestId}`)
+
+        // Update request with empty agent list
+        await ctx.db.patch(requestId, {
+          agentUserId: [],
+        })
+
+        return {
+          success: true,
+          message: "Request created but no delivery agents found within 10km radius",
+          requestId: customRequestId,
+          nearbyAgentIds: [],
+          searchDistance: 10,
+        }
+      }
+
+      const nearbyAgentIds = nearbyAgents.map((agent) => agent.userId)
+
+      // Update the request with the nearby agent IDs
+      await ctx.db.patch(requestId, {
+        agentUserId: nearbyAgentIds,
+      })
+
+      // Create status update records for tracking
+      for (const agentId of nearbyAgentIds) {
+        // Get agent details for address
+        const agent = nearbyAgents.find((a) => a.userId === agentId)
+
+        // Format agent address if available
+        let agentAddress = "Unknown agent location"
+        if (agent && agent.address) {
+          agentAddress = `${agent.address.building || ""}, ${agent.address.area || ""}, ${agent.address.district || ""}, ${
+            agent.address.state || ""
+          }`
+        }
+
+        await ctx.db.insert("requestStatusUpdates", {
+          requestId: customRequestId,
+          userId: agentId,
+          status: "OrderReady",
+          latitude: agent?.latitude || 0,
+          longitude: agent?.longitude || 0,
+          dateAndTime: currentDateTime,
+          isProceedNext: false,
+          message: `Delivery request sent to agent (found within ${usedDistance}km)`,
+          
+          // teaType: machine.teaType || "Regular Tea",
+          quantity: quantity,
+        })
+      }
+
+      console.log(
+        `Created request ${customRequestId} for machine ${args.machineId} with ${nearbyAgents.length} nearby delivery agents`,
+      )
+
+      return {
+        success: true,
+        message: "Request created and nearby delivery agents found",
+        requestId: customRequestId,
+        nearbyAgentIds,
+        searchDistance: usedDistance,
+      }
+    } catch (error) {
+      console.error("Error creating OrderReady request:", error)
+      return {
+        success: false,
+        message: "Internal server error",
+        requestId: null,
+        nearbyAgentIds: [],
+      }
+    }
+  },
+})

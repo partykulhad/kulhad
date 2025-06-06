@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
           data: {
             requestId: result.requestId,
             kitchenUserIds: result.kitchenUserIds,
+            quantity: result.quantity,
           },
         },
         { status: 200 },
