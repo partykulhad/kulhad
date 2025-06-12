@@ -169,7 +169,7 @@ export default function DashboardContent({
           </CardContent>
         </Card>
       </div>
-
+      Active Alerts
       {selectedMachine === "all" && (
         <Card>
           <CardHeader>
@@ -294,7 +294,7 @@ export default function DashboardContent({
               <div>
                 <h3 className="text-lg font-semibold mb-2">Temperature</h3>
                 <div className="flex items-center space-x-2">
-                  <ThermometerIcon className="h-5 w-5 text-red-500" />
+                  <ThermometerIcon className="h-5 w-5" />
                   <span>{selectedMachineData.temperature}°C</span>
                 </div>
               </div>

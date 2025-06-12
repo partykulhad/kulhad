@@ -2,11 +2,11 @@
   "crons": [
     {
       "path": "/api/scheduled-requests",
-      "schedule": "30 3 * * *"
+      "schedule": "* 5-7 * * *"
     },
     {
       "path": "/api/scheduled-delivery-agents",
-      "schedule": "30 12 * * *"
+      "schedule": "* 5-7 * * *"
     }
   ]
 }

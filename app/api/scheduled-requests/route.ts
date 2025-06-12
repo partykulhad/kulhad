@@ -26,18 +26,17 @@ async function handleScheduledRequest(req: NextRequest) {
       return NextResponse.json({ code: 404, message: "No machines found" }, { status: 404 })
     }
 
-    console.log(`Processing ${machines.length} machines for scheduled requests`)
+    console.log(`[SCHEDULED] Processing ${machines.length} machines for scheduled Priority 1 requests`)
 
     // Process each machine
     const results = await Promise.all(
       machines.map(async (machine) => {
         try {
-          console.log(`Processing machine: ${machine.id}`)
+          console.log(`[SCHEDULED] Processing machine: ${machine.id}`)
 
-          // For each machine, create a request with canisterLevel set to 0 to ensure it triggers
-          const result = await convex.mutation(api.canister.checkCanisterLevel, {
+          // Use the new scheduled request mutation that only creates Priority 1 requests
+          const result = await convex.mutation(api.canister.checkScheduledRequest, {
             machineId: machine.id,
-            canisterLevel: 0, // Force request creation
           })
 
           let notificationResults: any[] = []
@@ -45,7 +44,7 @@ async function handleScheduledRequest(req: NextRequest) {
           // Send notifications if request was created
           if (result.success && result.requestId && result.kitchenUserIds && result.kitchenUserIds.length > 0) {
             console.log(
-              `Sending notifications for request ${result.requestId} to ${result.kitchenUserIds.length} kitchen users`,
+              `[SCHEDULED] Sending notifications for Priority 1 request ${result.requestId} to ${result.kitchenUserIds.length} kitchen users`,
             )
 
             // Send notifications to all kitchen users
@@ -54,7 +53,7 @@ async function handleScheduledRequest(req: NextRequest) {
                 const userDetails = await convex.query(api.appUsers.getUserById, { userId })
 
                 if (!userDetails) {
-                  console.warn(`User details not found for userId: ${userId}`)
+                  console.warn(`[SCHEDULED] User details not found for userId: ${userId}`)
                   return {
                     userId,
                     success: false,
@@ -63,7 +62,7 @@ async function handleScheduledRequest(req: NextRequest) {
                 }
 
                 if (!userDetails.fcmToken) {
-                  console.warn(`FCM token not found for user: ${userId}`)
+                  console.warn(`[SCHEDULED] FCM token not found for user: ${userId}`)
                   return {
                     userId,
                     success: false,
@@ -73,7 +72,7 @@ async function handleScheduledRequest(req: NextRequest) {
 
                 // Validate FCM token format
                 if (!isValidFCMToken(userDetails.fcmToken)) {
-                  console.warn(`Invalid FCM token format for user: ${userId}`)
+                  console.warn(`[SCHEDULED] Invalid FCM token format for user: ${userId}`)
                   return {
                     userId,
                     success: false,
@@ -95,7 +94,7 @@ async function handleScheduledRequest(req: NextRequest) {
                   shouldRemoveToken: notificationResult.shouldRemoveToken || false,
                 }
               } catch (error) {
-                console.error(`Error processing notification for user ${userId}:`, error)
+                console.error(`[SCHEDULED] Error processing notification for user ${userId}:`, error)
                 return {
                   userId,
                   success: false,
@@ -110,25 +109,25 @@ async function handleScheduledRequest(req: NextRequest) {
             notificationResults.forEach((notificationResult) => {
               if (!notificationResult.success) {
                 console.error(
-                  `Failed to send notification to user ${notificationResult.userId}: ${notificationResult.message}`,
+                  `[SCHEDULED] Failed to send notification to user ${notificationResult.userId}: ${notificationResult.message}`,
                 )
 
-                // TODO: If shouldRemoveToken is true, you might want to update the user's FCM token in the database
                 if (notificationResult.shouldRemoveToken) {
-                  console.warn(`Consider removing invalid FCM token for user: ${notificationResult.userId}`)
+                  console.warn(`[SCHEDULED] Consider removing invalid FCM token for user: ${notificationResult.userId}`)
                 }
               } else {
-                console.log(`Successfully sent notification to user: ${notificationResult.userId}`)
+                console.log(`[SCHEDULED] Successfully sent notification to user: ${notificationResult.userId}`)
               }
             })
           } else {
-            console.log(`No notifications to send for machine ${machine.id}: ${result.message}`)
+            console.log(`[SCHEDULED] No notifications to send for machine ${machine.id}: ${result.message}`)
           }
 
           return {
             machineId: machine.id,
             success: result.success,
             requestId: result.requestId,
+            priority: result.priority || 1,
             message: result.message,
             notificationResults: notificationResults.map((nr) => ({
               userId: nr.userId,
@@ -137,11 +136,12 @@ async function handleScheduledRequest(req: NextRequest) {
             })),
           }
         } catch (error) {
-          console.error(`Error processing machine ${machine.id}:`, error)
+          console.error(`[SCHEDULED] Error processing machine ${machine.id}:`, error)
           return {
             machineId: machine.id,
             success: false,
             message: error instanceof Error ? error.message : "Unknown error",
+            priority: 1,
             notificationResults: [],
           }
         }
@@ -159,13 +159,15 @@ async function handleScheduledRequest(req: NextRequest) {
       0,
     )
 
-    console.log(`Completed processing: ${successful} successful requests, ${failed} failed requests`)
-    console.log(`Notifications: ${successfulNotifications}/${totalNotifications} successful`)
+    console.log(
+      `[SCHEDULED] Completed processing: ${successful} successful Priority 1 requests, ${failed} failed requests`,
+    )
+    console.log(`[SCHEDULED] Notifications: ${successfulNotifications}/${totalNotifications} successful`)
 
     return NextResponse.json(
       {
         code: 200,
-        message: `Processed ${results.length} machines: ${successful} successful, ${failed} failed. Notifications: ${successfulNotifications}/${totalNotifications} sent successfully.`,
+        message: `Processed ${results.length} machines for Priority 1 requests: ${successful} successful, ${failed} failed. Notifications: ${successfulNotifications}/${totalNotifications} sent successfully.`,
         data: results,
         summary: {
           totalMachines: results.length,
@@ -174,12 +176,13 @@ async function handleScheduledRequest(req: NextRequest) {
           totalNotifications,
           successfulNotifications,
           failedNotifications: totalNotifications - successfulNotifications,
+          requestType: "Priority 1 (Scheduled)",
         },
       },
       { status: 200 },
     )
   } catch (error) {
-    console.error("Exception in scheduled requests:", error)
+    console.error("[SCHEDULED] Exception in scheduled requests:", error)
     if (error instanceof Error) {
       return NextResponse.json({ code: 500, message: error.message }, { status: 500 })
     } else {
@@ -190,12 +193,12 @@ async function handleScheduledRequest(req: NextRequest) {
 
 // Handle GET requests (used by Vercel cron jobs)
 export async function GET(req: NextRequest) {
-  console.log("Cron job triggered via GET request")
+  console.log("[SCHEDULED] Cron job triggered via GET request")
   return handleScheduledRequest(req)
 }
 
 // Handle POST requests (for manual testing)
 export async function POST(req: NextRequest) {
-  console.log("Manual request triggered via POST")
+  console.log("[SCHEDULED] Manual request triggered via POST")
   return handleScheduledRequest(req)
 }

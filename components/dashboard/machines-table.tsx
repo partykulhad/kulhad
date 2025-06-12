@@ -163,16 +163,18 @@ export function MachinesTable({
                     <TableCell>
                       <Badge
                         variant={
-                          machine.temperature > 75
-                            ? "destructive"
-                            : machine.temperature < 80
+                          machine.temperature >= 80 && machine.temperature <= 83
+                            ? "default"
+                            : machine.temperature >= 79 &&
+                                machine.temperature < 80
                               ? "warning"
-                              : "default"
+                              : "destructive"
                         }
                       >
                         {machine.temperature}°C
                       </Badge>
                     </TableCell>
+
                     <TableCell>
                       <Badge
                         variant={

@@ -3,12 +3,7 @@
 import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  CoffeeIcon,
-  ThermometerIcon,
-  DropletIcon,
-  AlertCircleIcon,
-} from "lucide-react";
+import { CoffeeIcon, ThermometerIcon, DropletIcon } from "lucide-react";
 import { motion } from "framer-motion";
 import {
   Select,
@@ -22,10 +17,9 @@ import { api } from "@/convex/_generated/api";
 
 interface OverviewCardsProps {
   machines: any[];
-  alerts: { low: number; maintenance: number };
 }
 
-export function OverviewCards({ machines, alerts }: OverviewCardsProps) {
+export function OverviewCards({ machines }: OverviewCardsProps) {
   const [timeRange, setTimeRange] = useState("today");
 
   // Fetch transactions from Convex
@@ -90,7 +84,7 @@ export function OverviewCards({ machines, alerts }: OverviewCardsProps) {
       variants={container}
       initial="hidden"
       animate="show"
-      className="space-y-4"
+      className="space-y-6"
     >
       <div className="flex justify-end">
         <Select defaultValue={timeRange} onValueChange={setTimeRange}>
@@ -105,22 +99,32 @@ export function OverviewCards({ machines, alerts }: OverviewCardsProps) {
         </Select>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <motion.div variants={item}>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="hover:shadow-lg transition-all duration-300 border-0 shadow-md bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Total Machines
               </CardTitle>
-              <CoffeeIcon className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <CoffeeIcon className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{machines.length}</div>
-              <div className="flex items-center mt-1 space-x-2">
-                <Badge variant="success" className="h-auto">
+              <div className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
+                {machines.length}
+              </div>
+              <div className="flex items-center gap-2">
+                <Badge
+                  variant="secondary"
+                  className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border-0"
+                >
                   {machines.filter((m) => m.status === "online").length} Online
                 </Badge>
-                <Badge variant="secondary" className="h-auto">
+                <Badge
+                  variant="secondary"
+                  className="bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400 border-0"
+                >
                   {machines.filter((m) => m.status === "offline").length}{" "}
                   Offline
                 </Badge>
@@ -130,23 +134,25 @@ export function OverviewCards({ machines, alerts }: OverviewCardsProps) {
         </motion.div>
 
         <motion.div variants={item}>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="hover:shadow-lg transition-all duration-300 border-0 shadow-md bg-gradient-to-br from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 {timeRange === "today"
-                  ? "Total Sales Today"
+                  ? "Sales Today"
                   : timeRange === "month"
-                    ? "Total Sales This Month"
-                    : "Total Sales All Time"}
+                    ? "Sales This Month"
+                    : "Total Sales"}
               </CardTitle>
-              <DropletIcon className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                <DropletIcon className="h-5 w-5 text-green-600 dark:text-green-400" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
                 ₹{totalAmount.toFixed(2)}
               </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {totalCups} cups served{" "}
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="font-medium">{totalCups}</span> cups served{" "}
                 {timeRange === "today"
                   ? "today"
                   : timeRange === "month"
@@ -158,47 +164,27 @@ export function OverviewCards({ machines, alerts }: OverviewCardsProps) {
         </motion.div>
 
         <motion.div variants={item}>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
+          <Card className="hover:shadow-lg transition-all duration-300 border-0 shadow-md bg-gradient-to-br from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20">
+            <CardHeader className="flex flex-row items-center justify-between pb-3">
+              <CardTitle className="text-sm font-semibold text-gray-700 dark:text-gray-300">
                 Average Temperature
               </CardTitle>
-              <ThermometerIcon className="h-4 w-4 text-muted-foreground" />
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <ThermometerIcon className="h-5 w-5 text-orange-600 dark:text-orange-400" />
+              </div>
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">
+              <div className="text-3xl font-bold text-gray-900 dark:text-white mb-3">
                 {Math.round(
                   machines.reduce((acc, m) => acc + m.temperature, 0) /
                     (machines.length || 1)
                 )}
                 °C
               </div>
-              <div className="text-xs text-muted-foreground mt-1">
-                Optimal range: 80°C - 82°C
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <motion.div variants={item}>
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium">
-                Active Alerts
-              </CardTitle>
-              <AlertCircleIcon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                {alerts.low + alerts.maintenance}
-              </div>
-              <div className="flex items-center mt-1 space-x-2">
-                <Badge variant="destructive" className="h-auto">
-                  {alerts.low} Low Inventory
-                </Badge>
-                <Badge variant="warning" className="h-auto">
-                  {alerts.maintenance} Maintenance
-                </Badge>
+              <div className="text-sm text-gray-600 dark:text-gray-400">
+                <span className="text-orange-600 dark:text-orange-400 font-medium">
+                  Optimal: 80°C - 82°C
+                </span>
               </div>
             </CardContent>
           </Card>

@@ -293,6 +293,116 @@ async function generateRequestId(ctx: any): Promise<string> {
 
   return `${prefix}-${counter.toString().padStart(4, "0")}`
 }
+// Helper function to check if current time is at or after machine end time
+function isAtOrAfterEndTime(endTime: string): boolean {
+  // Get current time in IST
+  const now = new Date()
+  const istTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }))
+  const currentHour = istTime.getHours()
+  const currentMinute = istTime.getMinutes()
+  const currentTimeInMinutes = currentHour * 60 + currentMinute
+
+  console.log(
+    `Current IST time: ${currentHour}:${currentMinute.toString().padStart(2, "0")} (${currentTimeInMinutes} minutes)`,
+  )
+
+  // Parse end time (format like "18:00" or "6:00")
+  const endTimeParts = endTime.match(/(\d{1,2}):(\d{2})/)
+  if (!endTimeParts) {
+    console.error("Invalid end time format:", endTime)
+    return false
+  }
+
+  const endHour = Number.parseInt(endTimeParts[1])
+  const endMinute = Number.parseInt(endTimeParts[2])
+  const endTimeInMinutes = endHour * 60 + endMinute
+
+  console.log(`End time: ${endHour}:${endMinute.toString().padStart(2, "0")} (${endTimeInMinutes} minutes)`)
+
+  // Check if current time is at or after end time
+  const isAfterEndTime = currentTimeInMinutes >= endTimeInMinutes
+
+  console.log(`Is at or after end time: ${isAfterEndTime}`)
+
+  return isAfterEndTime
+}
+
+// Helper function to normalize date strings for comparison
+function normalizeDateString(dateStr: string): string {
+  // Try to extract day, month, year regardless of format
+  let day, month, year
+
+  // Check if it's in format "DD/M/YYYY" or "D/M/YYYY"
+  const slashFormat = /(\d{1,2})\/(\d{1,2})\/(\d{4})/
+  const slashMatch = dateStr.match(slashFormat)
+
+  if (slashMatch) {
+    day = Number.parseInt(slashMatch[1])
+    month = Number.parseInt(slashMatch[2])
+    year = Number.parseInt(slashMatch[3])
+    return `${year}-${month}-${day}` // Convert to YYYY-MM-DD for comparison
+  }
+
+  // Check if it's in format "MM-DD-YYYY HH:MM:SS am/pm"
+  const dashFormat = /(\d{1,2})-(\d{1,2})-(\d{4})/
+  const dashMatch = dateStr.match(dashFormat)
+
+  if (dashMatch) {
+    month = Number.parseInt(dashMatch[1])
+    day = Number.parseInt(dashMatch[2])
+    year = Number.parseInt(dashMatch[3])
+    return `${year}-${month}-${day}` // Convert to YYYY-MM-DD for comparison
+  }
+
+  // If we can't parse it, return the original string
+  return dateStr
+}
+
+// Helper function to get today's date in normalized format
+function getTodayNormalized(): string {
+  const now = new Date()
+  const istOptions = { timeZone: "Asia/Kolkata" }
+  const todayIST = new Date(now.toLocaleString("en-US", istOptions))
+
+  const day = todayIST.getDate()
+  const month = todayIST.getMonth() + 1
+  const year = todayIST.getFullYear()
+
+  return `${year}-${month}-${day}`
+}
+
+// Helper function to check if there's already a priority 3 request for this machine today
+async function hasPriority3RequestToday(ctx: any, machineId: string): Promise<boolean> {
+  const todayNormalized = getTodayNormalized()
+  console.log(`Checking for priority 3 requests on ${todayNormalized} for machine ${machineId}`)
+
+  // Get all requests for this machine with priority 3
+  const machineRequests = await ctx.db
+    .query("requests")
+    .filter((q: any) => q.and(q.eq(q.field("machineId"), machineId), q.eq(q.field("priority"), 3)))
+    .collect()
+
+  console.log(`Found ${machineRequests.length} priority 3 requests for machine ${machineId}`)
+
+  // Check each request to see if any were created today
+  for (const request of machineRequests) {
+    // Get the date part from requestDateTime
+    const requestDateParts = request.requestDateTime.split(",")[0].trim()
+    const normalizedRequestDate = normalizeDateString(requestDateParts)
+
+    console.log(
+      `Request ${request.requestId} date: ${requestDateParts}, normalized: ${normalizedRequestDate}, comparing with today: ${todayNormalized}`,
+    )
+
+    if (normalizedRequestDate === todayNormalized) {
+      console.log(`Found priority 3 request ${request.requestId} created today for machine ${machineId}`)
+      return true
+    }
+  }
+
+  console.log(`No priority 3 requests found today for machine ${machineId}`)
+  return false
+}
 
 export const createOrderReadyRequest = mutation({
   args: {
@@ -303,11 +413,41 @@ export const createOrderReadyRequest = mutation({
       // Get machine details
       const machine = await ctx.db
         .query("machines")
-        .filter((q) => q.eq(q.field("id"), args.machineId))
+        .filter((q: any) => q.eq(q.field("id"), args.machineId))
         .first()
 
       if (!machine) {
         return { success: false, message: "Machine not found" }
+      }
+
+      console.log(`Machine found: ${machine.name}, Type: ${machine.machineType}, End Time: ${machine.endTime}`)
+
+      // CHECK 1: Verify machine has end time and current time is at or after end time
+      if (!machine.endTime) {
+        console.log(`Machine ${args.machineId} has no end time configured`)
+        return {
+          success: false,
+          message: "Machine has no end time configured",
+        }
+      }
+
+      const isAfterEndTime = isAtOrAfterEndTime(machine.endTime)
+      if (!isAfterEndTime) {
+        console.log(`Current time is before machine end time (${machine.endTime}). Request blocked.`)
+        return {
+          success: false,
+          message: `Request not allowed before machine end time (${machine.endTime})`,
+        }
+      }
+
+      // CHECK 2: Check if there's already a priority 3 request for this machine today
+      const hasPriority3Today = await hasPriority3RequestToday(ctx, args.machineId)
+      if (hasPriority3Today) {
+        console.log(`Machine ${args.machineId} already has a priority 3 request today. Request blocked.`)
+        return {
+          success: false,
+          message: "Machine already has a priority 3 request today",
+        }
       }
 
       // Check if kitchenId exists in the machine record
@@ -323,7 +463,7 @@ export const createOrderReadyRequest = mutation({
       for (const kitchenId of kitchenIds) {
         const kitchenData = await ctx.db
           .query("kitchens")
-          .filter((q) => q.eq(q.field("userId"), kitchenId))
+          .filter((q: any) => q.eq(q.field("userId"), kitchenId))
           .first()
 
         if (kitchenData && kitchenData.status === "online") {
@@ -379,9 +519,7 @@ export const createOrderReadyRequest = mutation({
         : "Unknown machine address"
 
       // Format kitchen address
-     // Format kitchen address
-const kitchenAddress = kitchen.address ? kitchen.address : "Unknown kitchen address";
-
+      const kitchenAddress = kitchen.address ? kitchen.address : "Unknown kitchen address"
 
       // Create request with OrderReady status
       // IMPORTANT: For delivery agents, the source is the kitchen and destination is the machine
@@ -504,7 +642,6 @@ const kitchenAddress = kitchen.address ? kitchen.address : "Unknown kitchen addr
           dateAndTime: currentDateTime,
           isProceedNext: false,
           message: `Delivery request sent to agent (found within ${usedDistance}km)`,
-          
           // teaType: machine.teaType || "Regular Tea",
           quantity: quantity,
         })
