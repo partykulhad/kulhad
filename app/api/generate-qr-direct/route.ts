@@ -27,8 +27,8 @@ function rgbToRgb565(r: number, g: number, b: number): number {
   return (r5 << 11) | (g6 << 5) | b5
 }
 
-// Function to convert image buffer to RGB565 format with proper dimensions
-async function convertToRgb565(imageBuffer: Buffer): Promise<{ buffer: Buffer; width: number; height: number }> {
+// Function to convert image buffer to RGB565 format with hex array output
+async function convertToRgb565(imageBuffer: Buffer): Promise<{ hexArray: string; width: number; height: number }> {
   try {
     // Get raw RGB data from the image
     const { data, info } = await sharp(imageBuffer).raw().toBuffer({ resolveWithObject: true })
@@ -36,9 +36,7 @@ async function convertToRgb565(imageBuffer: Buffer): Promise<{ buffer: Buffer; w
     const { width, height, channels } = info
     console.log(`[DEBUG] Converting image: ${width}x${height}, channels: ${channels}`)
 
-    // Create buffer for RGB565 data (2 bytes per pixel)
-    const rgb565Buffer = Buffer.alloc(width * height * 2)
-    let bufferIndex = 0
+    const rgb565Values: string[] = []
 
     // Process each pixel
     for (let i = 0; i < data.length; i += channels) {
@@ -50,17 +48,20 @@ async function convertToRgb565(imageBuffer: Buffer): Promise<{ buffer: Buffer; w
       // Convert to RGB565
       const rgb565 = rgbToRgb565(r, g, b)
 
-      // Write as big-endian (most common for embedded displays)
-      rgb565Buffer.writeUInt16BE(rgb565, bufferIndex)
-      bufferIndex += 2
+      // Format as hex with 0x prefix and ensure 4 digits
+      const hexValue = `0x${rgb565.toString(16).toUpperCase().padStart(4, "0")}`
+      rgb565Values.push(hexValue)
     }
 
+    // Join all hex values with commas and spaces
+    const hexArray = rgb565Values.join(", ")
+
     console.log(
-      `[DEBUG] RGB565 conversion complete: ${width}x${height} = ${width * height} pixels, buffer size: ${rgb565Buffer.length} bytes`,
+      `[DEBUG] RGB565 conversion complete: ${width}x${height} = ${width * height} pixels, first few values: ${rgb565Values.slice(0, 5).join(", ")}...`,
     )
 
     return {
-      buffer: rgb565Buffer,
+      hexArray,
       width,
       height,
     }
@@ -154,7 +155,7 @@ async function extractQRCodeAsRgb565(imageUrl: string | URL | Request) {
 
       // Convert to RGB565
       const rgb565Result = await convertToRgb565(qrBuffer)
-      const rgb565Hex = rgb565Result.buffer.toString("hex")
+      const rgb565Hex = rgb565Result.hexArray
       console.log(`[DEBUG] Final buffer processing took ${Date.now() - finalBufferStartTime}ms`)
 
       console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (fallback method)`)
@@ -207,7 +208,7 @@ async function extractQRCodeAsRgb565(imageUrl: string | URL | Request) {
     const rgb565Result = await convertToRgb565(qrCodeBuffer)
     console.log(`[DEBUG] RGB565 conversion took ${Date.now() - rgb565ConversionStart}ms`)
 
-    const rgb565Hex = rgb565Result.buffer.toString("hex")
+    const rgb565Hex = rgb565Result.hexArray
     console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (primary method)`)
     return rgb565Hex
   } catch (error) {
@@ -247,7 +248,7 @@ async function extractQRCodeAsRgb565(imageUrl: string | URL | Request) {
 
       // Convert to RGB565
       const rgb565Result = await convertToRgb565(qrBuffer)
-      const rgb565Hex = rgb565Result.buffer.toString("hex")
+      const rgb565Hex = rgb565Result.hexArray
       console.log(`[DEBUG] Fallback QR extraction took ${Date.now() - fallbackStartTime}ms`)
       console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (with fallback)`)
       return rgb565Hex
@@ -264,7 +265,7 @@ async function extractQRCodeAsRgb565(imageUrl: string | URL | Request) {
 
         // Convert to RGB565
         const rgb565Result = await convertToRgb565(resizedBuffer)
-        const rgb565Hex = rgb565Result.buffer.toString("hex")
+        const rgb565Hex = rgb565Result.hexArray
         console.log(`[DEBUG] Last resort QR extraction took ${Date.now() - lastResortStartTime}ms`)
         console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (last resort)`)
         return rgb565Hex
@@ -411,7 +412,7 @@ export async function POST(request: NextRequest) {
       success: true,
       id: qrCodeId,
       imageUrl: razorpayResponse.image_url,
-      qrRgb565Data: qrRgb565Data, // Include the RGB565 data in the response
+      qrRgb565Data: qrRgb565Data, // Include the RGB565 hex array in the response
       qrImageWidth: 174, // Fixed width for QR code
       qrImageHeight: 174, // Fixed height for QR code
       qrPixelFormat: "RGB565", // Specify the pixel format
@@ -424,6 +425,7 @@ export async function POST(request: NextRequest) {
       numberOfCups,
       amountPerCup,
       transactionId: uniqueTransactionId, // Include our unique transaction ID in the response
+      qrRgb565Format: "C_ARRAY", // Specify the format type
     }
 
     // Store transaction in Convex without waiting for it to complete
