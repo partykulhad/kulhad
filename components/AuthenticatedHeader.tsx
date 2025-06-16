@@ -185,10 +185,10 @@ const Header: React.FC<HeaderProps> = ({
             <LayoutDashboardIcon className="mr-2 h-4 w-4" /> Overview
           </Button>
           <Button variant="outline" onClick={() => setActiveTab("addMachine")}>
-            <PlusCircleIcon className="mr-2 h-4 w-4" /> Add Machine
+            <PlusCircleIcon className="mr-2 h-4 w-4" /> Machine
           </Button>
           <Button variant="outline" onClick={() => setActiveTab("addKitchen")}>
-            <UserPlusIcon className="mr-2 h-4 w-4" /> Add Kitchen
+            <UserPlusIcon className="mr-2 h-4 w-4" /> Kitchen
           </Button>
           <Button
             variant="outline"

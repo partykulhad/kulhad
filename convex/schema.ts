@@ -45,6 +45,8 @@ export default defineSchema({
     email: v.optional(v.string()),
     machineType: v.optional(v.string()),
     breakTime: v.optional(v.string()),
+    breakStart: v.optional(v.string()),
+    breakEnd: v.optional(v.string()),
     gisLatitude: v.string(),
     gisLongitude: v.string(),
     price: v.optional(v.string()),
@@ -197,6 +199,16 @@ export default defineSchema({
     agentStatus: v.optional(v.string()),
     requestStatus: v.string(),
     requestDateTime: v.string(),
+    acceptedAt: v.optional(v.string()),
+    assignedAt: v.optional(v.string()),
+    pickedUpAt: v.optional(v.string()),
+    ongoingAt: v.optional(v.string()),
+    refilledAt: v.optional(v.string()),
+    submittedAt: v.optional(v.string()),
+    orderReady: v.optional(v.string()),
+    cancelledAt: v.optional(v.string()),
+    completedAt: v.optional(v.string()),
+    lastUpdatedAt: v.optional(v.string()),
     srcAddress: v.optional(v.string()),
     priority: v.optional(v.number()),
     srcLatitude: v.optional(v.number()),
@@ -282,6 +294,15 @@ export default defineSchema({
         }),
       ),
     }).index("by_jobName", ["jobName"]),
+
+     // Add a table to track cron job executions (optional)
+  cronJobLogs: defineTable({
+    jobName: v.string(),
+    executedAt: v.string(),
+    status: v.string(), // "success" | "failed"
+    message: v.string(),
+    details: v.optional(v.any()),
+  }).index("by_jobName", ["jobName"]),
 });
 
 

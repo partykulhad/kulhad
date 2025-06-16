@@ -82,6 +82,8 @@ interface Machine {
   email?: string;
   machineType?: string;
   breakTime?: string;
+  breakStart?: string;
+  breakEnd?: string;
 }
 
 export default function AddMachineContent() {
@@ -115,7 +117,8 @@ export default function AddMachineContent() {
     contactNo: "",
     email: "",
     machineType: "Full Time",
-    breakTime: "",
+    breakStart: "",
+    breakEnd: "",
   });
 
   const machines = useQuery(api.machines.list) || [];
@@ -183,6 +186,8 @@ export default function AddMachineContent() {
           email: machine.email,
           machineType: machine.machineType,
           breakTime: machine.breakTime,
+          breakStart: machine.breakStart,
+          breakEnd: machine.breakEnd,
         });
         toast.success("Machine updated successfully");
       } else {
@@ -207,6 +212,8 @@ export default function AddMachineContent() {
           email: machine.email,
           machineType: machine.machineType,
           breakTime: machine.breakTime,
+          breakStart: machine.breakStart,
+          breakEnd: machine.breakEnd,
         });
         toast.success(`Machine added successfully with ID: ${result.id}`);
       }
@@ -598,16 +605,36 @@ export default function AddMachineContent() {
                       <option value="Peek Time">Peek Time</option>
                     </select>
                   </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label htmlFor="breakTime">Break Time</Label>
-                    <Input
-                      id="breakTime"
-                      name="breakTime"
-                      value={machine.breakTime}
-                      onChange={handleInputChange}
-                      placeholder="e.g. 1 PM to 5 PM"
-                    />
-                  </div>
+
+                  {machine.machineType === "Peek Time" && (
+                    <div className="space-y-2 md:col-span-2">
+                      <Label>Break Time</Label>
+                      <div className="flex gap-4">
+                        <div className="flex flex-col space-y-1">
+                          <Label htmlFor="breakStart">From</Label>
+                          <input
+                            type="time"
+                            id="breakStart"
+                            name="breakStart"
+                            value={machine.breakStart || ""}
+                            onChange={handleInputChange}
+                            className="h-10 px-3 rounded-md border border-input text-sm"
+                          />
+                        </div>
+                        <div className="flex flex-col space-y-1">
+                          <Label htmlFor="breakEnd">To</Label>
+                          <input
+                            type="time"
+                            id="breakEnd"
+                            name="breakEnd"
+                            value={machine.breakEnd || ""}
+                            onChange={handleInputChange}
+                            className="h-10 px-3 rounded-md border border-input text-sm"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
 

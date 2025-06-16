@@ -121,7 +121,7 @@ export const updateKitchenStatus = mutation({
       kitchenStatus: status,
       kitchenUserId: userId,
       requestStatus: status,
-      requestDateTime: dateAndTime,
+      acceptedAt: dateAndTime,
       reason: reason,
     }
 
@@ -217,7 +217,7 @@ export const updateAgentStatus = mutation({
         agentStatus: status,
         agentUserId: userId,
         requestStatus: status,
-        requestDateTime: dateAndTime,
+        assignedAt: dateAndTime,
         reason: reason,
       }
 
@@ -316,7 +316,7 @@ export const updateRequestStatus = mutation({
     // Update the requestStatus in the requests table
     await ctx.db.patch(currentRequest._id, {
       requestStatus: status,
-      requestDateTime: dateAndTime,
+      refilledAt: dateAndTime,
     })
 
     // Create a status update record
@@ -399,7 +399,7 @@ export const updateCompleteOrCancel = mutation({
     // Update the request status
     await ctx.db.patch(currentRequest._id, { 
       requestStatus: newStatus,
-      requestDateTime: dateAndTime,
+      completedAt: dateAndTime,
       reason: !isProceedNext ? reason : undefined // Store reason only for cancellation
     });
 
@@ -456,7 +456,8 @@ export const updateSubmitStatus = mutation({
       }
 
       await ctx.db.patch(request._id, {
-        requestStatus: args.status
+        requestStatus: args.status,
+        submittedAt: args.dateAndTime
       });
 
       // Then, create a new record in requestStatusUpdates table
@@ -544,6 +545,7 @@ export const updateOrderReadyStatus = mutation({
         requestStatus: args.status,
         agentUserId: nearbyAgentIds,
         teaType: args.teaType,
+        orderReady: args.dateAndTime
         // quantity: args.quantity,
       })
 

@@ -29,6 +29,8 @@ interface Request {
   teaType?: string;
   quantity?: number;
   reason?: string;
+  orderReady?: string;
+  acceptedAt?: string;
 }
 
 interface RequestStatusUpdate {
@@ -135,6 +137,8 @@ export function RequestsTable({
             <TableHead>Tea Type</TableHead>
             <TableHead>Quantity</TableHead>
             <TableHead>Delivery Agent</TableHead>
+            <TableHead>AcceptedAt</TableHead>
+            <TableHead>orderReadyAt</TableHead>
             {showCancelReason && <TableHead>Cancel Reason</TableHead>}
             <TableHead>Actions</TableHead>
           </TableRow>
@@ -163,6 +167,8 @@ export function RequestsTable({
                 <TableCell>
                   {request.assignRefillerName || "Not assigned"}
                 </TableCell>
+                <TableCell>{request.acceptedAt} </TableCell>
+                <TableCell>{request.orderReady} </TableCell>
                 {showCancelReason && (
                   <TableCell>{getCancelReason(request.requestId)}</TableCell>
                 )}

@@ -265,17 +265,15 @@ export default function OverviewTab({ agentId, agent }: OverviewTabProps) {
 
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">
-              Performance Rating
-            </CardTitle>
+            <CardTitle className="text-sm font-medium">Performance</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center">
+            {/* <div className="flex items-center">
               <Star className="h-5 w-5 mr-2 text-yellow-500" />
               <span className="text-2xl font-bold">
                 {performanceMetrics.avgRating.toFixed(1)}/5.0
               </span>
-            </div>
+            </div> */}
             <div className="flex items-center mt-2">
               <Timer className="h-5 w-5 mr-2 text-blue-500" />
               <span className="text-xl font-medium">

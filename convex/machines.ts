@@ -23,6 +23,7 @@ export const add = mutation({
     }),
     gisLatitude: v.string(),
     gisLongitude: v.string(),
+
     price: v.optional(v.string()),
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
@@ -36,6 +37,8 @@ export const add = mutation({
     email: v.optional(v.string()),
     machineType: v.optional(v.string()),
     breakTime: v.optional(v.string()),
+    breakStart: v.optional(v.string()),
+    breakEnd: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const machineId = await ctx.db.insert("machines", {
@@ -152,6 +155,8 @@ export const update = mutation({
     email: v.optional(v.string()),
     machineType: v.optional(v.string()),
     breakTime: v.optional(v.string()),
+    breakStart: v.optional(v.string()),
+    breakEnd: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { machineId, ...updates } = args
