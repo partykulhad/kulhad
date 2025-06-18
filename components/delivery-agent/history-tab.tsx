@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import {
@@ -21,6 +21,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { Label } from "@/components/ui/label";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   LineChart,
   Line,
@@ -33,14 +40,21 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts";
-import { History, Loader2, X } from "lucide-react";
-import { formatDate } from "@/lib/format";
+import { History, Loader2, X, CalendarIcon, Filter } from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+import { formatDateTime } from "@/lib/formatDateTime";
 
 interface HistoryTabProps {
   agentId: string;
 }
 
 export default function HistoryTab({ agentId }: HistoryTabProps) {
+  // Date filter state
+  const [fromDate, setFromDate] = useState<Date>();
+  const [toDate, setToDate] = useState<Date>();
+  const [showFilters, setShowFilters] = useState(false);
+
   // Fetch order history for this agent using the combined API
   const orderHistory =
     useQuery(api.requests.getMyOrdersHistory, { userId: agentId }) || [];
@@ -48,16 +62,53 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
   // Loading state
   const isLoading = orderHistory === undefined;
 
-  // Filter completed and cancelled orders
-  const completedDeliveries = useMemo(() => {
+  // Helper function to check if a date is within the selected range
+  const isDateInRange = (dateString: string | null) => {
+    if (!dateString) return false;
+    if (!fromDate && !toDate) return true;
+
+    const date = new Date(dateString);
+    const from = fromDate ? new Date(fromDate.setHours(0, 0, 0, 0)) : null;
+    const to = toDate ? new Date(toDate.setHours(23, 59, 59, 999)) : null;
+
+    if (from && to) {
+      return date >= from && date <= to;
+    } else if (from) {
+      return date >= from;
+    } else if (to) {
+      return date <= to;
+    }
+
+    return true;
+  };
+
+  // Filter orders based on date range
+  const filteredOrderHistory = useMemo(() => {
     if (isLoading) return [];
-    return orderHistory.filter((order) => order.requestStatus === "Completed");
-  }, [orderHistory, isLoading]);
+
+    return orderHistory.filter((order) => {
+      // Check multiple date fields for filtering
+      return (
+        isDateInRange(order.requestDateTime) ||
+        isDateInRange(order.assignedAt) ||
+        isDateInRange(order.completedAt) ||
+        isDateInRange(order.cancelledAt)
+      );
+    });
+  }, [orderHistory, fromDate, toDate, isLoading]);
+
+  // Filter completed and cancelled orders from filtered data
+  const completedDeliveries = useMemo(() => {
+    return filteredOrderHistory.filter(
+      (order) => order.requestStatus === "Completed"
+    );
+  }, [filteredOrderHistory]);
 
   const cancelledDeliveries = useMemo(() => {
-    if (isLoading) return [];
-    return orderHistory.filter((order) => order.requestStatus === "Cancelled");
-  }, [orderHistory, isLoading]);
+    return filteredOrderHistory.filter(
+      (order) => order.requestStatus === "Cancelled"
+    );
+  }, [filteredOrderHistory]);
 
   // Generate monthly performance data
   const monthlyPerformance = useMemo(() => {
@@ -81,11 +132,9 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
     ];
     const currentMonth = new Date().getMonth();
 
-    // Create data for the last 6 months
     return months
       .slice(Math.max(0, currentMonth - 5), currentMonth + 1)
       .map((month, index) => {
-        // Filter deliveries for this month
         const monthDeliveries = completedDeliveries.filter((delivery) => {
           const deliveryDate = new Date(delivery.requestDateTime || "");
           return (
@@ -93,9 +142,7 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
           );
         });
 
-        // Calculate total distance (assuming we have this data)
         const distance = monthDeliveries.reduce((sum, delivery) => {
-          // Use a default distance if not available
           const deliveryDistance =
             typeof delivery.totalDistance === "number"
               ? delivery.totalDistance
@@ -115,16 +162,13 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
   const timeDistribution = useMemo(() => {
     const timeSlots = ["8AM", "10AM", "12PM", "2PM", "4PM", "6PM", "8PM"];
 
-    // If we have no completed deliveries, return placeholder data
     if (isLoading || completedDeliveries.length === 0) {
       return timeSlots.map((time) => ({ time, deliveries: 0 }));
     }
 
-    // Count deliveries by time slot
     const deliveriesByTime = timeSlots.map((time) => {
       let count = 0;
 
-      // This is a simplified approach - in a real app, you'd parse the actual times
       switch (time) {
         case "8AM":
           count = Math.round(completedDeliveries.length * 0.1);
@@ -155,6 +199,12 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
     return deliveriesByTime;
   }, [completedDeliveries, isLoading]);
 
+  // Clear filters function
+  const clearFilters = () => {
+    setFromDate(undefined);
+    setToDate(undefined);
+  };
+
   if (isLoading) {
     return (
       <div className="flex justify-center items-center h-64">
@@ -166,10 +216,113 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
 
   return (
     <div className="space-y-6">
+      {/* Filter Section */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Filter className="h-5 w-5" />
+                Filters
+              </CardTitle>
+              <CardDescription>Filter orders by date range</CardDescription>
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowFilters(!showFilters)}
+            >
+              {showFilters ? "Hide Filters" : "Show Filters"}
+            </Button>
+          </div>
+        </CardHeader>
+        {showFilters && (
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-end">
+              <div className="space-y-2">
+                <Label htmlFor="from-date">From Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !fromDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {fromDate ? format(fromDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={fromDate}
+                      onSelect={setFromDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="to-date">To Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !toDate && "text-muted-foreground"
+                      )}
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {toDate ? format(toDate, "PPP") : "Pick a date"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0">
+                    <Calendar
+                      mode="single"
+                      selected={toDate}
+                      onSelect={setToDate}
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={clearFilters}
+                  disabled={!fromDate && !toDate}
+                >
+                  Clear Filters
+                </Button>
+              </div>
+            </div>
+
+            {(fromDate || toDate) && (
+              <div className="mt-4 p-3 bg-muted rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  Showing {filteredOrderHistory.length} orders
+                  {fromDate && ` from ${format(fromDate, "PPP")}`}
+                  {toDate && ` to ${format(toDate, "PPP")}`}
+                </p>
+              </div>
+            )}
+          </CardContent>
+        )}
+      </Card>
+
       <Tabs defaultValue="completed">
         <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="completed">Completed Deliveries</TabsTrigger>
-          <TabsTrigger value="cancelled">Cancelled Requests</TabsTrigger>
+          <TabsTrigger value="completed">
+            Completed Deliveries ({completedDeliveries.length})
+          </TabsTrigger>
+          <TabsTrigger value="cancelled">
+            Cancelled Requests ({cancelledDeliveries.length})
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="completed" className="mt-6">
@@ -188,7 +341,13 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
                       <TableRow>
                         <TableHead>Request ID</TableHead>
                         <TableHead>Machine ID</TableHead>
-                        <TableHead>Completed Date</TableHead>
+                        <TableHead>Assigned At</TableHead>
+                        <TableHead>Picked Up At</TableHead>
+                        <TableHead>Ongoing At</TableHead>
+                        <TableHead>Refilled At</TableHead>
+                        <TableHead>Submitted At</TableHead>
+                        <TableHead>Order Ready</TableHead>
+                        <TableHead>Completed At</TableHead>
                         <TableHead>Destination</TableHead>
                         <TableHead>Tea Type</TableHead>
                         <TableHead>Status</TableHead>
@@ -201,7 +360,39 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
                           <TableCell>{delivery.requestId}</TableCell>
                           <TableCell>{delivery.machineId}</TableCell>
                           <TableCell>
-                            {formatDate(delivery.requestDateTime || undefined)}
+                            {delivery.assignedAt
+                              ? formatDateTime(delivery.assignedAt)
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {delivery.pickedUpAt
+                              ? formatDateTime(delivery.pickedUpAt)
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {delivery.ongoingAt
+                              ? formatDateTime(delivery.ongoingAt)
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {delivery.refilledAt
+                              ? formatDateTime(delivery.refilledAt)
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {delivery.submittedAt
+                              ? formatDateTime(delivery.submittedAt)
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {delivery.orderReady
+                              ? formatDateTime(delivery.orderReady)
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {delivery.completedAt
+                              ? formatDateTime(delivery.completedAt)
+                              : "N/A"}
                           </TableCell>
                           <TableCell className="max-w-[200px] truncate">
                             {delivery.dstAddress || "N/A"}
@@ -229,7 +420,9 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
                     No Completed Deliveries
                   </h3>
                   <p className="text-muted-foreground">
-                    This delivery agent hasn't completed any deliveries yet.
+                    {fromDate || toDate
+                      ? "No deliveries found for the selected date range."
+                      : "This delivery agent hasn't completed any deliveries yet."}
                   </p>
                 </div>
               )}
@@ -389,7 +582,10 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
                       <TableRow>
                         <TableHead>Request ID</TableHead>
                         <TableHead>Machine ID</TableHead>
-                        <TableHead>Cancelled Date</TableHead>
+                        <TableHead>Assigned At</TableHead>
+                        <TableHead>Picked Up At</TableHead>
+                        <TableHead>Ongoing At</TableHead>
+                        <TableHead>Cancelled At</TableHead>
                         <TableHead>Destination</TableHead>
                         <TableHead>Reason</TableHead>
                         <TableHead>Status</TableHead>
@@ -402,7 +598,24 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
                           <TableCell>{delivery.requestId}</TableCell>
                           <TableCell>{delivery.machineId}</TableCell>
                           <TableCell>
-                            {formatDate(delivery.requestDateTime || undefined)}
+                            {delivery.assignedAt
+                              ? formatDateTime(delivery.assignedAt)
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {delivery.pickedUpAt
+                              ? formatDateTime(delivery.pickedUpAt)
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {delivery.ongoingAt
+                              ? formatDateTime(delivery.ongoingAt)
+                              : "N/A"}
+                          </TableCell>
+                          <TableCell>
+                            {delivery.cancelledAt
+                              ? formatDateTime(delivery.cancelledAt)
+                              : "N/A"}
                           </TableCell>
                           <TableCell className="max-w-[200px] truncate">
                             {delivery.dstAddress || "N/A"}
@@ -433,7 +646,9 @@ export default function HistoryTab({ agentId }: HistoryTabProps) {
                     No Cancelled Requests
                   </h3>
                   <p className="text-muted-foreground">
-                    This delivery agent hasn't cancelled any requests yet.
+                    {fromDate || toDate
+                      ? "No cancelled requests found for the selected date range."
+                      : "This delivery agent hasn't cancelled any requests yet."}
                   </p>
                 </div>
               )}

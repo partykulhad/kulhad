@@ -764,6 +764,15 @@ export const getMyOrdersHistory = query({
           assignRefillerContactNumber: null,
           cancellationReason: update.reason || null,
           totalDistance: order.totalDistance || null,
+          assignedAt: order.assignedAt || null,
+          pickedUpAt: order.pickedUpAt || null,
+          ongoingAt: order.ongoingAt || null,
+          refilledAt: order.refilledAt || null,
+          submittedAt: order.submittedAt || null,
+          orderReady: order.orderReady || null,
+          completedAt: order.completedAt || null,
+          cancelledAt: order.cancelledAt || null,
+
         };
       })
     );
@@ -802,6 +811,14 @@ export const getMyOrdersHistory = query({
           assgnRefillerName: order.assignRefillerName || null,
           assignRefillerContactNumber: order.assignRefillerContactNumber || null,
           totalDistance: order.totalDistance || null,
+          assignedAt: order.assignedAt || null,
+          pickedUpAt: order.pickedUpAt || null,
+          ongoingAt: order.ongoingAt || null,
+          refilledAt: order.refilledAt || null,
+          submittedAt: order.submittedAt || null,
+          orderReady: order.orderReady || null,
+          completedAt: order.completedAt || null,
+          cancelledAt: order.cancelledAt || null,
         };
       })
     );

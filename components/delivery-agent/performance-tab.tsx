@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
-import { format, subDays } from "date-fns";
+import { format, subDays, isValid } from "date-fns";
 import {
   Card,
   CardContent,
@@ -96,17 +96,21 @@ export default function PerformanceTab({ agentId }: PerformanceTabProps) {
     // Count deliveries by time period
     const deliveriesToday = completedDeliveries.filter((delivery) => {
       const deliveryDate = parseRequestDate(delivery.requestDateTime);
-      return deliveryDate && isToday(deliveryDate);
+      return deliveryDate && isValid(deliveryDate) && isToday(deliveryDate);
     }).length;
 
     const deliveriesThisWeek = completedDeliveries.filter((delivery) => {
       const deliveryDate = parseRequestDate(delivery.requestDateTime);
-      return deliveryDate && deliveryDate >= oneWeekAgo;
+      return (
+        deliveryDate && isValid(deliveryDate) && deliveryDate >= oneWeekAgo
+      );
     }).length;
 
     const deliveriesThisMonth = completedDeliveries.filter((delivery) => {
       const deliveryDate = parseRequestDate(delivery.requestDateTime);
-      return deliveryDate && deliveryDate >= oneMonthAgo;
+      return (
+        deliveryDate && isValid(deliveryDate) && deliveryDate >= oneMonthAgo
+      );
     }).length;
 
     // Group deliveries by day for the past week
@@ -122,7 +126,7 @@ export default function PerformanceTab({ agentId }: PerformanceTabProps) {
 
     completedDeliveries.forEach((delivery) => {
       const deliveryDate = parseRequestDate(delivery.requestDateTime);
-      if (!deliveryDate) return;
+      if (!deliveryDate || !isValid(deliveryDate)) return;
 
       const dateKey = format(deliveryDate, "yyyy-MM-dd");
 

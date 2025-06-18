@@ -281,7 +281,7 @@ export default function OverviewTab({ agentId, agent }: OverviewTabProps) {
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Average rating and delivery time
+              Average delivery time
             </p>
           </CardContent>
         </Card>
