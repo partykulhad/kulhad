@@ -405,6 +405,9 @@ export const checkCanisterLevel = mutation({
         agentUserId: "",
         priority: priority,
         quantity: quantity,
+        dstContactNumber:machine.contactNo,
+        dstContactName:machine.managerName,
+
       })
 
       return {
@@ -441,6 +444,9 @@ export const checkCanisterLevel = mutation({
       agentUserId: "",
       priority: priority,
       quantity: quantity,
+      dstContactNumber:machine.contactNo,
+      dstContactName:machine.managerName,
+      
     })
 
     // Store mapped kitchens in requestStatusUpdates
@@ -622,6 +628,8 @@ export const checkScheduledRequest = mutation({
         agentUserId: "",
         priority: priority,
         quantity: quantity,
+        dstContactNumber:machine.contactNo,
+        dstContactName:machine.managerName,
       })
 
       return {
@@ -658,6 +666,8 @@ export const checkScheduledRequest = mutation({
       agentUserId: "",
       priority: priority,
       quantity: quantity,
+      dstContactNumber:machine.contactNo,
+        dstContactName:machine.managerName,
     })
 
     // Store mapped kitchens in requestStatusUpdates
