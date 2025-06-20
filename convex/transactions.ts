@@ -175,7 +175,6 @@ export const getTransactionsByStatus = query({
   },
 })
 
-
 // Get all transactions
 export const list = query({
   handler: async (ctx) => {
@@ -235,5 +234,15 @@ export const getByCustomTransactionId = query({
       .query("transactions")
       .withIndex("by_customTransactionId", (q) => q.eq("customTransactionId", customTransactionId))
       .first()
+  },
+})
+
+// Get active transactions (needed for the backup expiry check script)
+export const getActiveTransactions = query({
+  handler: async (ctx) => {
+    return await ctx.db
+      .query("transactions")
+      .withIndex("by_status", (q) => q.eq("status", "active"))
+      .collect()
   },
 })
