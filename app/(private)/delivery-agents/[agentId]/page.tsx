@@ -83,7 +83,7 @@ export default function DeliveryAgentDetailsPage() {
           >
             Edit Agent
           </Button>
-          <Button>Assign Request</Button>
+          {/* <Button>Assign Request</Button> */}
         </div>
       </div>
 

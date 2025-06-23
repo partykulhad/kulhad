@@ -195,7 +195,7 @@ export default function KitchenDetailsPage() {
           >
             Edit Kitchen
           </Button>
-          <Button>Assign Request</Button>
+          {/* <Button>Assign Request</Button> */}
         </div>
       </div>
 
