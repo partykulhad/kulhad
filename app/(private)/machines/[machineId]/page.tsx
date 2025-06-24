@@ -175,7 +175,7 @@ export default function MachineDetailsPage() {
           >
             Edit Machine
           </Button>
-          <Button>Request Refill</Button>
+          {/* <Button>Request Refill</Button> */}
         </div>
       </div>
 

@@ -50,6 +50,8 @@ import {
   isToday,
 } from "@/lib/format";
 
+import { formatDateTime } from "@/lib/formatDateTime";
+
 interface OverviewTabProps {
   agentId: string;
   agent: any;
@@ -370,7 +372,7 @@ export default function OverviewTab({ agentId, agent }: OverviewTabProps) {
               <Calendar className="h-5 w-5 mr-3 text-blue-500" />
               <div>
                 <p className="text-sm font-medium">Starting Date</p>
-                <p className="text-lg">{formatDate(agent.startingDate)}</p>
+                <p className="text-lg">{formatDateTime(agent.startingDate)}</p>
               </div>
             </div>
             <div className="flex items-center">
@@ -481,7 +483,7 @@ export default function OverviewTab({ agentId, agent }: OverviewTabProps) {
                       <TableCell>{delivery.requestId}</TableCell>
                       <TableCell>{delivery.machineId}</TableCell>
                       <TableCell>
-                        {formatDate(delivery.requestDateTime)}
+                        {formatDateTime(delivery.requestDateTime)}
                       </TableCell>
                       <TableCell>
                         {delivery.totalDistance

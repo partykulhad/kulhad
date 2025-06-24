@@ -396,7 +396,9 @@ export function RequestsTable({
                     </TableCell>
                     <TableCell>{request.machineId}</TableCell>
                     <TableCell>
-                      {formatDateTime(request.requestDateTime)}
+                      {request.requestDateTime
+                        ? formatDateTime(request.requestDateTime)
+                        : "N/A"}
                     </TableCell>
                     <TableCell>
                       <Badge

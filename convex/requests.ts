@@ -313,11 +313,30 @@ export const updateRequestStatus = mutation({
       return { success: false, message: "Request not found" }
     }
 
-    // Update the requestStatus in the requests table
-    await ctx.db.patch(currentRequest._id, {
+    // Prepare the update object based on status
+    let updateFields: any = {
       requestStatus: status,
-      refilledAt: dateAndTime,
-    })
+    }
+
+    // Conditionally add timestamp fields based on status
+    switch (status) {
+      case "Refilled":
+        updateFields.refilledAt = dateAndTime
+        break
+      case "Ongoing":
+        updateFields.ongoingAt = dateAndTime
+        break
+      case "PickedUp":
+        updateFields.pickedUpAt = dateAndTime
+        break
+      default:
+        // For any other status, you might want to add a generic timestamp
+        // or handle it differently based on your requirements
+        break
+    }
+
+    // Update the request with the appropriate fields
+    await ctx.db.patch(currentRequest._id, updateFields)
 
     // Create a status update record
     await ctx.db.insert("requestStatusUpdates", {
@@ -331,7 +350,7 @@ export const updateRequestStatus = mutation({
       reason,
     })
 
-    // If the status is "completed", update the lastFulfilled field in the machines table
+    // If the status is "Refilled", update the lastFulfilled field in the machines table
     if (status === "Refilled" && currentRequest.machineId) {
       // Find the machine with this machineId
       const machine = await ctx.db
