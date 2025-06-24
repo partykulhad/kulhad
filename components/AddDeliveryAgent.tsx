@@ -20,21 +20,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { Calendar } from "@/components/ui/calendar";
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
-  CalendarIcon,
-  PlusIcon,
-  Pencil,
-  Trash2,
-  ExternalLink,
-} from "lucide-react";
-import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { PlusIcon, Pencil, Trash2, ExternalLink } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -51,9 +37,8 @@ interface DeliveryAgent {
   email: string;
   adhaar: string;
   address: string;
-  uid: string;
-  userId: string;
-  startingDate: string;
+  userId?: string; // Optional since it's auto-generated
+  startingDate?: string; // Optional since it's auto-generated
   company: string;
   pan: string;
   photoStorageId?: string;
@@ -70,9 +55,6 @@ export default function AddDeliveryAgent() {
     email: "",
     adhaar: "",
     address: "",
-    uid: "",
-    userId: "",
-    startingDate: "",
     company: "",
     pan: "",
     photo: null,
@@ -81,7 +63,6 @@ export default function AddDeliveryAgent() {
   });
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isCalendarOpen, setIsCalendarOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
 
   const addDeliveryAgent = useMutation(api.deliveryAgents.add);
@@ -108,16 +89,25 @@ export default function AddDeliveryAgent() {
     }
   };
 
-  const handleDateSelect = (date: Date | undefined) => {
-    setAgent((prev) => ({
-      ...prev,
-      startingDate: date ? date.toISOString() : "",
-    }));
-    setIsCalendarOpen(false);
+  const resetForm = () => {
+    setAgent({
+      name: "",
+      mobile: "",
+      email: "",
+      adhaar: "",
+      address: "",
+      company: "",
+      pan: "",
+      photo: null,
+      username: "",
+      password: "",
+    });
+    setIsEditing(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
     try {
       let photoStorageId = agent.photoStorageId;
 
@@ -138,14 +128,12 @@ export default function AddDeliveryAgent() {
         email: agent.email,
         adhaar: agent.adhaar,
         address: agent.address,
-        uid: agent.uid,
-        userId: agent.userId,
-        startingDate: agent.startingDate,
         company: agent.company,
         pan: agent.pan,
         photoStorageId,
         username: agent.username,
         password: agent.password,
+        // Note: startingDate is not included - it will be auto-generated on the backend
       };
 
       if (isEditing && agent._id) {
@@ -153,37 +141,28 @@ export default function AddDeliveryAgent() {
         toast.success("Delivery agent updated successfully");
       } else {
         await addDeliveryAgent(agentData);
-        toast.success("Delivery agent added successfully");
+        toast.success(
+          "Delivery agent added successfully with current date and time"
+        );
       }
 
-      setAgent({
-        name: "",
-        mobile: "",
-        email: "",
-        adhaar: "",
-        address: "",
-        uid: "",
-        userId: "",
-        startingDate: "",
-        company: "",
-        pan: "",
-        photo: null,
-        username: "",
-        password: "",
-      });
+      resetForm();
       setIsDialogOpen(false);
-      setIsEditing(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error adding/editing delivery agent:", error);
-      toast.error("Failed to add/edit delivery agent. Please try again.");
+      toast.error(
+        error.message || "Failed to add/edit delivery agent. Please try again."
+      );
     }
   };
 
-  const handleEdit = (editAgent: DeliveryAgent) => {
+  const handleEdit = (editAgent: any) => {
     setAgent({
       ...editAgent,
       photo: null,
+      password: "", // Don't pre-fill password for security
     });
+
     setIsEditing(true);
     setIsDialogOpen(true);
   };
@@ -195,15 +174,22 @@ export default function AddDeliveryAgent() {
       try {
         await removeDeliveryAgent({ id });
         toast.success("Delivery agent deleted successfully");
-      } catch (error) {
+      } catch (error: any) {
         console.error("Error deleting delivery agent:", error);
-        toast.error("Failed to delete delivery agent. Please try again.");
+        toast.error(
+          error.message || "Failed to delete delivery agent. Please try again."
+        );
       }
     }
   };
 
-  const navigateToAgentDetails = (agent: DeliveryAgent) => {
+  const navigateToAgentDetails = (agent: any) => {
     router.push(`/delivery-agents/${agent.userId}`);
+  };
+
+  const formatDisplayDate = (dateString: string) => {
+    if (!dateString) return "Not set";
+    return dateString; // Since it's already formatted from the backend
   };
 
   return (
@@ -215,22 +201,7 @@ export default function AddDeliveryAgent() {
           onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) {
-              setIsEditing(false);
-              setAgent({
-                name: "",
-                mobile: "",
-                email: "",
-                adhaar: "",
-                address: "",
-                uid: "",
-                userId: "",
-                startingDate: "",
-                company: "",
-                pan: "",
-                photo: null,
-                username: "",
-                password: "",
-              });
+              resetForm();
             }
           }}
         >
@@ -240,19 +211,20 @@ export default function AddDeliveryAgent() {
               Add New Delivery Agent
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>
                 {isEditing ? "Edit Delivery Agent" : "Add New Delivery Agent"}
               </DialogTitle>
               <DialogDescription>
-                Enter the details of the delivery agent here.
+                Enter the details of the delivery agent here. User ID and
+                starting date will be set automatically.
               </DialogDescription>
             </DialogHeader>
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">Name</Label>
+                  <Label htmlFor="name">Name *</Label>
                   <Input
                     id="name"
                     name="name"
@@ -262,7 +234,7 @@ export default function AddDeliveryAgent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="mobile">Mobile</Label>
+                  <Label htmlFor="mobile">Mobile *</Label>
                   <Input
                     id="mobile"
                     name="mobile"
@@ -272,7 +244,7 @@ export default function AddDeliveryAgent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="email">Email</Label>
+                  <Label htmlFor="email">Email *</Label>
                   <Input
                     id="email"
                     name="email"
@@ -283,7 +255,7 @@ export default function AddDeliveryAgent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="adhaar">Adhaar</Label>
+                  <Label htmlFor="adhaar">Adhaar *</Label>
                   <Input
                     id="adhaar"
                     name="adhaar"
@@ -293,27 +265,7 @@ export default function AddDeliveryAgent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="uid">UID</Label>
-                  <Input
-                    id="uid"
-                    name="uid"
-                    value={agent.uid}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="userId">User ID</Label>
-                  <Input
-                    id="userId"
-                    name="userId"
-                    value={agent.userId}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="company">Company</Label>
+                  <Label htmlFor="company">Company *</Label>
                   <Input
                     id="company"
                     name="company"
@@ -323,7 +275,7 @@ export default function AddDeliveryAgent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="pan">PAN</Label>
+                  <Label htmlFor="pan">PAN *</Label>
                   <Input
                     id="pan"
                     name="pan"
@@ -333,53 +285,7 @@ export default function AddDeliveryAgent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="startingDate">Starting Date</Label>
-                  <Popover
-                    open={isCalendarOpen}
-                    onOpenChange={setIsCalendarOpen}
-                  >
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant="outline"
-                        className={cn(
-                          "w-full justify-start text-left font-normal",
-                          !agent.startingDate && "text-muted-foreground"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {agent.startingDate ? (
-                          format(new Date(agent.startingDate), "PPP")
-                        ) : (
-                          <span>Pick a date</span>
-                        )}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={
-                          agent.startingDate
-                            ? new Date(agent.startingDate)
-                            : undefined
-                        }
-                        onSelect={handleDateSelect}
-                        initialFocus
-                      />
-                    </PopoverContent>
-                  </Popover>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="photo">Photo</Label>
-                  <Input
-                    id="photo"
-                    name="photo"
-                    type="file"
-                    onChange={handleFileChange}
-                    accept="image/*"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="username">Username</Label>
+                  <Label htmlFor="username">Username *</Label>
                   <Input
                     id="username"
                     name="username"
@@ -389,7 +295,7 @@ export default function AddDeliveryAgent() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="password">Password</Label>
+                  <Label htmlFor="password">Password {!isEditing && "*"}</Label>
                   <Input
                     id="password"
                     name="password"
@@ -397,11 +303,24 @@ export default function AddDeliveryAgent() {
                     value={agent.password}
                     onChange={handleInputChange}
                     required={!isEditing}
+                    placeholder={
+                      isEditing ? "Leave blank to keep current password" : ""
+                    }
+                  />
+                </div>
+                <div className="space-y-2 md:col-span-2">
+                  <Label htmlFor="photo">Photo</Label>
+                  <Input
+                    id="photo"
+                    name="photo"
+                    type="file"
+                    onChange={handleFileChange}
+                    accept="image/*"
                   />
                 </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
+                <Label htmlFor="address">Address *</Label>
                 <Textarea
                   id="address"
                   name="address"
@@ -410,7 +329,25 @@ export default function AddDeliveryAgent() {
                   required
                 />
               </div>
+
+              {/* Info message about automatic fields */}
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                <p className="text-sm text-blue-800">
+                  <strong>Note:</strong> User ID and starting date will be
+                  automatically generated when you add the agent.
+                  {!isEditing &&
+                    " Starting date will be set to the current date and time."}
+                </p>
+              </div>
+
               <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setIsDialogOpen(false)}
+                >
+                  Cancel
+                </Button>
                 <Button type="submit">
                   {isEditing ? "Update" : "Add"} Delivery Agent
                 </Button>
@@ -429,7 +366,7 @@ export default function AddDeliveryAgent() {
               <TableHead>Username</TableHead>
               <TableHead>Mobile</TableHead>
               <TableHead>Email</TableHead>
-              <TableHead>Address</TableHead>
+              <TableHead>Starting Date</TableHead>
               <TableHead>User ID</TableHead>
               <TableHead>Actions</TableHead>
             </TableRow>
@@ -451,15 +388,19 @@ export default function AddDeliveryAgent() {
                 <TableCell>{agent.username}</TableCell>
                 <TableCell>{agent.mobile}</TableCell>
                 <TableCell>{agent.email}</TableCell>
-                <TableCell>{agent.address}</TableCell>
-                <TableCell>{agent.userId}</TableCell>
+                <TableCell>
+                  {formatDisplayDate(agent.startingDate || "")}
+                </TableCell>
+                <TableCell className="font-mono text-sm">
+                  {agent.userId}
+                </TableCell>
                 <TableCell>
                   <div className="flex space-x-2">
                     <Button
                       variant="outline"
                       size="sm"
                       onClick={(e) => {
-                        e.stopPropagation(); // Prevent row click event
+                        e.stopPropagation();
                         handleEdit(agent);
                       }}
                     >
@@ -469,7 +410,7 @@ export default function AddDeliveryAgent() {
                       variant="outline"
                       size="sm"
                       onClick={(e) => {
-                        e.stopPropagation(); // Prevent row click event
+                        e.stopPropagation();
                         handleDelete(agent._id);
                       }}
                     >
@@ -479,7 +420,7 @@ export default function AddDeliveryAgent() {
                       variant="outline"
                       size="sm"
                       onClick={(e) => {
-                        e.stopPropagation(); // Prevent row click event
+                        e.stopPropagation();
                         navigateToAgentDetails(agent);
                       }}
                     >
@@ -511,14 +452,14 @@ function PhotoDisplay({
   if (photoUrl === undefined) {
     return (
       <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
-        ...
+        <div className="animate-pulse">...</div>
       </div>
     );
   }
 
-  if (photoUrl === null) {
+  if (photoUrl === null || !photoUrl) {
     return (
-      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+      <div className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center text-gray-600 font-medium">
         {name.charAt(0).toUpperCase()}
       </div>
     );

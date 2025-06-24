@@ -1,20 +1,36 @@
-import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
-import { ConvexError } from "convex/values";
+import { v } from "convex/values"
+import { mutation, query } from "./_generated/server"
+import { ConvexError } from "convex/values"
 
 // Helper functions
 function generateUserId(role: string, username: string): string {
-  const prefix = role === 'kitchen' ? 'KITCHEN_' : 'REFILLER_';
-  const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
-  return `${prefix}${username.toUpperCase()}_${randomSuffix}`;
+  const prefix = role === "kitchen" ? "KITCHEN_" : "REFILLER_"
+  const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase()
+  return `${prefix}${username.toUpperCase()}_${randomSuffix}`
+}
+
+// Helper function to get current date and time as string
+function getCurrentDateTime(): string {
+  const now = new Date()
+  // Format as "DD/MM/YYYY, HH:MM:SS AM/PM" to match your existing date formats
+  const day = now.getDate().toString().padStart(2, "0")
+  const month = (now.getMonth() + 1).toString().padStart(2, "0")
+  const year = now.getFullYear()
+  const hours = now.getHours()
+  const minutes = now.getMinutes().toString().padStart(2, "0")
+  const seconds = now.getSeconds().toString().padStart(2, "0")
+  const ampm = hours >= 12 ? "PM" : "AM"
+  const displayHours = hours % 12 || 12
+
+  return `${day}/${month}/${year}, ${displayHours}:${minutes}:${seconds} ${ampm}`
 }
 
 // Generate upload URL for images
 export const generateUploadUrl = mutation({
   handler: async (ctx) => {
-    return await ctx.storage.generateUploadUrl();
+    return await ctx.storage.generateUploadUrl()
   },
-});
+})
 
 // Add new delivery agent
 export const add = mutation({
@@ -24,8 +40,6 @@ export const add = mutation({
     email: v.string(),
     adhaar: v.string(),
     address: v.string(),
-    uid: v.string(),
-    startingDate: v.string(),
     company: v.string(),
     pan: v.string(),
     photoStorageId: v.optional(v.string()),
@@ -33,17 +47,32 @@ export const add = mutation({
     password: v.string(),
   },
   handler: async (ctx, args) => {
-    const userId = generateUserId("refiller", args.username);
+    // Generate userId automatically
+    const userId = generateUserId("refiller", args.username)
+
+    // Generate current date and time automatically
+    const startingDate = getCurrentDateTime()
+
+    // Check if username already exists
+    const existingUser = await ctx.db
+      .query("appUser")
+      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .first()
+
+    if (existingUser) {
+      throw new ConvexError("Username already exists. Please choose a different username.")
+    }
 
     // Insert into deliveryAgents table
     const newId = await ctx.db.insert("deliveryAgents", {
       ...args,
+      startingDate, // Automatically set to current date and time
       role: "refiller",
       userId,
       createdAt: Date.now(),
       trips: [],
-      salt: ""
-    });
+      salt: "",
+    })
 
     // Insert into appUser table
     await ctx.db.insert("appUser", {
@@ -51,12 +80,12 @@ export const add = mutation({
       password: args.password,
       role: "refiller",
       userId,
-      name: args.name, // Add this line
-    });
+      name: args.name,
+    })
 
-    return newId;
+    return newId
   },
-});
+})
 
 // Edit existing delivery agent
 export const edit = mutation({
@@ -67,60 +96,60 @@ export const edit = mutation({
     email: v.string(),
     adhaar: v.string(),
     address: v.string(),
-    uid: v.string(),
-    startingDate: v.string(),
     company: v.string(),
     pan: v.string(),
     photoStorageId: v.optional(v.string()),
     username: v.string(),
     password: v.optional(v.string()),
+    // Note: startingDate is not included in edit args since it shouldn't be changed after creation
   },
   handler: async (ctx, args) => {
-    const { id, password, ...updateData } = args;
-    const existingAgent = await ctx.db.get(id);
-    
+    const { id, password, ...updateData } = args
+    const existingAgent = await ctx.db.get(id)
+
     if (!existingAgent) {
-      throw new Error("Delivery agent not found");
+      throw new ConvexError("Delivery agent not found")
     }
 
-    let updatedFields: Partial<typeof existingAgent> = { ...updateData };
-
-    if (password) {
-      updatedFields.password = password;
-
-      // Update appUser table
-      const appUser = await ctx.db
-        .query("appUser")
-        .withIndex("by_userId", (q) => q.eq("userId", existingAgent.userId))
-        .first();
-
-      if (appUser) {
-        await ctx.db.patch(appUser._id, {
-          password,
-        });
-      }
-    }
-
-    // Update deliveryAgents table
-    await ctx.db.patch(id, updatedFields);
-
-    // Update username in appUser table if it has changed
+    // Check if username is being changed and if new username already exists
     if (updateData.username !== existingAgent.username) {
-      const appUser = await ctx.db
+      const existingUser = await ctx.db
         .query("appUser")
-        .withIndex("by_userId", (q) => q.eq("userId", existingAgent.userId))
-        .first();
+        .withIndex("by_username", (q) => q.eq("username", updateData.username))
+        .first()
 
-      if (appUser) {
-        await ctx.db.patch(appUser._id, {
-          username: updateData.username,
-        });
+      if (existingUser && existingUser.userId !== existingAgent.userId) {
+        throw new ConvexError("Username already exists. Please choose a different username.")
       }
     }
 
-    return id;
+    const updatedFields: Partial<typeof existingAgent> = { ...updateData }
+
+    // Update deliveryAgents table (startingDate remains unchanged)
+    await ctx.db.patch(id, updatedFields)
+
+    // Update appUser table
+    const appUser = await ctx.db
+      .query("appUser")
+      .withIndex("by_userId", (q) => q.eq("userId", existingAgent.userId))
+      .first()
+
+    if (appUser) {
+      const appUserUpdates: any = {
+        username: updateData.username,
+        name: updateData.name,
+      }
+
+      if (password) {
+        appUserUpdates.password = password
+      }
+
+      await ctx.db.patch(appUser._id, appUserUpdates)
+    }
+
+    return id
   },
-});
+})
 
 // Delete delivery agent
 export const remove = mutation({
