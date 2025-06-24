@@ -1,15 +1,61 @@
-import { mutation, query } from "./_generated/server";
-import { v } from "convex/values";
+import { mutation, query } from "./_generated/server"
+import { v } from "convex/values"
 import { ConvexError } from "convex/values"
-import type { Doc } from "./_generated/dataModel"
+import { Doc } from "./_generated/dataModel"
 
 // Helper functions
 function generateUserId(role: string, username: string): string {
-  const prefix = role === 'kitchen' ? 'KITCHEN_' : 'REFILLER_';
-  const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase();
-  return `${prefix}${username.toUpperCase()}_${randomSuffix}`;
+  const prefix = role === "kitchen" ? "KITCHEN_" : "REFILLER_"
+  const randomSuffix = Math.random().toString(36).substring(2, 7).toUpperCase()
+  return `${prefix}${username.toUpperCase()}_${randomSuffix}`
 }
 
+// Helper function to generate sequential UID
+async function generateSequentialUID(ctx: any): Promise<string> {
+  // Get all existing kitchens to find the highest UID number
+  const allKitchens = await ctx.db.query("kitchens").collect()
+
+  let maxUidNumber = 0
+
+  // Check all members across all kitchens for existing UIDs
+  allKitchens.forEach((kitchen: any) => {
+    kitchen.members.forEach((member: any) => {
+      if (member.uid && member.uid.startsWith("USER")) {
+        const uidNumber = Number.parseInt(member.uid.replace("USER", ""))
+        if (!isNaN(uidNumber) && uidNumber > maxUidNumber) {
+          maxUidNumber = uidNumber
+        }
+      }
+    })
+  })
+
+  // Generate next UID
+  const nextUidNumber = maxUidNumber + 1
+  return `USER${nextUidNumber.toString().padStart(3, "0")}`
+}
+
+// Helper function to get current date and time as string
+function getCurrentDateTime(): string {
+  const now = new Date()
+  // Format as "DD/MM/YYYY, HH:MM:SS AM/PM" to match your existing date formats
+  const day = now.getDate().toString().padStart(2, "0")
+  const month = (now.getMonth() + 1).toString().padStart(2, "0")
+  const year = now.getFullYear()
+  const hours = now.getHours()
+  const minutes = now.getMinutes().toString().padStart(2, "0")
+  const seconds = now.getSeconds().toString().padStart(2, "0")
+  const ampm = hours >= 12 ? "PM" : "AM"
+  const displayHours = hours % 12 || 12
+
+  return `${day}/${month}/${year}, ${displayHours}:${minutes}:${seconds} ${ampm}`
+}
+
+// Generate upload URL for images
+// export const generateUploadUrl = mutation({
+//   handler: async (ctx) => {
+//     return await ctx.storage.generateUploadUrl()
+//   },
+// })
 
 export const add = mutation({
   args: {
@@ -29,35 +75,55 @@ export const add = mutation({
         email: v.string(),
         adhaar: v.string(),
         address: v.string(),
-        uid: v.string(),
-        startingDate: v.string(),
         company: v.string(),
         pan: v.string(),
         photoStorageId: v.optional(v.string()),
-      })
+        // uid and startingDate will be auto-generated, not in args
+      }),
     ),
   },
   handler: async (ctx, args) => {
-    const userId = generateUserId("kitchen", args.username);
+    // Generate userId automatically
+    const userId = generateUserId("kitchen", args.username)
+
+    // Check if username already exists
+    const existingUser = await ctx.db
+      .query("appUser")
+      .withIndex("by_username", (q) => q.eq("username", args.username))
+      .first()
+
+    if (existingUser) {
+      throw new ConvexError("Username already exists. Please choose a different username.")
+    }
+
+    // Process members - add auto-generated uid and startingDate to each member
+    const processedMembers = await Promise.all(
+      args.members.map(async (member) => ({
+        ...member,
+        uid: await generateSequentialUID(ctx), // Auto-generate UID
+        startingDate: getCurrentDateTime(), // Auto-generate starting date
+      })),
+    )
 
     const kitchenId = await ctx.db.insert("kitchens", {
       ...args,
+      members: processedMembers,
       userId,
       role: "kitchen",
-      salt: ""
-    });
+      salt: "",
+    })
 
     await ctx.db.insert("appUser", {
       username: args.username,
       password: args.password,
       role: "kitchen",
       userId,
-      name: args.name, // Add this line
-    });
+      name: args.name,
+    })
 
-    return kitchenId;
+    return kitchenId
   },
-});
+})
 
 export const edit = mutation({
   args: {
@@ -78,57 +144,101 @@ export const edit = mutation({
         email: v.string(),
         adhaar: v.string(),
         address: v.string(),
-        uid: v.string(),
-        startingDate: v.string(),
         company: v.string(),
         pan: v.string(),
         photoStorageId: v.optional(v.string()),
-      })
+        uid: v.string(), // Required for edit since it exists in DB
+        startingDate: v.string(), // Required for edit since it exists in DB
+      }),
     ),
   },
   handler: async (ctx, args) => {
-    const { id, password, ...updates } = args;
-    const existingKitchen = await ctx.db.get(id);
+    const { id, password, ...updates } = args
+    const existingKitchen = await ctx.db.get(id)
 
     if (!existingKitchen) {
-      throw new Error("Kitchen not found");
+      throw new ConvexError("Kitchen not found")
     }
 
-    let updatedFields: any = { ...updates };
-
-    if (password) {
-      updatedFields.password = password;
-
-      // Update appUser table
-      const appUser = await ctx.db
-        .query("appUser")
-        .withIndex("by_userId", (q) => q.eq("userId", existingKitchen.userId))
-        .first();
-
-      if (appUser) {
-        await ctx.db.patch(appUser._id, {
-          password: password,
-        });
-      }
-    }
-
-    await ctx.db.patch(id, updatedFields);
-
-    // Update username in appUser table if it has changed
+    // Check if username is being changed and if new username already exists
     if (updates.username !== existingKitchen.username) {
-      const appUser = await ctx.db
+      const existingUser = await ctx.db
         .query("appUser")
-        .withIndex("by_userId", (q) => q.eq("userId", existingKitchen.userId))
-        .first();
+        .withIndex("by_username", (q) => q.eq("username", updates.username))
+        .first()
 
-      if (appUser) {
-        await ctx.db.patch(appUser._id, {
-          username: updates.username,
-        });
+      if (existingUser && existingUser.userId !== existingKitchen.userId) {
+        throw new ConvexError("Username already exists. Please choose a different username.")
       }
+    }
+
+    // For edit, members already have uid and startingDate, so use them as-is
+    const updatedFields: any = {
+      ...updates,
+      members: updates.members, // Members already have required uid and startingDate
+    }
+
+    await ctx.db.patch(id, updatedFields)
+
+    // Update appUser table
+    const appUser = await ctx.db
+      .query("appUser")
+      .withIndex("by_userId", (q) => q.eq("userId", existingKitchen.userId))
+      .first()
+
+    if (appUser) {
+      const appUserUpdates: any = {
+        username: updates.username,
+        name: updates.name,
+      }
+
+      if (password) {
+        appUserUpdates.password = password
+      }
+
+      await ctx.db.patch(appUser._id, appUserUpdates)
     }
   },
-});
+})
+
+// Add new member to existing kitchen
+export const addMember = mutation({
+  args: {
+    kitchenId: v.id("kitchens"),
+    member: v.object({
+      name: v.string(),
+      mobile: v.string(),
+      email: v.string(),
+      adhaar: v.string(),
+      address: v.string(),
+      company: v.string(),
+      pan: v.string(),
+      photoStorageId: v.optional(v.string()),
+    }),
+  },
+  handler: async (ctx, args) => {
+    const kitchen = await ctx.db.get(args.kitchenId)
+    if (!kitchen) {
+      throw new ConvexError("Kitchen not found")
+    }
+
+    // Generate UID and startingDate for new member
+    const newMember = {
+      ...args.member,
+      uid: await generateSequentialUID(ctx),
+      startingDate: getCurrentDateTime(),
+    }
+
+    // Add new member to existing members array
+    const updatedMembers = [...kitchen.members, newMember]
+
+    await ctx.db.patch(args.kitchenId, {
+      members: updatedMembers,
+    })
+
+    return newMember.uid
+  },
+})
 
 export const remove = mutation({
   args: { id: v.id("kitchens") },

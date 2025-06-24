@@ -156,7 +156,7 @@ export default defineSchema({
         email: v.string(),
         adhaar: v.string(),
         address: v.string(),
-        uid: v.string(),
+        uid: v.optional(v.string()),
         startingDate: v.string(),
         company: v.string(),
         pan: v.string(),
