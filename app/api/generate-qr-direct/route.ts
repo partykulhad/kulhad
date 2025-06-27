@@ -27,8 +27,24 @@ function rgbToRgb565(r: number, g: number, b: number): number {
   return (r5 << 11) | (g6 << 5) | b5
 }
 
-// Function to convert image buffer to RGB565 format with hex array output
-async function convertToRgb565(imageBuffer: Buffer): Promise<{ hexArray: string; width: number; height: number }> {
+// Function to convert RGB565 to binary (0s and 1s) - same logic as Python
+function rgb565ToBwBit(rgb565: number): number {
+  const red = (rgb565 >> 11) & 0x1f
+  const green = (rgb565 >> 5) & 0x3f
+  const blue = rgb565 & 0x1f
+
+  const r8 = red << 3
+  const g8 = green << 2
+  const b8 = blue << 3
+
+  const brightness = Math.floor(0.3 * r8 + 0.59 * g8 + 0.11 * b8)
+  return brightness > 127 ? 1 : 0
+}
+
+// Function to convert image buffer to binary format with split markers
+async function convertToBinaryWithMarkers(
+  imageBuffer: Buffer,
+): Promise<{ binaryArray: number[]; width: number; height: number }> {
   try {
     // Get raw RGB data from the image
     const { data, info } = await sharp(imageBuffer).raw().toBuffer({ resolveWithObject: true })
@@ -36,7 +52,7 @@ async function convertToRgb565(imageBuffer: Buffer): Promise<{ hexArray: string;
     const { width, height, channels } = info
     console.log(`[DEBUG] Converting image: ${width}x${height}, channels: ${channels}`)
 
-    const rgb565Values: string[] = []
+    const binaryValues: number[] = []
 
     // Process each pixel
     for (let i = 0; i < data.length; i += channels) {
@@ -48,31 +64,37 @@ async function convertToRgb565(imageBuffer: Buffer): Promise<{ hexArray: string;
       // Convert to RGB565
       const rgb565 = rgbToRgb565(r, g, b)
 
-      // Format as hex with 0x prefix and ensure 4 digits
-      const hexValue = `0x${rgb565.toString(16).toUpperCase().padStart(4, "0")}`
-      rgb565Values.push(hexValue)
+      // Convert RGB565 to binary (0 or 1)
+      const binaryBit = rgb565ToBwBit(rgb565)
+      binaryValues.push(binaryBit)
     }
 
-    // Join all hex values with commas and spaces
-    const hexArray = rgb565Values.join(", ")
+    // Add split markers to divide array into 10 parts (markers: 2 through 10)
+    const segmentSize = Math.floor(binaryValues.length / 10)
+
+    // Insert markers in reverse order to avoid index shifts
+    for (let i = 9; i >= 1; i--) {
+      const markerPosition = i * segmentSize
+      binaryValues.splice(markerPosition, 0, i + 1) // markers = 2 to 10
+    }
 
     console.log(
-      `[DEBUG] RGB565 conversion complete: ${width}x${height} = ${width * height} pixels, first few values: ${rgb565Values.slice(0, 5).join(", ")}...`,
+      `[DEBUG] Binary conversion complete: ${width}x${height} = ${width * height} pixels, total array length with markers: ${binaryValues.length}`,
     )
 
     return {
-      hexArray,
+      binaryArray: binaryValues,
       width,
       height,
     }
   } catch (error) {
-    console.error("[DEBUG] Error converting to RGB565:", error)
+    console.error("[DEBUG] Error converting to binary:", error)
     throw error
   }
 }
 
-// Function to extract QR code as RGB565 - optimized for speed
-async function extractQRCodeAsRgb565(imageUrl: string | URL | Request) {
+// Function to extract QR code as binary array - optimized for speed
+async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
   const qrStartTime = Date.now()
   console.log(`[DEBUG] QR extraction started at ${new Date().toISOString()}`)
 
@@ -113,7 +135,6 @@ async function extractQRCodeAsRgb565(imageUrl: string | URL | Request) {
     if (!qrCode) {
       console.log(`[DEBUG] QR code not found with jsQR, trying fallback method`)
       // If jsQR fails, try to extract the QR code using image processing
-      // This approach looks for a square region with high contrast (likely the QR code)
       const sharpStartTime = Date.now()
       const processedImage = await sharp(imageBuffer).grayscale().threshold(128).toBuffer()
       console.log(`[DEBUG] Sharp image processing took ${Date.now() - sharpStartTime}ms`)
@@ -141,7 +162,7 @@ async function extractQRCodeAsRgb565(imageUrl: string | URL | Request) {
       )
       console.log(`[DEBUG] Region extraction took ${Date.now() - regionStartTime}ms`)
 
-      // Convert to buffer and resize, then convert to RGB565
+      // Convert to buffer and resize, then convert to binary
       const finalBufferStartTime = Date.now()
       const qrBuffer = await sharp(qrRegion.data, {
         raw: {
@@ -153,13 +174,12 @@ async function extractQRCodeAsRgb565(imageUrl: string | URL | Request) {
         .resize(174, 174, { fit: "fill" }) // Resize to exactly 174x174 pixels
         .toBuffer()
 
-      // Convert to RGB565
-      const rgb565Result = await convertToRgb565(qrBuffer)
-      const rgb565Hex = rgb565Result.hexArray
+      // Convert to binary with markers
+      const binaryResult = await convertToBinaryWithMarkers(qrBuffer)
       console.log(`[DEBUG] Final buffer processing took ${Date.now() - finalBufferStartTime}ms`)
 
       console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (fallback method)`)
-      return rgb565Hex
+      return binaryResult.binaryArray
     }
 
     // If jsQR found the QR code, extract its location
@@ -203,14 +223,13 @@ async function extractQRCodeAsRgb565(imageUrl: string | URL | Request) {
       .toBuffer()
     console.log(`[DEBUG] QR region extraction took ${Date.now() - extractStartTime}ms`)
 
-    // Convert to RGB565
-    const rgb565ConversionStart = Date.now()
-    const rgb565Result = await convertToRgb565(qrCodeBuffer)
-    console.log(`[DEBUG] RGB565 conversion took ${Date.now() - rgb565ConversionStart}ms`)
+    // Convert to binary with markers
+    const binaryConversionStart = Date.now()
+    const binaryResult = await convertToBinaryWithMarkers(qrCodeBuffer)
+    console.log(`[DEBUG] Binary conversion took ${Date.now() - binaryConversionStart}ms`)
 
-    const rgb565Hex = rgb565Result.hexArray
     console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (primary method)`)
-    return rgb565Hex
+    return binaryResult.binaryArray
   } catch (error) {
     console.log(`[DEBUG] Error in primary QR extraction: ${error}`)
     // Fallback: try to extract the central portion of the image
@@ -246,15 +265,14 @@ async function extractQRCodeAsRgb565(imageUrl: string | URL | Request) {
         .resize(174, 174, { fit: "fill" }) // Resize to exactly 174x174 pixels
         .toBuffer()
 
-      // Convert to RGB565
-      const rgb565Result = await convertToRgb565(qrBuffer)
-      const rgb565Hex = rgb565Result.hexArray
+      // Convert to binary with markers
+      const binaryResult = await convertToBinaryWithMarkers(qrBuffer)
       console.log(`[DEBUG] Fallback QR extraction took ${Date.now() - fallbackStartTime}ms`)
       console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (with fallback)`)
-      return rgb565Hex
+      return binaryResult.binaryArray
     } catch (fallbackError) {
       console.log(`[DEBUG] Error in fallback QR extraction: ${fallbackError}`)
-      // Last resort: just return the entire image resized to 174x174 and converted to RGB565
+      // Last resort: just return the entire image resized to 174x174 and converted to binary
       try {
         const lastResortStartTime = Date.now()
         console.log(`[DEBUG] Trying last resort method`)
@@ -263,15 +281,14 @@ async function extractQRCodeAsRgb565(imageUrl: string | URL | Request) {
           .resize(174, 174, { fit: "fill" }) // Resize to exactly 174x174 pixels
           .toBuffer()
 
-        // Convert to RGB565
-        const rgb565Result = await convertToRgb565(resizedBuffer)
-        const rgb565Hex = rgb565Result.hexArray
+        // Convert to binary with markers
+        const binaryResult = await convertToBinaryWithMarkers(resizedBuffer)
         console.log(`[DEBUG] Last resort QR extraction took ${Date.now() - lastResortStartTime}ms`)
         console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (last resort)`)
-        return rgb565Hex
+        return binaryResult.binaryArray
       } catch (e) {
         console.log(`[DEBUG] All QR extraction methods failed after ${Date.now() - qrStartTime}ms: ${e}`)
-        return "" // Return empty string if all extraction methods fail
+        return [] // Return empty array if all extraction methods fail
       }
     }
   }
@@ -396,14 +413,14 @@ export async function POST(request: NextRequest) {
     const qrCodeId = razorpayResponse.id
     console.log(`[DEBUG] Razorpay response parsing took ${Date.now() - parseResponseStartTime}ms`)
 
-    // Extract the QR code image and convert to RGB565
+    // Extract the QR code image and convert to binary array
     console.log(`[DEBUG] Starting QR code extraction from URL: ${razorpayResponse.image_url}`)
     const qrExtractionStartTime = Date.now()
-    const qrRgb565Data = await extractQRCodeAsRgb565(razorpayResponse.image_url)
+    const qrBinarySplitData = await extractQRCodeAsBinary(razorpayResponse.image_url)
     console.log(`[DEBUG] QR code extraction took ${Date.now() - qrExtractionStartTime}ms`)
 
     // If QR extraction fails completely, don't proceed
-    if (!qrRgb565Data) {
+    if (!qrBinarySplitData || qrBinarySplitData.length === 0) {
       return NextResponse.json({ error: "Failed to extract QR code from image" }, { status: 500 })
     }
 
@@ -412,10 +429,10 @@ export async function POST(request: NextRequest) {
       success: true,
       id: qrCodeId,
       imageUrl: razorpayResponse.image_url,
-      qrRgb565Data: qrRgb565Data, // Include the RGB565 hex array in the response
+      qrBinarySplitData: qrBinarySplitData, // Binary array with split markers (0s, 1s, and markers 2-10)
       qrImageWidth: 174, // Fixed width for QR code
       qrImageHeight: 174, // Fixed height for QR code
-      qrPixelFormat: "RGB565", // Specify the pixel format
+      qrPixelFormat: "BINARY", // Specify the pixel format as binary
       amount: razorpayResponse.payment_amount / 100, // Convert back to rupees for display
       description: razorpayResponse.description,
       status: razorpayResponse.status,
@@ -425,7 +442,7 @@ export async function POST(request: NextRequest) {
       numberOfCups,
       amountPerCup,
       transactionId: uniqueTransactionId, // Include our unique transaction ID in the response
-      qrRgb565Format: "C_ARRAY", // Specify the format type
+      qrDataFormat: "BINARY_WITH_MARKERS", // Specify the format type
     }
 
     // Store transaction in Convex without waiting for it to complete
@@ -437,7 +454,7 @@ export async function POST(request: NextRequest) {
         transactionId: qrCodeId,
         customTransactionId: uniqueTransactionId,
         imageUrl: razorpayResponse.image_url,
-        // Don't store qrRgb565Data in the database as per requirements
+        // Don't store qrBinarySplitData in the database as per requirements
         amount: razorpayResponse.payment_amount / 100,
         cups: Number(numberOfCups),
         amountPerCup: amountPerCup,
