@@ -27,7 +27,7 @@ function rgbToRgb565(r: number, g: number, b: number): number {
   return (r5 << 11) | (g6 << 5) | b5
 }
 
-// Function to convert RGB565 to binary (0s and 1s) - same logic as Python
+// Function to convert RGB565 to binary (0s and 1s) - corrected for QR codes
 function rgb565ToBwBit(rgb565: number): number {
   const red = (rgb565 >> 11) & 0x1f
   const green = (rgb565 >> 5) & 0x3f
@@ -38,7 +38,8 @@ function rgb565ToBwBit(rgb565: number): number {
   const b8 = blue << 3
 
   const brightness = Math.floor(0.3 * r8 + 0.59 * g8 + 0.11 * b8)
-  return brightness > 127 ? 1 : 0
+  // Inverted logic: return 0 for bright/white pixels, 1 for dark/black pixels
+  return brightness > 127 ? 0 : 1
 }
 
 // Function to convert image buffer to binary format with split markers
