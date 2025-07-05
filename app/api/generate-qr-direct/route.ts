@@ -38,8 +38,8 @@ function rgb565ToBwBit(rgb565: number): number {
   const b8 = blue << 3
 
   const brightness = Math.floor(0.3 * r8 + 0.59 * g8 + 0.11 * b8)
-  // Inverted logic: return 0 for bright/white pixels, 1 for dark/black pixels
-  return brightness > 127 ? 0 : 1
+  // Use a more aggressive threshold for cleaner QR codes
+  return brightness > 140 ? 0 : 1
 }
 
 // Function to convert image buffer to binary format with split markers
@@ -94,7 +94,7 @@ async function convertToBinaryWithMarkers(
   }
 }
 
-// Function to extract QR code as binary array - optimized for speed
+// Improved function to extract QR code with better quality
 async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
   const qrStartTime = Date.now()
   console.log(`[DEBUG] QR extraction started at ${new Date().toISOString()}`)
@@ -115,9 +115,24 @@ async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
     const imageBuffer = Buffer.from(await response.arrayBuffer())
     console.log(`[DEBUG] Converting to buffer took ${Date.now() - bufferStartTime}ms`)
 
-    // Load the image using canvas
+    // First, let's enhance the image quality and extract QR code more precisely
+    const enhancedStartTime = Date.now()
+
+    // Process the image to enhance QR code detection
+    const enhancedImage = await sharp(imageBuffer)
+      .resize(800, 800, {
+        fit: "contain",
+        background: { r: 255, g: 255, b: 255, alpha: 1 }, // White background
+      })
+      .sharpen() // Sharpen the image
+      .normalize() // Normalize contrast
+      .toBuffer()
+
+    console.log(`[DEBUG] Image enhancement took ${Date.now() - enhancedStartTime}ms`)
+
+    // Load the enhanced image using canvas
     const canvasStartTime = Date.now()
-    const image = await loadImage(imageBuffer)
+    const image = await loadImage(enhancedImage)
     const canvas = createCanvas(image.width, image.height)
     const ctx = canvas.getContext("2d")
     ctx.drawImage(image, 0, 0)
@@ -130,167 +145,129 @@ async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
 
     // Use jsQR to find the QR code
     const qrDetectionStartTime = Date.now()
-    const qrCode = jsQR(imageData.data, imageData.width, imageData.height)
+    const qrCode = jsQR(imageData.data, imageData.width, imageData.height, {
+      inversionAttempts: "dontInvert", // Don't try to invert colors
+    })
     console.log(`[DEBUG] jsQR detection took ${Date.now() - qrDetectionStartTime}ms`)
 
-    if (!qrCode) {
-      console.log(`[DEBUG] QR code not found with jsQR, trying fallback method`)
-      // If jsQR fails, try to extract the QR code using image processing
-      const sharpStartTime = Date.now()
-      const processedImage = await sharp(imageBuffer).grayscale().threshold(128).toBuffer()
-      console.log(`[DEBUG] Sharp image processing took ${Date.now() - sharpStartTime}ms`)
+    let qrBuffer: Buffer
 
-      // Create a new canvas with the processed image
-      const processedCanvasStartTime = Date.now()
-      const processedCanvas = createCanvas(image.width, image.height)
-      const processedCtx = processedCanvas.getContext("2d")
-      const processedImageObj = await loadImage(processedImage)
-      processedCtx.drawImage(processedImageObj, 0, 0)
-      console.log(`[DEBUG] Processed canvas creation took ${Date.now() - processedCanvasStartTime}ms`)
+    if (qrCode) {
+      console.log(`[DEBUG] QR code found, extracting precise region`)
 
-      // Look for the QR code in the center area (where it's typically located)
-      const centerX = Math.floor(image.width / 2)
-      const centerY = Math.floor(image.height / 2)
-      const searchRadius = Math.floor(Math.min(image.width, image.height) / 4)
+      // Calculate the bounding box with minimal padding
+      const padding = 5
 
-      // Extract a region around the center
-      const regionStartTime = Date.now()
-      const qrRegion = processedCtx.getImageData(
-        centerX - searchRadius,
-        centerY - searchRadius,
-        searchRadius * 2,
-        searchRadius * 2,
+      // Round all values to integers to avoid Sharp errors
+      const minX = Math.floor(
+        Math.max(0, Math.min(qrCode.location.topLeftCorner.x, qrCode.location.bottomLeftCorner.x) - padding),
       )
-      console.log(`[DEBUG] Region extraction took ${Date.now() - regionStartTime}ms`)
 
-      // Convert to buffer and resize, then convert to binary
-      const finalBufferStartTime = Date.now()
-      const qrBuffer = await sharp(qrRegion.data, {
-        raw: {
-          width: qrRegion.width,
-          height: qrRegion.height,
-          channels: 4,
-        },
-      })
-        .resize(174, 174, { fit: "fill" }) // Resize to exactly 174x174 pixels
+      const minY = Math.floor(
+        Math.max(0, Math.min(qrCode.location.topLeftCorner.y, qrCode.location.topRightCorner.y) - padding),
+      )
+
+      const maxX = Math.ceil(
+        Math.min(
+          image.width,
+          Math.max(qrCode.location.topRightCorner.x, qrCode.location.bottomRightCorner.x) + padding,
+        ),
+      )
+
+      const maxY = Math.ceil(
+        Math.min(
+          image.height,
+          Math.max(qrCode.location.bottomLeftCorner.y, qrCode.location.bottomRightCorner.y) + padding,
+        ),
+      )
+
+      const width = maxX - minX
+      const height = maxY - minY
+
+      // Extract just the QR code region
+      const extractStartTime = Date.now()
+      qrBuffer = await sharp(enhancedImage)
+        .extract({
+          left: minX,
+          top: minY,
+          width,
+          height,
+        })
+        .resize(174, 174, {
+          kernel: sharp.kernel.nearest, // Use nearest neighbor for crisp pixels
+          fit: "fill",
+        })
+        .threshold(140) // Apply binary threshold for clean black/white
         .toBuffer()
+      console.log(`[DEBUG] QR region extraction took ${Date.now() - extractStartTime}ms`)
+    } else {
+      console.log(`[DEBUG] QR code not found with jsQR, using center extraction`)
 
-      // Convert to binary with markers
-      const binaryResult = await convertToBinaryWithMarkers(qrBuffer)
-      console.log(`[DEBUG] Final buffer processing took ${Date.now() - finalBufferStartTime}ms`)
-
-      console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (fallback method)`)
-      return binaryResult.binaryArray
-    }
-
-    // If jsQR found the QR code, extract its location
-    console.log(`[DEBUG] QR code found, extracting region`)
-    // Calculate the bounding box with padding
-    const padding = 10
-
-    // Round all values to integers to avoid Sharp errors
-    const minX = Math.floor(
-      Math.max(0, Math.min(qrCode.location.topLeftCorner.x, qrCode.location.bottomLeftCorner.x) - padding),
-    )
-
-    const minY = Math.floor(
-      Math.max(0, Math.min(qrCode.location.topLeftCorner.y, qrCode.location.topRightCorner.y) - padding),
-    )
-
-    const maxX = Math.ceil(
-      Math.min(image.width, Math.max(qrCode.location.topRightCorner.x, qrCode.location.bottomRightCorner.x) + padding),
-    )
-
-    const maxY = Math.ceil(
-      Math.min(
-        image.height,
-        Math.max(qrCode.location.bottomLeftCorner.y, qrCode.location.bottomRightCorner.y) + padding,
-      ),
-    )
-
-    const width = maxX - minX
-    const height = maxY - minY
-
-    // Extract just the QR code region and resize to 174x174
-    const extractStartTime = Date.now()
-    const qrCodeBuffer = await sharp(imageBuffer)
-      .extract({
-        left: minX,
-        top: minY,
-        width,
-        height,
-      })
-      .resize(174, 174, { fit: "fill" }) // Resize to exactly 174x174 pixels
-      .toBuffer()
-    console.log(`[DEBUG] QR region extraction took ${Date.now() - extractStartTime}ms`)
-
-    // Convert to binary with markers
-    const binaryConversionStart = Date.now()
-    const binaryResult = await convertToBinaryWithMarkers(qrCodeBuffer)
-    console.log(`[DEBUG] Binary conversion took ${Date.now() - binaryConversionStart}ms`)
-
-    console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (primary method)`)
-    return binaryResult.binaryArray
-  } catch (error) {
-    console.log(`[DEBUG] Error in primary QR extraction: ${error}`)
-    // Fallback: try to extract the central portion of the image
-    try {
-      const fallbackStartTime = Date.now()
-      console.log(`[DEBUG] Trying fallback method`)
-      const image = await sharp(Buffer.from(await (await fetch(imageUrl)).arrayBuffer()))
-      const metadata = await image.metadata()
+      // Fallback: extract center region and apply aggressive processing
+      const metadata = await sharp(enhancedImage).metadata()
 
       if (!metadata.width || !metadata.height) {
         throw new Error("Could not get image dimensions")
       }
 
-      // Calculate a region in the center that's likely to contain the QR code
+      // Calculate center region (typically where QR codes are located)
       const centerX = Math.floor(metadata.width / 2)
       const centerY = Math.floor(metadata.height / 2)
+      const qrSize = Math.floor(Math.min(metadata.width, metadata.height) * 0.6) // 60% of smaller dimension
 
-      // QR code is typically square and about 40% of the image height for Razorpay
-      const qrSize = Math.floor(metadata.height * 0.4)
-
-      // Ensure all values are integers
       const left = Math.floor(centerX - qrSize / 2)
       const top = Math.floor(centerY - qrSize / 2)
-      const size = Math.floor(qrSize)
 
-      const qrBuffer = await image
+      qrBuffer = await sharp(enhancedImage)
         .extract({
-          left,
-          top,
-          width: size,
-          height: size,
+          left: Math.max(0, left),
+          top: Math.max(0, top),
+          width: Math.min(qrSize, metadata.width - Math.max(0, left)),
+          height: Math.min(qrSize, metadata.height - Math.max(0, top)),
         })
-        .resize(174, 174, { fit: "fill" }) // Resize to exactly 174x174 pixels
+        .resize(174, 174, {
+          kernel: sharp.kernel.nearest, // Use nearest neighbor for crisp pixels
+          fit: "fill",
+        })
+        .threshold(140) // Apply binary threshold for clean black/white
+        .toBuffer()
+    }
+
+    // Convert to binary with markers
+    const binaryConversionStart = Date.now()
+    const binaryResult = await convertToBinaryWithMarkers(qrBuffer)
+    console.log(`[DEBUG] Binary conversion took ${Date.now() - binaryConversionStart}ms`)
+
+    console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms`)
+    return binaryResult.binaryArray
+  } catch (error) {
+    console.log(`[DEBUG] Error in QR extraction: ${error}`)
+
+    // Last resort: simple center extraction with aggressive processing
+    try {
+      const lastResortStartTime = Date.now()
+      console.log(`[DEBUG] Trying last resort method`)
+
+      const fullImageBuffer = await (await fetch(imageUrl)).arrayBuffer()
+      const resizedBuffer = await sharp(Buffer.from(fullImageBuffer))
+        .resize(400, 400, { fit: "contain", background: { r: 255, g: 255, b: 255, alpha: 1 } })
+        .sharpen()
+        .normalize()
+        .resize(174, 174, {
+          kernel: sharp.kernel.nearest,
+          fit: "fill",
+        })
+        .threshold(140)
         .toBuffer()
 
       // Convert to binary with markers
-      const binaryResult = await convertToBinaryWithMarkers(qrBuffer)
-      console.log(`[DEBUG] Fallback QR extraction took ${Date.now() - fallbackStartTime}ms`)
-      console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (with fallback)`)
+      const binaryResult = await convertToBinaryWithMarkers(resizedBuffer)
+      console.log(`[DEBUG] Last resort QR extraction took ${Date.now() - lastResortStartTime}ms`)
+      console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (last resort)`)
       return binaryResult.binaryArray
-    } catch (fallbackError) {
-      console.log(`[DEBUG] Error in fallback QR extraction: ${fallbackError}`)
-      // Last resort: just return the entire image resized to 174x174 and converted to binary
-      try {
-        const lastResortStartTime = Date.now()
-        console.log(`[DEBUG] Trying last resort method`)
-        const fullImageBuffer = await (await fetch(imageUrl)).arrayBuffer()
-        const resizedBuffer = await sharp(Buffer.from(fullImageBuffer))
-          .resize(174, 174, { fit: "fill" }) // Resize to exactly 174x174 pixels
-          .toBuffer()
-
-        // Convert to binary with markers
-        const binaryResult = await convertToBinaryWithMarkers(resizedBuffer)
-        console.log(`[DEBUG] Last resort QR extraction took ${Date.now() - lastResortStartTime}ms`)
-        console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms (last resort)`)
-        return binaryResult.binaryArray
-      } catch (e) {
-        console.log(`[DEBUG] All QR extraction methods failed after ${Date.now() - qrStartTime}ms: ${e}`)
-        return [] // Return empty array if all extraction methods fail
-      }
+    } catch (e) {
+      console.log(`[DEBUG] All QR extraction methods failed after ${Date.now() - qrStartTime}ms: ${e}`)
+      return [] // Return empty array if all extraction methods fail
     }
   }
 }

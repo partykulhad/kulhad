@@ -1,5 +1,4 @@
 "use client";
-
 import type React from "react";
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
@@ -36,6 +35,13 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   CalendarIcon,
   PlusIcon,
   Pencil,
@@ -66,8 +72,8 @@ interface Machine {
   price?: string;
   startTime?: string;
   endTime?: string;
-  teaFillStartQuantity?: number; // Changed from teaFillStartTime to quantity
-  teaFillEndQuantity?: number; // Changed from teaFillEndTime to quantity
+  teaFillStartQuantity?: number;
+  teaFillEndQuantity?: number;
   flushTimeMinutes?: number;
   mlToDispense?: number;
   status?: string;
@@ -84,7 +90,21 @@ interface Machine {
   breakTime?: string;
   breakStart?: string;
   breakEnd?: string;
+  workingDays?: string; // New field for working days
 }
+
+// Working days options with display labels and code values
+const WORKING_DAYS_OPTIONS = [
+  { label: "Monday - Friday", value: "MON_FRI" },
+  { label: "Monday - Saturday", value: "MON_SAT" },
+  { label: "All 7 Days", value: "ALL_DAYS" },
+];
+
+// Helper function to get display label from code
+const getWorkingDaysLabel = (code: string) => {
+  const option = WORKING_DAYS_OPTIONS.find((opt) => opt.value === code);
+  return option ? option.label : code;
+};
 
 export default function AddMachineContent() {
   const router = useRouter();
@@ -108,8 +128,8 @@ export default function AddMachineContent() {
     price: "",
     startTime: "",
     endTime: "",
-    teaFillStartQuantity: 0, // Initialize with 0
-    teaFillEndQuantity: 0, // Initialize with 0
+    teaFillStartQuantity: 0,
+    teaFillEndQuantity: 0,
     flushTimeMinutes: 0,
     mlToDispense: 0,
     installedDate: undefined,
@@ -119,6 +139,7 @@ export default function AddMachineContent() {
     machineType: "Full Time",
     breakStart: "",
     breakEnd: "",
+    workingDays: "MON_FRI", // Default to Monday-Friday
   });
 
   const machines = useQuery(api.machines.list) || [];
@@ -153,6 +174,13 @@ export default function AddMachineContent() {
     }
   };
 
+  const handleSelectChange = (name: string, value: string) => {
+    setMachine((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
+
   const handleDateSelect = (date: Date | undefined) => {
     setMachine((prev) => ({
       ...prev,
@@ -177,8 +205,8 @@ export default function AddMachineContent() {
           price: machine.price,
           startTime: machine.startTime,
           endTime: machine.endTime,
-          teaFillStartQuantity: machine.teaFillStartQuantity, // Updated field
-          teaFillEndQuantity: machine.teaFillEndQuantity, // Updated field
+          teaFillStartQuantity: machine.teaFillStartQuantity,
+          teaFillEndQuantity: machine.teaFillEndQuantity,
           flushTimeMinutes: machine.flushTimeMinutes,
           mlToDispense: machine.mlToDispense,
           managerName: machine.managerName,
@@ -188,6 +216,7 @@ export default function AddMachineContent() {
           breakTime: machine.breakTime,
           breakStart: machine.breakStart,
           breakEnd: machine.breakEnd,
+          workingDays: machine.workingDays, // Include working days
         });
         toast.success("Machine updated successfully");
       } else {
@@ -203,8 +232,8 @@ export default function AddMachineContent() {
           price: machine.price,
           startTime: machine.startTime,
           endTime: machine.endTime,
-          teaFillStartQuantity: machine.teaFillStartQuantity, // Updated field
-          teaFillEndQuantity: machine.teaFillEndQuantity, // Updated field
+          teaFillStartQuantity: machine.teaFillStartQuantity,
+          teaFillEndQuantity: machine.teaFillEndQuantity,
           flushTimeMinutes: machine.flushTimeMinutes,
           mlToDispense: machine.mlToDispense,
           managerName: machine.managerName,
@@ -214,10 +243,12 @@ export default function AddMachineContent() {
           breakTime: machine.breakTime,
           breakStart: machine.breakStart,
           breakEnd: machine.breakEnd,
+          workingDays: machine.workingDays, // Include working days
         });
         toast.success(`Machine added successfully with ID: ${result.id}`);
       }
 
+      // Reset form
       setMachine({
         id: "",
         name: "",
@@ -235,8 +266,8 @@ export default function AddMachineContent() {
         price: "",
         startTime: "",
         endTime: "",
-        teaFillStartQuantity: 0, // Reset with 0
-        teaFillEndQuantity: 0, // Reset with 0
+        teaFillStartQuantity: 0,
+        teaFillEndQuantity: 0,
         flushTimeMinutes: 0,
         mlToDispense: 0,
         installedDate: undefined,
@@ -245,6 +276,7 @@ export default function AddMachineContent() {
         email: "",
         machineType: "Full Time",
         breakTime: "",
+        workingDays: "MON_FRI", // Reset to default
       });
       setIsDialogOpen(false);
       setIsEditing(false);
@@ -277,6 +309,7 @@ export default function AddMachineContent() {
       email: editMachine.email || "",
       machineType: editMachine.machineType || "Full Time",
       breakTime: editMachine.breakTime || "",
+      workingDays: editMachine.workingDays || "MON_FRI", // Include working days with default
     });
     setIsEditing(true);
     setIsDialogOpen(true);
@@ -335,8 +368,8 @@ export default function AddMachineContent() {
                 price: "",
                 startTime: "",
                 endTime: "",
-                teaFillStartQuantity: 0, // Reset with 0
-                teaFillEndQuantity: 0, // Reset with 0
+                teaFillStartQuantity: 0,
+                teaFillEndQuantity: 0,
                 flushTimeMinutes: 0,
                 mlToDispense: 0,
                 installedDate: undefined,
@@ -345,6 +378,7 @@ export default function AddMachineContent() {
                 email: "",
                 machineType: "Full Time",
                 breakTime: "",
+                workingDays: "MON_FRI",
               });
             }
           }}
@@ -449,6 +483,27 @@ export default function AddMachineContent() {
                         />
                       </PopoverContent>
                     </Popover>
+                  </div>
+                  {/* Working Days Dropdown */}
+                  <div className="space-y-2">
+                    <Label htmlFor="workingDays">Working Days</Label>
+                    <Select
+                      value={machine.workingDays}
+                      onValueChange={(value) =>
+                        handleSelectChange("workingDays", value)
+                      }
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select working days" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {WORKING_DAYS_OPTIONS.map((option) => (
+                          <SelectItem key={option.value} value={option.value}>
+                            {option.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -594,18 +649,21 @@ export default function AddMachineContent() {
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="machineType">Machine Type</Label>
-                    <select
-                      id="machineType"
-                      name="machineType"
+                    <Select
                       value={machine.machineType}
-                      onChange={handleInputChange as any}
-                      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                      onValueChange={(value) =>
+                        handleSelectChange("machineType", value)
+                      }
                     >
-                      <option value="Full Time">Full Time</option>
-                      <option value="Peek Time">Peek Time</option>
-                    </select>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select machine type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Full Time">Full Time</SelectItem>
+                        <SelectItem value="Peek Time">Peek Time</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-
                   {machine.machineType === "Peek Time" && (
                     <div className="space-y-2 md:col-span-2">
                       <Label>Break Time</Label>
@@ -667,7 +725,6 @@ export default function AddMachineContent() {
                     />
                   </div>
                 </div>
-
                 <div className="space-y-4">
                   <h4 className="text-md font-medium">Address Details</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -748,6 +805,7 @@ export default function AddMachineContent() {
               <TableHead>Name</TableHead>
               <TableHead>Model</TableHead>
               <TableHead>Location</TableHead>
+              <TableHead>Working Days</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Operating Hours</TableHead>
               <TableHead>Actions</TableHead>
@@ -767,13 +825,18 @@ export default function AddMachineContent() {
                   {machine.address.building}, {machine.address.area}
                 </TableCell>
                 <TableCell>
+                  <Badge variant="outline">
+                    {getWorkingDaysLabel(machine.workingDays || "MON_FRI")}
+                  </Badge>
+                </TableCell>
+                <TableCell>
                   <Badge
                     variant={
                       machine.status === "online" ? "success" : "secondary"
                     }
                     className="cursor-pointer"
                     onClick={(e) => {
-                      e.stopPropagation(); // Prevent row click event
+                      e.stopPropagation();
                       handleToggleStatus(machine._id);
                     }}
                   >
@@ -789,7 +852,7 @@ export default function AddMachineContent() {
                       variant="outline"
                       size="sm"
                       onClick={(e) => {
-                        e.stopPropagation(); // Prevent row click event
+                        e.stopPropagation();
                         handleEdit(machine);
                       }}
                     >
@@ -799,7 +862,7 @@ export default function AddMachineContent() {
                       variant="outline"
                       size="sm"
                       onClick={(e) => {
-                        e.stopPropagation(); // Prevent row click event
+                        e.stopPropagation();
                         handleDelete(machine._id);
                       }}
                     >
@@ -809,7 +872,7 @@ export default function AddMachineContent() {
                       variant="outline"
                       size="sm"
                       onClick={(e) => {
-                        e.stopPropagation(); // Prevent row click event
+                        e.stopPropagation();
                         navigateToMachineDetails(machine.id);
                       }}
                     >

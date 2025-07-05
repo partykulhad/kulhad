@@ -26,62 +26,68 @@ export default defineSchema({
     appVersion:v.optional(v.string()),
   }).index("by_username", ["username"]).index("by_userId", ["userId"]),
 
-  machines: defineTable({
-    id: v.string(),
-    kitchenId:v.optional(v.string()),
-    name: v.string(),
-    description: v.string(),
-    model: v.string(),
-    installedDate: v.optional(v.string()),
-    address: v.object({
-      building: v.string(),
-      floor: v.string(),
-      area: v.string(),
-      district: v.string(),
-      state: v.string(),
-    }),
-    managerName: v.optional(v.string()),
-    contactNo: v.optional(v.string()),
-    email: v.optional(v.string()),
-    machineType: v.optional(v.string()),
-    breakTime: v.optional(v.string()),
-    breakStart: v.optional(v.string()),
-    breakEnd: v.optional(v.string()),
-    gisLatitude: v.string(),
-    gisLongitude: v.string(),
-    price: v.optional(v.string()),
-    startTime:  v.optional(v.string()),
-    endTime:  v.optional(v.string()),
-    flushTimeMinutes:  v.optional(v.number()),
-    mlToDispense:  v.optional(v.number()),
-    teaFillStartQuantity:  v.optional(v.number()),
-    teaFillEndQuantity:  v.optional(v.number()),
-    status: v.string(),
-    temperature: v.number(),
-    rating: v.number(),
-    canisterLevel: v.number(),
-    replenishmentOrder: v.object({
+  
+    machines: defineTable({
+      id: v.string(),
+      kitchenId: v.optional(v.string()),
+      name: v.string(),
+      description: v.string(),
+      model: v.string(),
+      installedDate: v.optional(v.string()),
+      address: v.object({
+        building: v.string(),
+        floor: v.string(),
+        area: v.string(),
+        district: v.string(),
+        state: v.string(),
+      }),
+      managerName: v.optional(v.string()),
+      contactNo: v.optional(v.string()),
+      email: v.optional(v.string()),
+      machineType: v.optional(v.string()),
+      breakTime: v.optional(v.string()),
+      breakStart: v.optional(v.string()),
+      breakEnd: v.optional(v.string()),
+      gisLatitude: v.string(),
+      gisLongitude: v.string(),
+      price: v.optional(v.string()),
+      startTime: v.optional(v.string()),
+      endTime: v.optional(v.string()),
+      flushTimeMinutes: v.optional(v.number()),
+      mlToDispense: v.optional(v.number()),
+      teaFillStartQuantity: v.optional(v.number()),
+      teaFillEndQuantity: v.optional(v.number()),
       status: v.string(),
-      eta: v.union(v.string(), v.null()),
-    }),
-    deliveryBoy: v.union(
-      v.object({
-        name: v.string(),
-        location: v.string(),
+      temperature: v.number(),
+      rating: v.number(),
+      canisterLevel: v.number(),
+      replenishmentOrder: v.object({
+        status: v.string(),
         eta: v.union(v.string(), v.null()),
       }),
-      v.null()
-    ),
-    lastFulfilled: v.string(),
-    slo: v.optional(v.object({
-      uptime: v.number(),
-      responseTime: v.number(),
-      availabilityTarget: v.number(),
-    })),
-    
-  })
-  .index("by_machineId", ["id"])
-    .index("by_status", ["status"]),
+      deliveryBoy: v.union(
+        v.object({
+          name: v.string(),
+          location: v.string(),
+          eta: v.union(v.string(), v.null()),
+        }),
+        v.null(),
+      ),
+      lastFulfilled: v.string(),
+      slo: v.optional(
+        v.object({
+          uptime: v.number(),
+          responseTime: v.number(),
+          availabilityTarget: v.number(),
+        }),
+      ),
+      // New working days field
+      workingDays: v.optional(v.string()),
+    })
+      .index("by_machineId", ["id"])
+      .index("by_status", ["status"]),
+  
+  
 
   vendors: defineTable({
     id: v.string(),

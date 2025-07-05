@@ -23,15 +23,14 @@ export const add = mutation({
     }),
     gisLatitude: v.string(),
     gisLongitude: v.string(),
-
     price: v.optional(v.string()),
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
-    teaFillStartQuantity: v.optional(v.number()), // Added new field
-    teaFillEndQuantity: v.optional(v.number()), // Added new field
+    teaFillStartQuantity: v.optional(v.number()),
+    teaFillEndQuantity: v.optional(v.number()),
     flushTimeMinutes: v.optional(v.number()),
     mlToDispense: v.optional(v.number()),
-    // New fields
+    // Manager fields
     managerName: v.optional(v.string()),
     contactNo: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -39,6 +38,8 @@ export const add = mutation({
     breakTime: v.optional(v.string()),
     breakStart: v.optional(v.string()),
     breakEnd: v.optional(v.string()),
+    // New working days field
+    workingDays: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const machineId = await ctx.db.insert("machines", {
@@ -60,7 +61,6 @@ export const toggleStatus = mutation({
   handler: async (ctx, args) => {
     const machine = await ctx.db.get(args.id)
     if (!machine) throw new Error("Machine not found")
-
     const newStatus = machine.status === "online" ? "offline" : "online"
     await ctx.db.patch(args.id, { status: newStatus })
     return { id: args.id, status: newStatus }
@@ -78,7 +78,6 @@ export const updateMachineData = mutation({
     const { id, temperature, rating, canisterLevel } = args
     const machine = await ctx.db.get(id)
     if (!machine) throw new Error("Machine not found")
-
     await ctx.db.patch(id, { temperature, rating, canisterLevel })
     return { id, temperature, rating, canisterLevel }
   },
@@ -112,16 +111,18 @@ export const getMachineData = query({
       status: machine.status,
       startTime: machine.startTime,
       endTime: machine.endTime,
-      teaFillStartQuantity: machine.teaFillStartQuantity, // Added new field
-      teaFillEndQuantity: machine.teaFillEndQuantity, // Added new field
+      teaFillStartQuantity: machine.teaFillStartQuantity,
+      teaFillEndQuantity: machine.teaFillEndQuantity,
       flushTimeMinutes: machine.flushTimeMinutes,
       mlToDispense: machine.mlToDispense,
-      // Include new fields in the response
+      // Include manager fields
       managerName: machine.managerName,
       contactNo: machine.contactNo,
       email: machine.email,
       machineType: machine.machineType,
       breakTime: machine.breakTime,
+      // Include working days
+      workingDays: machine.workingDays,
     }
   },
 })
@@ -145,11 +146,11 @@ export const update = mutation({
     price: v.optional(v.string()),
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
-    teaFillStartQuantity: v.optional(v.number()), // Added new field
-    teaFillEndQuantity: v.optional(v.number()), // Added new field
+    teaFillStartQuantity: v.optional(v.number()),
+    teaFillEndQuantity: v.optional(v.number()),
     flushTimeMinutes: v.optional(v.number()),
     mlToDispense: v.optional(v.number()),
-    // New fields
+    // Manager fields
     managerName: v.optional(v.string()),
     contactNo: v.optional(v.string()),
     email: v.optional(v.string()),
@@ -157,6 +158,8 @@ export const update = mutation({
     breakTime: v.optional(v.string()),
     breakStart: v.optional(v.string()),
     breakEnd: v.optional(v.string()),
+    // New working days field
+    workingDays: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { machineId, ...updates } = args
@@ -194,11 +197,9 @@ export const getByMachineId = query({
       .filter((q) => q.eq(q.field("machineId"), args.machineId))
       .order("desc")
       .take(10)
-
     return machineData
   },
 })
-
 
 export const getAllActiveMachines = query({
   args: {},
@@ -208,7 +209,42 @@ export const getAllActiveMachines = query({
       .query("machines")
       .filter((q) => q.neq(q.field("status"), "offline"))
       .collect()
-
     return machines
+  },
+})
+
+// Helper function to check if machine should be working on a given day
+export const isMachineWorkingToday = query({
+  args: {
+    machineId: v.string(),
+    dayOfWeek: v.number(), // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+  },
+  handler: async (ctx, args) => {
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), args.machineId))
+      .first()
+
+    if (!machine) {
+      return { success: false, error: "Machine not found" }
+    }
+
+    const workingDays = machine.workingDays || "MON_FRI"
+    const dayOfWeek = args.dayOfWeek
+
+    switch (workingDays) {
+      case "MON_FRI":
+        // Monday (1) to Friday (5)
+        return { success: true, isWorking: dayOfWeek >= 1 && dayOfWeek <= 5 }
+      case "MON_SAT":
+        // Monday (1) to Saturday (6)
+        return { success: true, isWorking: dayOfWeek >= 1 && dayOfWeek <= 6 }
+      case "ALL_DAYS":
+        // All 7 days
+        return { success: true, isWorking: true }
+      default:
+        // Default to Monday-Friday if unknown code
+        return { success: true, isWorking: dayOfWeek >= 1 && dayOfWeek <= 5 }
+    }
   },
 })

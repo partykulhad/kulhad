@@ -545,7 +545,7 @@ export const checkScheduledRequest = mutation({
       // Fallback logic for machines without end time
       if (machine.machineType === "Full Time") {
         quantity = machine.teaFillStartQuantity || 0
-      } else if (machine.machineType === "Part Time") {
+      } else if (machine.machineType === "Peek Time") {
         quantity = machine.teaFillEndQuantity || 0
       } else {
         // Default case for machines without specified type
