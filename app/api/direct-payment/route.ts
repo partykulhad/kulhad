@@ -1,87 +1,53 @@
 import { type NextRequest, NextResponse } from "next/server"
 import { ConvexHttpClient } from "convex/browser"
 import { api } from "@/convex/_generated/api"
-import sharp from 'sharp'
-import QRCode from 'qrcode'
 
 // Initialize Convex client
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
-// Function to generate QR code and convert to hex
-async function generateQRCodeAsHex(upiString: string) {
-  try {
-    // Generate QR code as PNG buffer
-    const qrBuffer = await QRCode.toBuffer(upiString, {
-      errorCorrectionLevel: 'H',
-      type: 'png',
-      margin: 1,
-      width: 300,
-    });
-    
-    // Convert the buffer to hex string
-    return qrBuffer.toString('hex');
-  } catch (error) {
-    console.error('Error generating QR code:', error);
-    throw error;
-  }
-}
-
-// Function to generate UPI payment string
-function generateUPIString(params: {
-  vpa: string;
-  name: string;
-  amount: number;
-  transactionId: string;
-  description: string;
-}) {
-  const { vpa, name, amount, transactionId, description } = params;
-  
-  // Format according to UPI specifications
-  // https://developers.google.com/pay/india/api/web/create-payment-uri
-  const upiParams = new URLSearchParams();
-  upiParams.append('pa', vpa); // payee address (VPA)
-  upiParams.append('pn', name); // payee name
-  upiParams.append('am', amount.toString()); // amount
-  upiParams.append('tr', transactionId); // transaction reference
-  upiParams.append('tn', description); // transaction note
-  upiParams.append('cu', 'INR'); // currency code
-  
-  return `upi://pay?${upiParams.toString()}`;
-}
+// Prepare Razorpay auth header once (outside the handler)
+const razorpayKeyId = process.env.RAZORPAY_KEY_ID
+const razorpayKeySecret = process.env.RAZORPAY_KEY_SECRET
+const authHeader =
+  razorpayKeyId && razorpayKeySecret
+    ? `Basic ${Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString("base64")}`
+    : null
 
 export async function POST(request: NextRequest) {
+  const totalStartTime = Date.now()
+  console.log(`[DEBUG] Payment API request started at ${new Date().toISOString()}`)
+
   try {
-    // Parse request body
     const body = await request.json()
     const { machineId, numberOfCups } = body
 
-    // Validate required parameters
     if (!machineId || !numberOfCups) {
       return NextResponse.json({ error: "Missing required parameters: machineId or numberOfCups" }, { status: 400 })
     }
 
-    // Fetch machine details from the database to get the price
-    const machine = await convex.query(api.machines.getMachineById, {
-      machineId,
-    })
+    if (!authHeader) {
+      return NextResponse.json({ error: "Razorpay credentials not configured" }, { status: 500 })
+    }
+
+    const uniqueTransactionId = `${machineId}-${Date.now()}`
+    const closeBy = Math.floor(Date.now() / 1000) + 1800
+
+    console.log(`[DEBUG] Fetching machine details for ID: ${machineId}`)
+    const machine = await convex.query(api.machines.getMachineById, { machineId })
 
     if (!machine) {
       return NextResponse.json({ error: `Machine not found with ID: ${machineId}` }, { status: 404 })
     }
 
-    // Get the price from the machine details and convert to number if it's a string
     let amountPerCup: number
-
     if (typeof machine.price === "number") {
       amountPerCup = machine.price
     } else if (typeof machine.price === "string") {
-      // Convert string price to number
       amountPerCup = Number.parseFloat(machine.price)
     } else {
       return NextResponse.json({ error: `Price not found for machine: ${machineId}` }, { status: 400 })
     }
 
-    // Validate the converted price
     if (isNaN(amountPerCup) || amountPerCup <= 0) {
       return NextResponse.json(
         { error: `Invalid price value for machine: ${machineId}, price: ${machine.price}` },
@@ -89,90 +55,90 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    console.log(`Using price ${amountPerCup} from machine ${machineId} (original: ${machine.price})`)
-
-    // Calculate total amount
     const calculatedAmount = amountPerCup * Number.parseInt(numberOfCups)
+    const amountInPaise = Math.round(calculatedAmount * 100)
 
-    // Get Razorpay VPA from environment variables
-    const razorpayVpa = process.env.RAZORPAY_VPA
-    const merchantName = process.env.MERCHANT_NAME || "Coffee Machine"
-
-    if (!razorpayVpa) {
-      return NextResponse.json({ error: "Razorpay VPA not configured" }, { status: 500 })
+    const razorpayRequest = {
+      type: "upi_qr",
+      name: `Coffee Machine ${machineId}`,
+      usage: "single_use",
+      fixed_amount: true,
+      description: `${numberOfCups} cup(s) of coffee from Machine ${machineId}`,
+      close_by: closeBy,
+      payment_amount: amountInPaise,
+      notes: {
+        machineId,
+        numberOfCups: numberOfCups.toString(),
+        transactionId: uniqueTransactionId,
+        amountPerCup: String(amountPerCup),
+      },
     }
 
-    // Generate a unique transaction ID
-    const uniqueTransactionId = `${machineId}-${Date.now()}`
-    console.log("Generated unique transaction ID:", uniqueTransactionId)
+    console.log(`[DEBUG] Making Razorpay API request`)
+    const response = await fetch("https://api.razorpay.com/v1/payments/qr_codes", {
+      method: "POST",
+      headers: {
+        Authorization: authHeader,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(razorpayRequest),
+    })
 
-    // Set expiry time (30 minutes from now)
-    const closeBy = Math.floor(Date.now() / 1000) + 1800 // 30 minutes in seconds
+    if (!response.ok) {
+      const errorData = await response.json()
+      return NextResponse.json(
+        {
+          error: "Failed to create Razorpay QR code",
+          details: errorData,
+        },
+        { status: response.status },
+      )
+    }
 
-    // Generate UPI payment string
-    const description = `${numberOfCups} cup(s) of coffee from Machine ${machineId}`
-    const upiString = generateUPIString({
-      vpa: razorpayVpa,
-      name: `${merchantName} ${machineId}`,
-      amount: calculatedAmount,
-      transactionId: uniqueTransactionId,
-      description: description,
-    });
+    const razorpayResponse = await response.json()
+    const qrCodeId = razorpayResponse.id
 
-    console.log("Generated UPI string:", upiString);
-
-    // Generate QR code from UPI string and convert to hex
-    const qrHexData = await generateQRCodeAsHex(upiString);
-    console.log("QR code generated successfully");
-
-    // Generate a data URL for the QR code to include in the response
-    const qrBuffer = Buffer.from(qrHexData, 'hex');
-    const qrDataUrl = `data:image/png;base64,${qrBuffer.toString('base64')}`;
-
-    // Create a clean response object
     const transactionData = {
       success: true,
-      id: uniqueTransactionId,
-      imageUrl: qrDataUrl,
-      qrHexData: qrHexData,
-      upiString: upiString,
-      amount: calculatedAmount,
-      description: description,
-      status: "active",
-      createdAt: Math.floor(Date.now() / 1000),
-      expiresAt: closeBy,
+      id: qrCodeId,
+      imageUrl: razorpayResponse.image_url,
+      amount: razorpayResponse.payment_amount / 100,
+      description: razorpayResponse.description,
+      status: razorpayResponse.status,
+      createdAt: razorpayResponse.created_at,
+      expiresAt: razorpayResponse.close_by,
       machineId,
       numberOfCups,
       amountPerCup,
       transactionId: uniqueTransactionId,
     }
 
-    // Store transaction in Convex
-    const dbTransaction = await convex.mutation(api.transactions.createTransaction, {
-      transactionId: uniqueTransactionId,
-      customTransactionId: uniqueTransactionId,
-      imageUrl: qrDataUrl,
-     // upiString: upiString,
-      amount: calculatedAmount,
-      cups: Number(numberOfCups),
-      amountPerCup: amountPerCup,
-      machineId: machineId,
-      description: description,
-      status: "active",
-      expiresAt: closeBy * 1000, // Convert to milliseconds
-    })
+    // Store transaction in database (non-blocking)
+    convex
+      .mutation(api.transactions.createTransaction, {
+        transactionId: qrCodeId,
+        customTransactionId: uniqueTransactionId,
+        imageUrl: razorpayResponse.image_url,
+        amount: razorpayResponse.payment_amount / 100,
+        cups: Number(numberOfCups),
+        amountPerCup: amountPerCup,
+        machineId: machineId,
+        description: razorpayResponse.description,
+        status: razorpayResponse.status,
+        expiresAt: razorpayResponse.close_by * 1000,
+      })
+      .catch((error) => {
+        console.error(`[DEBUG] Error storing transaction: ${error}`)
+      })
 
-    console.log("Transaction stored in database:", dbTransaction)
-
-    // Return the clean response
+    console.log(`[DEBUG] Total API request processing took ${Date.now() - totalStartTime}ms`)
     return NextResponse.json(transactionData)
   } catch (error: unknown) {
-    console.error("Error processing payment request:", error)
+    console.error(`[DEBUG] Error processing payment request:`, error)
     return NextResponse.json(
       {
         error: "Failed to process payment request",
         details: error instanceof Error ? error.message : "Unknown error",
-        stack: process.env.NODE_ENV === "development" ? (error instanceof Error ? error.stack : undefined) : undefined,
       },
       { status: 500 },
     )
