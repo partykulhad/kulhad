@@ -270,6 +270,7 @@ export default defineSchema({
     paymentId: v.optional(v.string()),
     vpa: v.optional(v.string()),
     failureReason: v.optional(v.string()),
+    rating: v.optional(v.number()),
     expiresAt: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),

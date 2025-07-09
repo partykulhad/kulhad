@@ -246,3 +246,19 @@ export const getActiveTransactions = query({
       .collect()
   },
 })
+
+// Mutation to update transaction rating
+export const updateTransactionRating = mutation({
+  args: {
+    transactionId: v.id("transactions"),
+    rating: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const updatedTransaction = await ctx.db.patch(args.transactionId, {
+      rating: args.rating,
+      updatedAt: Date.now(),
+    })
+
+    return updatedTransaction
+  },
+})
