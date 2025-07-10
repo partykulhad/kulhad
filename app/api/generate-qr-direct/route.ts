@@ -24,31 +24,31 @@ function rgbToRgb565(r: number, g: number, b: number): number {
   return (r5 << 11) | (g6 << 5) | b5
 }
 
-// Function to convert RGB565 to binary using your specific luminance formula
-function rgb565ToBwBit(rgb565: number): number {
+// Function to convert RGB565 to binary using the specified luminance formula
+function rgb565ToBinary(rgb565: number): number {
   // Extract RGB565 components
   const red = (rgb565 >> 11) & 0x1f // 5-bit red
   const green = (rgb565 >> 5) & 0x3f // 6-bit green
   const blue = rgb565 & 0x1f // 5-bit blue
 
-  // Convert to 8-bit values using your specific conversion factors
+  // Convert to 8-bit values using specified conversion factors
   const r8 = red * 8.225 // Red conversion factor
   const g8 = green * 4.047 // Green conversion factor
   const b8 = blue * 8.225 // Blue conversion factor
 
-  // Calculate luminance using your formula: Y = 0.299R + 0.587G + 0.114B
+  // Calculate luminance using formula: Y = 0.299R + 0.587G + 0.114B
   const luminance = 0.299 * r8 + 0.587 * g8 + 0.114 * b8
 
-  // Convert to grayscale: < 128 = black (1), >= 128 = white (0)
+  // Convert to binary: < 128 = black (1), >= 128 = white (0)
   return luminance < 128 ? 1 : 0
 }
 
 // Function to convert image buffer to binary format - exactly 174x174
-async function convertToBinary(imageBuffer: Buffer): Promise<{ binaryArray: number[]; width: number; height: number }> {
+async function convertToBinary(imageBuffer: Buffer): Promise<number[]> {
   try {
     const { data, info } = await sharp(imageBuffer).raw().toBuffer({ resolveWithObject: true })
-    const { width, height, channels } = info
 
+    const { width, height, channels } = info
     console.log(`[DEBUG] Converting image: ${width}x${height}, channels: ${channels}`)
 
     const binaryValues: number[] = []
@@ -62,27 +62,28 @@ async function convertToBinary(imageBuffer: Buffer): Promise<{ binaryArray: numb
       // Convert RGB to RGB565
       const rgb565 = rgbToRgb565(r, g, b)
 
-      // Convert RGB565 to binary using your luminance formula
-      const binaryBit = rgb565ToBwBit(rgb565)
+      // Convert RGB565 to binary using luminance formula
+      const binaryBit = rgb565ToBinary(rgb565)
       binaryValues.push(binaryBit)
     }
 
     console.log(
-      `[DEBUG] Binary conversion complete: ${width}x${height} = ${width * height} pixels, total array length: ${binaryValues.length}`,
+      `[DEBUG] Binary conversion complete: ${width}x${height} = ${width * height} pixels, array length: ${binaryValues.length}`,
     )
 
-    return {
-      binaryArray: binaryValues,
-      width,
-      height,
+    // Ensure we have exactly 30276 pixels (174x174)
+    if (binaryValues.length !== 30276) {
+      console.log(`[DEBUG] WARNING: Expected 30276 pixels, got ${binaryValues.length}`)
     }
+
+    return binaryValues
   } catch (error) {
     console.error("[DEBUG] Error converting to binary:", error)
     throw error
   }
 }
 
-// Function to find QR code boundaries more precisely
+// Function to find QR code boundaries
 function findQRCodeBounds(qrCode: any, imageWidth: number, imageHeight: number) {
   const corners = [
     qrCode.location.topLeftCorner,
@@ -104,7 +105,6 @@ function findQRCodeBounds(qrCode: any, imageWidth: number, imageHeight: number) 
   const size = Math.max(width, height)
   const centerX = minX + width / 2
   const centerY = minY + height / 2
-
   const finalLeft = Math.max(0, Math.floor(centerX - size / 2))
   const finalTop = Math.max(0, Math.floor(centerY - size / 2))
   const finalSize = Math.min(size, Math.min(imageWidth - finalLeft, imageHeight - finalTop))
@@ -118,7 +118,7 @@ function findQRCodeBounds(qrCode: any, imageWidth: number, imageHeight: number) 
 }
 
 // Function to extract QR code and convert to binary with exact 174x174 output
-async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
+async function extractQRCodeAsBinary(imageUrl: string | URL | Request): Promise<number[]> {
   const qrStartTime = Date.now()
   console.log(`[DEBUG] QR extraction started at ${new Date().toISOString()}`)
 
@@ -126,11 +126,9 @@ async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
     // Fetch the image
     console.log(`[DEBUG] Fetching image from URL: ${imageUrl}`)
     const response = await fetch(imageUrl, { redirect: "follow" })
-
     if (!response.ok) {
       throw new Error(`Failed to fetch image: ${response.status} ${response.statusText}`)
     }
-
     const imageBuffer = Buffer.from(await response.arrayBuffer())
 
     // Step 1: Enhance the original image for better QR detection
@@ -148,7 +146,6 @@ async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
     const canvas = createCanvas(image.width, image.height)
     const ctx = canvas.getContext("2d")
     ctx.drawImage(image, 0, 0)
-
     const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height)
 
     // Step 3: Detect QR code with jsQR
@@ -157,13 +154,10 @@ async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
     })
 
     let qrBuffer: Buffer
-
     if (qrCode) {
       console.log(`[DEBUG] QR code detected successfully`)
-
       // Get precise QR code boundaries
       const bounds = findQRCodeBounds(qrCode, image.width, image.height)
-
       console.log(
         `[DEBUG] QR bounds: left=${bounds.left}, top=${bounds.top}, width=${bounds.width}, height=${bounds.height}`,
       )
@@ -183,10 +177,8 @@ async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
         .toBuffer()
     } else {
       console.log(`[DEBUG] QR code not detected, using center extraction method`)
-
       // Fallback: Extract center region
       const metadata = await sharp(enhancedImage).metadata()
-
       if (!metadata.width || !metadata.height) {
         throw new Error("Could not get image dimensions")
       }
@@ -195,7 +187,6 @@ async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
       const centerX = Math.floor(metadata.width / 2)
       const centerY = Math.floor(metadata.height / 2)
       const size = Math.floor(Math.min(metadata.width, metadata.height) * 0.6)
-
       const left = Math.max(0, centerX - Math.floor(size / 2))
       const top = Math.max(0, centerY - Math.floor(size / 2))
       const actualSize = Math.min(size, Math.min(metadata.width - left, metadata.height - top))
@@ -228,29 +219,26 @@ async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
         .toBuffer()
     }
 
-    // Step 5: Convert to binary using your luminance formula
-    const binaryResult = await convertToBinary(qrBuffer)
+    // Step 5: Convert to binary using the specified luminance formula
+    const binaryArray = await convertToBinary(qrBuffer)
 
     // Verify we have exactly 174*174 = 30276 pixels
     const expectedPixels = 174 * 174 // 30276
+    console.log(`[DEBUG] Binary array length: ${binaryArray.length}, expected: ${expectedPixels}`)
 
-    console.log(`[DEBUG] Binary array length: ${binaryResult.binaryArray.length}, expected: ${expectedPixels}`)
-
-    if (binaryResult.binaryArray.length !== expectedPixels) {
+    if (binaryArray.length !== expectedPixels) {
       console.log(
-        `[DEBUG] WARNING: Binary array length mismatch. Got ${binaryResult.binaryArray.length}, expected ${expectedPixels}`,
+        `[DEBUG] WARNING: Binary array length mismatch. Got ${binaryArray.length}, expected ${expectedPixels}`,
       )
     }
 
     console.log(`[DEBUG] Total QR extraction took ${Date.now() - qrStartTime}ms`)
-    return binaryResult.binaryArray
+    return binaryArray
   } catch (error) {
     console.log(`[DEBUG] Error in QR extraction: ${error}`)
-
     // Last resort: Simple processing
     try {
       console.log(`[DEBUG] Trying last resort method`)
-
       const fullImageBuffer = await (await fetch(imageUrl)).arrayBuffer()
       const qrBuffer = await sharp(Buffer.from(fullImageBuffer))
         .resize(174, 174, {
@@ -258,10 +246,9 @@ async function extractQRCodeAsBinary(imageUrl: string | URL | Request) {
           fit: "fill",
         })
         .toBuffer()
-
-      const binaryResult = await convertToBinary(qrBuffer)
+      const binaryArray = await convertToBinary(qrBuffer)
       console.log(`[DEBUG] Last resort method completed`)
-      return binaryResult.binaryArray
+      return binaryArray
     } catch (e) {
       console.log(`[DEBUG] All QR extraction methods failed: ${e}`)
       return []
@@ -361,11 +348,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Failed to extract QR code from image" }, { status: 500 })
     }
 
+    // Ensure exactly 30276 binary values (174x174)
+    if (qrBinaryData.length !== 30276) {
+      return NextResponse.json(
+        { error: `Invalid QR binary data length: ${qrBinaryData.length}, expected: 30276` },
+        { status: 500 },
+      )
+    }
+
     const transactionData = {
       success: true,
       id: qrCodeId,
       imageUrl: razorpayResponse.image_url,
-      qrBinaryData: qrBinaryData, // Exactly 174x174 = 30276 binary values using your luminance formula
+      qrBinaryData: qrBinaryData, // Exactly 174x174 = 30276 binary values
       qrImageWidth: 174,
       qrImageHeight: 174,
       qrPixelFormat: "BINARY_LUMINANCE",
@@ -378,7 +373,7 @@ export async function POST(request: NextRequest) {
       numberOfCups,
       amountPerCup,
       transactionId: uniqueTransactionId,
-      conversionFormula: "Y = 0.299R + 0.587G + 0.114B, R×8.225, G×4.047, B×8.225",
+      conversionFormula: "RGB→RGB565→8bit(R×8.225,G×4.047,B×8.225)→Y=0.299R+0.587G+0.114B→Binary(Y<128=1,Y≥128=0)",
     }
 
     // Store transaction in database (non-blocking)
