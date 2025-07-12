@@ -16,6 +16,10 @@ const authHeader =
     ? `Basic ${Buffer.from(`${razorpayKeyId}:${razorpayKeySecret}`).toString("base64")}`
     : null
 
+// Constants for QR code dimensions
+const QR_WIDTH = 174
+const QR_HEIGHT = 174
+
 // Function to convert RGB to RGB565 format with proper bit packing
 function rgbToRgb565(r: number, g: number, b: number): number {
   const r5 = (r >> 3) & 0x1f // 5 bits for red
@@ -47,7 +51,6 @@ function rgb565ToBinary(rgb565: number): number {
 async function convertToBinary(imageBuffer: Buffer): Promise<number[]> {
   try {
     const { data, info } = await sharp(imageBuffer).raw().toBuffer({ resolveWithObject: true })
-
     const { width, height, channels } = info
     console.log(`[DEBUG] Converting image: ${width}x${height}, channels: ${channels}`)
 
@@ -83,6 +86,36 @@ async function convertToBinary(imageBuffer: Buffer): Promise<number[]> {
   }
 }
 
+// Function to convert flat binary array to row-wise format
+function formatBinaryDataAsRows(data: number[]): string {
+  const rows: string[] = []
+
+  for (let i = 0; i < QR_HEIGHT; i++) {
+    const start = i * QR_WIDTH
+    const end = start + QR_WIDTH
+    const row = data.slice(start, end)
+    const rowString = row.join("")
+    rows.push(rowString)
+  }
+
+  return rows.join("\n")
+}
+
+// Alternative function to return as array of row strings
+function formatBinaryDataAsRowArray(data: number[]): string[] {
+  const rows: string[] = []
+
+  for (let i = 0; i < QR_HEIGHT; i++) {
+    const start = i * QR_WIDTH
+    const end = start + QR_WIDTH
+    const row = data.slice(start, end)
+    const rowString = row.join("")
+    rows.push(rowString)
+  }
+
+  return rows
+}
+
 // Function to find QR code boundaries
 function findQRCodeBounds(qrCode: any, imageWidth: number, imageHeight: number) {
   const corners = [
@@ -105,6 +138,7 @@ function findQRCodeBounds(qrCode: any, imageWidth: number, imageHeight: number) 
   const size = Math.max(width, height)
   const centerX = minX + width / 2
   const centerY = minY + height / 2
+
   const finalLeft = Math.max(0, Math.floor(centerX - size / 2))
   const finalTop = Math.max(0, Math.floor(centerY - size / 2))
   const finalSize = Math.min(size, Math.min(imageWidth - finalLeft, imageHeight - finalTop))
@@ -154,6 +188,7 @@ async function extractQRCodeAsBinary(imageUrl: string | URL | Request): Promise<
     })
 
     let qrBuffer: Buffer
+
     if (qrCode) {
       console.log(`[DEBUG] QR code detected successfully`)
       // Get precise QR code boundaries
@@ -246,6 +281,7 @@ async function extractQRCodeAsBinary(imageUrl: string | URL | Request): Promise<
           fit: "fill",
         })
         .toBuffer()
+
       const binaryArray = await convertToBinary(qrBuffer)
       console.log(`[DEBUG] Last resort method completed`)
       return binaryArray
@@ -356,11 +392,17 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Format binary data as horizontal rows
+    const qrBinaryRows = formatBinaryDataAsRowArray(qrBinaryData)
+    const qrBinaryString = formatBinaryDataAsRows(qrBinaryData)
+
     const transactionData = {
       success: true,
       id: qrCodeId,
       imageUrl: razorpayResponse.image_url,
-      qrBinaryData: qrBinaryData, // Exactly 174x174 = 30276 binary values
+      qrBinaryData: qrBinaryData, // Original flat array for backward compatibility
+      qrBinaryRows: qrBinaryRows, // Array of 174 strings, each 174 characters long
+      qrBinaryString: qrBinaryString, // Single string with newlines separating rows
       qrImageWidth: 174,
       qrImageHeight: 174,
       qrPixelFormat: "BINARY_LUMINANCE",
