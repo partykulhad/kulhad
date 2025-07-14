@@ -400,22 +400,22 @@ export async function POST(request: NextRequest) {
       success: true,
       id: qrCodeId,
       imageUrl: razorpayResponse.image_url,
-      qrBinaryData: qrBinaryData, // Original flat array for backward compatibility
-      qrBinaryRows: qrBinaryRows, // Array of 174 strings, each 174 characters long
+      // qrBinaryData: qrBinaryData, // Original flat array for backward compatibility
+      // qrBinaryRows: qrBinaryRows, // Array of 174 strings, each 174 characters long
       qrBinaryString: qrBinaryString, // Single string with newlines separating rows
-      qrImageWidth: 174,
-      qrImageHeight: 174,
-      qrPixelFormat: "BINARY_LUMINANCE",
-      amount: razorpayResponse.payment_amount / 100,
-      description: razorpayResponse.description,
-      status: razorpayResponse.status,
-      createdAt: razorpayResponse.created_at,
-      expiresAt: razorpayResponse.close_by,
-      machineId,
-      numberOfCups,
-      amountPerCup,
+      // qrImageWidth: 174,
+      // qrImageHeight: 174,
+      // qrPixelFormat: "BINARY_LUMINANCE",
+      // amount: razorpayResponse.payment_amount / 100,
+      // description: razorpayResponse.description,
+      // status: razorpayResponse.status,
+      // createdAt: razorpayResponse.created_at,
+      // expiresAt: razorpayResponse.close_by,
+      // machineId,
+      // numberOfCups,
+      // amountPerCup,
       transactionId: uniqueTransactionId,
-      conversionFormula: "RGB→RGB565→8bit(R×8.225,G×4.047,B×8.225)→Y=0.299R+0.587G+0.114B→Binary(Y<128=1,Y≥128=0)",
+      // conversionFormula: "RGB→RGB565→8bit(R×8.225,G×4.047,B×8.225)→Y=0.299R+0.587G+0.114B→Binary(Y<128=1,Y≥128=0)",
     }
 
     // Store transaction in database (non-blocking)
