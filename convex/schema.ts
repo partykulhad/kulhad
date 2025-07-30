@@ -87,7 +87,38 @@ export default defineSchema({
       .index("by_machineId", ["id"])
       .index("by_status", ["status"]),
   
-  
+ // Canister registration table
+ canisters: defineTable({
+  scanId: v.string(),
+  kitchenId: v.string(), // Links to kitchen
+  status: v.string(), // "ready", "in-use", "maintenance", etc.
+  scanType: v.string(), // "Scanner/Manual", "QR", "RFID", etc.
+  latitude: v.number(),
+  longitude: v.number(),
+  registrationDateTime: v.string(),
+  lastUpdated: v.string(),
+  isActive: v.boolean(),
+})
+  .index("by_kitchenId", ["kitchenId"])
+  .index("by_scanId", ["scanId"]),
+
+// Daily scan logs table
+dailyScanLogs: defineTable({
+  scanId: v.string(),
+  kitchenId: v.string(),
+  status: v.string(),
+  scanType: v.string(),
+  scanDateTime: v.string(),
+  latitude: v.number(),
+  longitude: v.number(),
+  date: v.string(), // Format: "DD/MM/YYYY" for easy filtering
+  logId: v.string(), // Unique log identifier
+})
+  .index("by_kitchenId_date", ["kitchenId", "date"])
+  .index("by_scanId", ["scanId"])
+  .index("by_date", ["date"]),
+
+
 
   vendors: defineTable({
     id: v.string(),

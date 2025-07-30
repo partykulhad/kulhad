@@ -18,6 +18,7 @@ import type * as agentLocations from "../agentLocations.js";
 import type * as appUsers from "../appUsers.js";
 import type * as canister from "../canister.js";
 import type * as canisterCheck from "../canisterCheck.js";
+import type * as canisters from "../canisters.js";
 import type * as deliveryAgents from "../deliveryAgents.js";
 import type * as http from "../http.js";
 import type * as index from "../index.js";
@@ -45,6 +46,7 @@ declare const fullApi: ApiFromModules<{
   appUsers: typeof appUsers;
   canister: typeof canister;
   canisterCheck: typeof canisterCheck;
+  canisters: typeof canisters;
   deliveryAgents: typeof deliveryAgents;
   http: typeof http;
   index: typeof index;
