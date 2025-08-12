@@ -7,7 +7,7 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 export async function POST(req: NextRequest) {
   try {
     // Step 1: Parse request body
-    let body: { [x: string]: any; latitude: any; longitude: any; scanId: any; status: any; scanType: any; scanDateTime: any; kitchenId: any }
+    let body: any
     try {
       body = await req.json()
     } catch (error) {
@@ -20,47 +20,72 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // Step 2: Validate required fields
-    const requiredFields = ["scanId", "status", "scanType", "scanDateTime", "kitchenId", "latitude", "longitude"]
-    const missingFields = requiredFields.filter((field) => !body[field])
+    let scanLogs: any[]
+    if (Array.isArray(body)) {
+      scanLogs = body
+    } else {
+      scanLogs = [body]
+    }
 
-    if (missingFields.length > 0) {
+    // Step 2: Validate that we have scan data
+    if (scanLogs.length === 0) {
       return NextResponse.json(
         {
           code: 400,
-          message: `Missing required fields: ${missingFields.join(", ")}`,
+          message: "No scan data provided",
         },
         { status: 400 },
       )
     }
 
-    // Step 3: Validate data types
-    if (typeof body.latitude !== "number" || typeof body.longitude !== "number") {
+    // Step 3: Validate required fields for each scan log
+    const requiredFields = ["scanId", "status", "scanType", "scanDateTime", "userId", "latitude", "longitude"]
+    const validationErrors: string[] = []
+
+    scanLogs.forEach((scanLog, index) => {
+      const missingFields = requiredFields.filter((field) => !scanLog[field])
+
+      if (missingFields.length > 0) {
+        validationErrors.push(`Scan log ${index + 1}: Missing required fields: ${missingFields.join(", ")}`)
+      }
+
+      // Validate data types
+      if (typeof scanLog.latitude !== "number" || typeof scanLog.longitude !== "number") {
+        validationErrors.push(`Scan log ${index + 1}: Latitude and longitude must be numbers`)
+      }
+    })
+
+    if (validationErrors.length > 0) {
       return NextResponse.json(
         {
           code: 400,
-          message: "Latitude and longitude must be numbers",
+          message: validationErrors.join("; "),
         },
         { status: 400 },
       )
     }
 
-    // Step 4: Submit scan details
+    // Step 4: Submit scan details for all logs
     try {
-      const result = await convex.mutation(api.canisters.submitDailyScan, {
-        scanId: body.scanId,
-        status: body.status,
-        scanType: body.scanType,
-        scanDateTime: body.scanDateTime,
-        kitchenId: body.kitchenId,
-        latitude: body.latitude,
-        longitude: body.longitude,
-      })
+      const results = await Promise.all(
+        scanLogs.map((scanLog) =>
+          convex.mutation(api.canisters.submitDailyScan, {
+            scanId: scanLog.scanId,
+            status: scanLog.status,
+            scanType: scanLog.scanType,
+            scanDateTime: scanLog.scanDateTime,
+            userId: scanLog.userId, // Renamed from kitchenId to userId
+            latitude: scanLog.latitude,
+            longitude: scanLog.longitude,
+            orderId: scanLog.orderId || "", // Added optional orderId parameter
+          }),
+        ),
+      )
 
       return NextResponse.json(
         {
           code: 200,
-          message: "Scan submitted successfully",
+          message: `${results.length} scan(s) submitted successfully`,
         },
         { status: 200 },
       )

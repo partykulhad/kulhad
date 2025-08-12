@@ -49,7 +49,7 @@ export async function GET(req: NextRequest) {
     let scanDetails
     try {
       scanDetails = await convex.query(api.canisters.getDailyScanDetails, {
-        kitchenId: userId,
+        userId: userId,
         date: date,
       })
     } catch (error) {

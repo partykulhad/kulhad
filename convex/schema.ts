@@ -103,22 +103,21 @@ export default defineSchema({
   .index("by_scanId", ["scanId"]),
 
 // Daily scan logs table
-dailyScanLogs: defineTable({
+dailyScanLogs : defineTable({
   scanId: v.string(),
-  kitchenId: v.string(),
+  userId: v.string(), // renamed from kitchenId to userId
   status: v.string(),
   scanType: v.string(),
   scanDateTime: v.string(),
   latitude: v.number(),
   longitude: v.number(),
+  orderId: v.string(), // added orderId field (will be empty string for kitchen app)
   date: v.string(), // Format: "DD/MM/YYYY" for easy filtering
   logId: v.string(), // Unique log identifier
 })
-  .index("by_kitchenId_date", ["kitchenId", "date"])
+  .index("by_userId_date", ["userId", "date"]) // updated index name
   .index("by_scanId", ["scanId"])
   .index("by_date", ["date"]),
-
-
 
   vendors: defineTable({
     id: v.string(),

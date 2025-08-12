@@ -1,5 +1,4 @@
 "use client";
-
 import type React from "react";
 import { useState } from "react";
 import { useMutation, useQuery } from "convex/react";
@@ -11,6 +10,14 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
@@ -20,7 +27,14 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import { PlusIcon, Pencil, Trash2, ExternalLink, Loader2 } from "lucide-react";
+import {
+  PlusIcon,
+  Pencil,
+  Trash2,
+  ExternalLink,
+  Loader2,
+  Package,
+} from "lucide-react";
 import {
   Table,
   TableBody,
@@ -30,6 +44,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 
 // Database schema interfaces - exactly matching the database
 interface DatabaseKitchenMember {
@@ -38,8 +53,8 @@ interface DatabaseKitchenMember {
   email: string;
   adhaar: string;
   address: string;
-  uid?: string; // Optional in database (can be undefined from query)
-  startingDate: string; // Required in database
+  uid?: string;
+  startingDate: string;
   company: string;
   pan: string;
   photoStorageId?: string;
@@ -61,7 +76,21 @@ interface DatabaseKitchen {
   salt: string;
   role: string;
   status?: string;
-  members: DatabaseKitchenMember[]; // Members can have optional uid from database
+  members: DatabaseKitchenMember[];
+}
+
+interface DatabaseCanister {
+  _id: Id<"canisters">;
+  _creationTime: number;
+  scanId: string;
+  kitchenId: string;
+  status: string;
+  scanType: string;
+  latitude: number;
+  longitude: number;
+  registrationDateTime: string;
+  lastUpdated: string;
+  isActive: boolean;
 }
 
 // Form interfaces for creating/editing
@@ -75,8 +104,8 @@ interface FormKitchenMember {
   pan: string;
   photoStorageId?: string;
   photo?: File | null;
-  uid?: string; // Optional in form (auto-generated)
-  startingDate?: string; // Optional in form (auto-generated)
+  uid?: string;
+  startingDate?: string;
 }
 
 interface FormKitchen {
@@ -93,8 +122,20 @@ interface FormKitchen {
   members: FormKitchenMember[];
 }
 
-export default function AddKitchen() {
+interface FormCanister {
+  _id?: Id<"canisters">;
+  kitchenId: string;
+  status: string;
+  scanType: string;
+  latitude: number;
+  longitude: number;
+}
+
+export default function KitchenCanisterManagement() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState("kitchen");
+
+  // Kitchen state
   const [kitchen, setKitchen] = useState<FormKitchen>({
     name: "",
     address: "",
@@ -107,6 +148,7 @@ export default function AddKitchen() {
     password: "",
     members: [],
   });
+
   const [member, setMember] = useState<FormKitchenMember>({
     name: "",
     mobile: "",
@@ -118,8 +160,19 @@ export default function AddKitchen() {
     photo: null,
   });
 
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  // Canister state
+  const [canister, setCanister] = useState<FormCanister>({
+    kitchenId: "",
+    status: "ready",
+    scanType: "Scanner/Manual",
+    latitude: 0,
+    longitude: 0,
+  });
+
+  // Dialog states
+  const [isKitchenDialogOpen, setIsKitchenDialogOpen] = useState(false);
   const [isMemberDialogOpen, setIsMemberDialogOpen] = useState(false);
+  const [isCanisterDialogOpen, setIsCanisterDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editingMemberIndex, setEditingMemberIndex] = useState<number | null>(
     null
@@ -128,17 +181,34 @@ export default function AddKitchen() {
   // Loading states
   const [isSubmittingKitchen, setIsSubmittingKitchen] = useState(false);
   const [isSubmittingMember, setIsSubmittingMember] = useState(false);
+  const [isSubmittingCanister, setIsSubmittingCanister] = useState(false);
   const [isDeletingKitchen, setIsDeletingKitchen] = useState<string | null>(
     null
   );
+  const [isDeletingCanister, setIsDeletingCanister] = useState<string | null>(
+    null
+  );
 
+  // Kitchen mutations
   const addKitchen = useMutation(api.kitchens.add);
   const editKitchen = useMutation(api.kitchens.edit);
   const removeKitchen = useMutation(api.kitchens.remove);
   const addMember = useMutation(api.kitchens.addMember);
   const generateUploadUrl = useMutation(api.kitchens.generateUploadUrl);
-  const kitchens = useQuery(api.kitchens.list) || [];
 
+  // Canister mutations
+  const registerCanister = useMutation(api.canisters.registerCanister);
+  const deactivateCanister = useMutation(api.canisters.deactivateCanister);
+
+  // Queries
+  const kitchens = useQuery(api.kitchens.list) || [];
+  const canisters =
+    useQuery(
+      api.canisters.getAllCanisters,
+      activeTab === "canister" ? {} : "skip"
+    ) || [];
+
+  // Kitchen handlers (keeping existing functionality)
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -151,6 +221,22 @@ export default function AddKitchen() {
   ) => {
     const { name, value } = e.target;
     setMember((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // Canister handlers
+  const handleCanisterInputChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const { name, value } = e.target;
+    setCanister((prev) => ({
+      ...prev,
+      [name]:
+        name === "latitude" || name === "longitude" ? Number(value) : value,
+    }));
+  };
+
+  const handleCanisterSelectChange = (name: string, value: string) => {
+    setCanister((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -194,17 +280,25 @@ export default function AddKitchen() {
     setEditingMemberIndex(null);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const resetCanisterForm = () => {
+    setCanister({
+      kitchenId: "",
+      status: "ready",
+      scanType: "Scanner/Manual",
+      latitude: 0,
+      longitude: 0,
+    });
+  };
+
+  // Kitchen submit handler (keeping existing functionality)
+  const handleKitchenSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmittingKitchen(true);
-
     try {
       if (isEditing && kitchen._id) {
-        // For editing, process members with existing uid and startingDate
         const processedMembers = await Promise.all(
           kitchen.members.map(async (member) => {
             let photoStorageId = member.photoStorageId;
-
             if (member.photo instanceof File) {
               const uploadUrl = await generateUploadUrl();
               const result = await fetch(uploadUrl, {
@@ -215,8 +309,6 @@ export default function AddKitchen() {
               const { storageId } = await result.json();
               photoStorageId = storageId;
             }
-
-            // For editing, uid and startingDate must be present
             return {
               name: member.name,
               mobile: member.mobile,
@@ -226,8 +318,8 @@ export default function AddKitchen() {
               company: member.company,
               pan: member.pan,
               photoStorageId,
-              uid: member.uid!, // Must exist for editing
-              startingDate: member.startingDate!, // Must exist for editing
+              uid: member.uid!,
+              startingDate: member.startingDate!,
             };
           })
         );
@@ -245,15 +337,12 @@ export default function AddKitchen() {
           password: kitchen.password || undefined,
           members: processedMembers,
         };
-
         await editKitchen(kitchenData);
         toast.success("Kitchen updated successfully");
       } else {
-        // For adding, process members without uid and startingDate (will be auto-generated)
         const processedMembers = await Promise.all(
           kitchen.members.map(async (member) => {
             let photoStorageId = member.photoStorageId;
-
             if (member.photo instanceof File) {
               const uploadUrl = await generateUploadUrl();
               const result = await fetch(uploadUrl, {
@@ -264,8 +353,6 @@ export default function AddKitchen() {
               const { storageId } = await result.json();
               photoStorageId = storageId;
             }
-
-            // For adding, don't include uid and startingDate (will be auto-generated)
             return {
               name: member.name,
               mobile: member.mobile,
@@ -291,15 +378,13 @@ export default function AddKitchen() {
           password: kitchen.password,
           members: processedMembers,
         };
-
         await addKitchen(kitchenData);
         toast.success(
           "Kitchen added successfully with auto-generated UIDs and dates"
         );
       }
-
       resetKitchenForm();
-      setIsDialogOpen(false);
+      setIsKitchenDialogOpen(false);
     } catch (error: any) {
       console.error("Error adding/editing kitchen:", error);
       toast.error(
@@ -310,13 +395,39 @@ export default function AddKitchen() {
     }
   };
 
+  // Canister submit handler
+  const handleCanisterSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmittingCanister(true);
+    try {
+      const result = await registerCanister({
+        kitchenId: canister.kitchenId,
+        status: canister.status,
+        scanType: canister.scanType,
+        latitude: canister.latitude,
+        longitude: canister.longitude,
+      });
+
+      toast.success(
+        `Canister registered successfully with ID: ${result.scanId}`
+      );
+      resetCanisterForm();
+      setIsCanisterDialogOpen(false);
+    } catch (error: any) {
+      console.error("Error registering canister:", error);
+      toast.error(
+        error.message || "Failed to register canister. Please try again."
+      );
+    } finally {
+      setIsSubmittingCanister(false);
+    }
+  };
+
   const handleMemberSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmittingMember(true);
-
     try {
       let photoStorageId = member.photoStorageId;
-
       if (member.photo instanceof File) {
         const uploadUrl = await generateUploadUrl();
         const result = await fetch(uploadUrl, {
@@ -329,7 +440,6 @@ export default function AddKitchen() {
       }
 
       if (isEditing && kitchen._id && editingMemberIndex === null) {
-        // Adding new member to existing kitchen - use addMember mutation
         const memberData = {
           name: member.name,
           mobile: member.mobile,
@@ -340,18 +450,13 @@ export default function AddKitchen() {
           pan: member.pan,
           photoStorageId,
         };
-
         const newUID = await addMember({
           kitchenId: kitchen._id,
           member: memberData,
         });
-
         toast.success(`Kitchen member added successfully with UID: ${newUID}`);
-
-        // Refresh the kitchen data by refetching
-        window.location.reload(); // Simple refresh to get updated data
+        window.location.reload();
       } else {
-        // Adding/editing member in form (not yet saved to database)
         const newMember: FormKitchenMember = {
           name: member.name,
           mobile: member.mobile,
@@ -361,8 +466,8 @@ export default function AddKitchen() {
           company: member.company,
           pan: member.pan,
           photoStorageId,
-          uid: member.uid, // Preserve existing UID if editing
-          startingDate: member.startingDate, // Preserve existing startingDate if editing
+          uid: member.uid,
+          startingDate: member.startingDate,
         };
 
         if (editingMemberIndex !== null) {
@@ -380,7 +485,6 @@ export default function AddKitchen() {
           );
         }
       }
-
       resetMemberForm();
       setIsMemberDialogOpen(false);
     } catch (error: any) {
@@ -394,7 +498,6 @@ export default function AddKitchen() {
   };
 
   const handleEdit = (editKitchen: any) => {
-    // Use any to avoid type conflicts
     setKitchen({
       _id: editKitchen._id,
       name: editKitchen.name,
@@ -405,15 +508,15 @@ export default function AddKitchen() {
       longitude: editKitchen.longitude,
       capacity: editKitchen.capacity,
       username: editKitchen.username,
-      password: "", // Don't pre-fill password for security
+      password: "",
       members: editKitchen.members.map((member: any) => ({
         ...member,
-        photo: null, // Don't pre-fill photo
-        uid: member.uid || undefined, // Handle optional uid
+        photo: null,
+        uid: member.uid || undefined,
       })),
     });
     setIsEditing(true);
-    setIsDialogOpen(true);
+    setIsKitchenDialogOpen(true);
   };
 
   const handleDelete = async (id: Id<"kitchens">) => {
@@ -433,12 +536,28 @@ export default function AddKitchen() {
     }
   };
 
+  const handleDeleteCanister = async (scanId: string) => {
+    if (window.confirm("Are you sure you want to deactivate this canister?")) {
+      setIsDeletingCanister(scanId);
+      try {
+        await deactivateCanister({ scanId });
+        toast.success("Canister deactivated successfully");
+      } catch (error: any) {
+        console.error("Error deactivating canister:", error);
+        toast.error(
+          error.message || "Failed to deactivate canister. Please try again."
+        );
+      } finally {
+        setIsDeletingCanister(null);
+      }
+    }
+  };
+
   const handleEditMember = (editMember: any, index: number) => {
-    // Use any to avoid type conflicts
     setMember({
       ...editMember,
-      photo: null, // Don't pre-fill photo
-      uid: editMember.uid || undefined, // Handle optional uid
+      photo: null,
+      uid: editMember.uid || undefined,
     });
     setEditingMemberIndex(index);
     setIsMemberDialogOpen(true);
@@ -456,297 +575,732 @@ export default function AddKitchen() {
 
   const formatDisplayDate = (dateString?: string) => {
     if (!dateString) return "Auto-generated";
-    return dateString; // Since it's already formatted from the backend
+    return dateString;
+  };
+
+  const getStatusBadgeVariant = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "ready":
+        return "default";
+      case "in-use":
+        return "secondary";
+      case "maintenance":
+        return "destructive";
+      case "offline":
+        return "outline";
+      default:
+        return "default";
+    }
+  };
+
+  const getKitchenName = (kitchenId: string) => {
+    const kitchen = kitchens.find((k) => k.userId === kitchenId);
+    return kitchen ? kitchen.name : kitchenId;
   };
 
   return (
     <div className="container mx-auto p-2 sm:p-4">
-      {/* Header - Responsive */}
-      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
-        <h1 className="text-xl sm:text-2xl font-bold">Kitchens</h1>
-        <Dialog
-          open={isDialogOpen}
-          onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) {
-              resetKitchenForm();
-            }
-          }}
-        >
-          <DialogTrigger asChild>
-            <Button className="w-full sm:w-auto">
-              <PlusIcon className="mr-2 h-4 w-4" />
-              Add New Kitchen
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[95vw] max-w-4xl max-h-[95vh] overflow-hidden">
-            <DialogHeader>
-              <DialogTitle>
-                {isEditing ? "Edit Kitchen" : "Add New Kitchen"}
-              </DialogTitle>
-              <DialogDescription>
-                Enter the details of the kitchen here. User ID and member UIDs
-                will be generated automatically.
-              </DialogDescription>
-            </DialogHeader>
-            <ScrollArea className="max-h-[calc(95vh-120px)] pr-4">
-              <form onSubmit={handleSubmit} className="space-y-6">
-                {/* Kitchen Basic Info */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Kitchen Name *</Label>
-                    <Input
-                      id="name"
-                      name="name"
-                      value={kitchen.name}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="manager">Manager *</Label>
-                    <Input
-                      id="manager"
-                      name="manager"
-                      value={kitchen.manager}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="managerMobile">Manager Mobile *</Label>
-                    <Input
-                      id="managerMobile"
-                      name="managerMobile"
-                      value={kitchen.managerMobile}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="latitude">Latitude *</Label>
-                    <Input
-                      id="latitude"
-                      name="latitude"
-                      type="number"
-                      step="any"
-                      value={kitchen.latitude}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="longitude">Longitude *</Label>
-                    <Input
-                      id="longitude"
-                      name="longitude"
-                      type="number"
-                      step="any"
-                      value={kitchen.longitude}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="capacity">Capacity *</Label>
-                    <Input
-                      id="capacity"
-                      name="capacity"
-                      type="number"
-                      min="1"
-                      value={kitchen.capacity}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username *</Label>
-                    <Input
-                      id="username"
-                      name="username"
-                      value={kitchen.username}
-                      onChange={handleInputChange}
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="password">
-                      Password {!isEditing && "*"}
-                    </Label>
-                    <Input
-                      id="password"
-                      name="password"
-                      type="password"
-                      value={kitchen.password}
-                      onChange={handleInputChange}
-                      required={!isEditing}
-                      placeholder={
-                        isEditing ? "Leave blank to keep current password" : ""
-                      }
-                    />
-                  </div>
-                </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
+          <h1 className="text-xl sm:text-2xl font-bold">
+            Kitchen & Canister Management
+          </h1>
 
-                <div className="space-y-2">
-                  <Label htmlFor="address">Address *</Label>
-                  <Textarea
-                    id="address"
-                    name="address"
-                    value={kitchen.address}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
+          <TabsList className="grid w-full sm:w-auto grid-cols-2">
+            <TabsTrigger value="kitchen" className="flex items-center gap-2">
+              <ExternalLink className="h-4 w-4" />
+              Kitchens
+            </TabsTrigger>
+            <TabsTrigger value="canister" className="flex items-center gap-2">
+              <Package className="h-4 w-4" />
+              Canisters
+            </TabsTrigger>
+          </TabsList>
+        </div>
 
-                {/* Kitchen Members Section */}
-                <div className="space-y-4">
-                  <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-                    <Label className="text-base font-semibold">
-                      Kitchen Members ({kitchen.members.length})
-                    </Label>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setIsMemberDialogOpen(true)}
-                    >
-                      <PlusIcon className="mr-2 h-4 w-4" />
-                      Add Member
-                    </Button>
-                  </div>
-
-                  {kitchen.members.length > 0 ? (
-                    <div className="border rounded-lg overflow-hidden">
-                      <div className="overflow-x-auto">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="w-16">Photo</TableHead>
-                              <TableHead>Name</TableHead>
-                              <TableHead className="hidden sm:table-cell">
-                                Mobile
-                              </TableHead>
-                              <TableHead className="hidden md:table-cell">
-                                Email
-                              </TableHead>
-                              <TableHead className="hidden lg:table-cell">
-                                UID
-                              </TableHead>
-                              <TableHead className="hidden xl:table-cell">
-                                Starting Date
-                              </TableHead>
-                              <TableHead className="w-24">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {kitchen.members.map((member, index) => (
-                              <TableRow key={index}>
-                                <TableCell>
-                                  <PhotoDisplay
-                                    storageId={member.photoStorageId}
-                                    name={member.name}
-                                  />
-                                </TableCell>
-                                <TableCell>
-                                  <div>
-                                    <div className="font-medium">
-                                      {member.name}
-                                    </div>
-                                    <div className="text-sm text-muted-foreground sm:hidden">
-                                      {member.mobile}
-                                    </div>
-                                  </div>
-                                </TableCell>
-                                <TableCell className="hidden sm:table-cell">
-                                  {member.mobile}
-                                </TableCell>
-                                <TableCell className="hidden md:table-cell">
-                                  {member.email}
-                                </TableCell>
-                                <TableCell className="hidden lg:table-cell font-mono text-xs">
-                                  {member.uid || "Auto-generated"}
-                                </TableCell>
-                                <TableCell className="hidden xl:table-cell text-xs">
-                                  {formatDisplayDate(member.startingDate)}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex space-x-1">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() =>
-                                        handleEditMember(
-                                          member as DatabaseKitchenMember,
-                                          index
-                                        )
-                                      }
-                                    >
-                                      <Pencil className="h-3 w-3" />
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={() => handleDeleteMember(index)}
-                                    >
-                                      <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
+        <TabsContent value="kitchen" className="space-y-6">
+          {/* Kitchen Management Section */}
+          <div className="flex justify-end">
+            <Dialog
+              open={isKitchenDialogOpen}
+              onOpenChange={(open) => {
+                setIsKitchenDialogOpen(open);
+                if (!open) {
+                  resetKitchenForm();
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button className="w-full sm:w-auto">
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Add New Kitchen
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-[95vw] max-w-4xl max-h-[95vh] overflow-hidden">
+                <DialogHeader>
+                  <DialogTitle>
+                    {isEditing ? "Edit Kitchen" : "Add New Kitchen"}
+                  </DialogTitle>
+                  <DialogDescription>
+                    Enter the details of the kitchen here. User ID and member
+                    UIDs will be generated automatically.
+                  </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[calc(95vh-120px)] pr-4">
+                  <form onSubmit={handleKitchenSubmit} className="space-y-6">
+                    {/* Kitchen Basic Info */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="name">Kitchen Name *</Label>
+                        <Input
+                          id="name"
+                          name="name"
+                          value={kitchen.name}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="manager">Manager *</Label>
+                        <Input
+                          id="manager"
+                          name="manager"
+                          value={kitchen.manager}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="managerMobile">Manager Mobile *</Label>
+                        <Input
+                          id="managerMobile"
+                          name="managerMobile"
+                          value={kitchen.managerMobile}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="latitude">Latitude *</Label>
+                        <Input
+                          id="latitude"
+                          name="latitude"
+                          type="number"
+                          step="any"
+                          value={kitchen.latitude}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="longitude">Longitude *</Label>
+                        <Input
+                          id="longitude"
+                          name="longitude"
+                          type="number"
+                          step="any"
+                          value={kitchen.longitude}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="capacity">Capacity *</Label>
+                        <Input
+                          id="capacity"
+                          name="capacity"
+                          type="number"
+                          min="1"
+                          value={kitchen.capacity}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="username">Username *</Label>
+                        <Input
+                          id="username"
+                          name="username"
+                          value={kitchen.username}
+                          onChange={handleInputChange}
+                          required
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="password">
+                          Password {!isEditing && "*"}
+                        </Label>
+                        <Input
+                          id="password"
+                          name="password"
+                          type="password"
+                          value={kitchen.password}
+                          onChange={handleInputChange}
+                          required={!isEditing}
+                          placeholder={
+                            isEditing
+                              ? "Leave blank to keep current password"
+                              : ""
+                          }
+                        />
                       </div>
                     </div>
-                  ) : (
-                    <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
-                      <p>No kitchen members added yet.</p>
-                      <p className="text-sm">
-                        Click "Add Member" to get started.
+
+                    <div className="space-y-2">
+                      <Label htmlFor="address">Address *</Label>
+                      <Textarea
+                        id="address"
+                        name="address"
+                        value={kitchen.address}
+                        onChange={handleInputChange}
+                        required
+                      />
+                    </div>
+
+                    {/* Kitchen Members Section */}
+                    <div className="space-y-4">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+                        <Label className="text-base font-semibold">
+                          Kitchen Members ({kitchen.members.length})
+                        </Label>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={() => setIsMemberDialogOpen(true)}
+                        >
+                          <PlusIcon className="mr-2 h-4 w-4" />
+                          Add Member
+                        </Button>
+                      </div>
+
+                      {kitchen.members.length > 0 ? (
+                        <div className="border rounded-lg overflow-hidden">
+                          <div className="overflow-x-auto">
+                            <Table>
+                              <TableHeader>
+                                <TableRow>
+                                  <TableHead className="w-16">Photo</TableHead>
+                                  <TableHead>Name</TableHead>
+                                  <TableHead className="hidden sm:table-cell">
+                                    Mobile
+                                  </TableHead>
+                                  <TableHead className="hidden md:table-cell">
+                                    Email
+                                  </TableHead>
+                                  <TableHead className="hidden lg:table-cell">
+                                    UID
+                                  </TableHead>
+                                  <TableHead className="hidden xl:table-cell">
+                                    Starting Date
+                                  </TableHead>
+                                  <TableHead className="w-24">
+                                    Actions
+                                  </TableHead>
+                                </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                {kitchen.members.map((member, index) => (
+                                  <TableRow key={index}>
+                                    <TableCell>
+                                      <PhotoDisplay
+                                        storageId={member.photoStorageId}
+                                        name={member.name}
+                                      />
+                                    </TableCell>
+                                    <TableCell>
+                                      <div>
+                                        <div className="font-medium">
+                                          {member.name}
+                                        </div>
+                                        <div className="text-sm text-muted-foreground sm:hidden">
+                                          {member.mobile}
+                                        </div>
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="hidden sm:table-cell">
+                                      {member.mobile}
+                                    </TableCell>
+                                    <TableCell className="hidden md:table-cell">
+                                      {member.email}
+                                    </TableCell>
+                                    <TableCell className="hidden lg:table-cell font-mono text-xs">
+                                      {member.uid || "Auto-generated"}
+                                    </TableCell>
+                                    <TableCell className="hidden xl:table-cell text-xs">
+                                      {formatDisplayDate(member.startingDate)}
+                                    </TableCell>
+                                    <TableCell>
+                                      <div className="flex space-x-1">
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleEditMember(
+                                              member as DatabaseKitchenMember,
+                                              index
+                                            )
+                                          }
+                                        >
+                                          <Pencil className="h-3 w-3" />
+                                        </Button>
+                                        <Button
+                                          variant="outline"
+                                          size="sm"
+                                          onClick={() =>
+                                            handleDeleteMember(index)
+                                          }
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </TableCell>
+                                  </TableRow>
+                                ))}
+                              </TableBody>
+                            </Table>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-muted-foreground border rounded-lg border-dashed">
+                          <p>No kitchen members added yet.</p>
+                          <p className="text-sm">
+                            Click "Add Member" to get started.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Info message about automatic fields */}
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+                      <p className="text-sm text-blue-800">
+                        <strong>Note:</strong> User ID and member UIDs (USER001,
+                        USER002, etc.) will be automatically generated.
+                        {!isEditing &&
+                          " Starting dates for members will be set to the current date and time."}
                       </p>
                     </div>
-                  )}
-                </div>
 
-                {/* Info message about automatic fields */}
-                <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                  <p className="text-sm text-blue-800">
-                    <strong>Note:</strong> User ID and member UIDs (USER001,
-                    USER002, etc.) will be automatically generated.
-                    {!isEditing &&
-                      " Starting dates for members will be set to the current date and time."}
-                  </p>
-                </div>
+                    <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsKitchenDialogOpen(false)}
+                        className="w-full sm:w-auto"
+                        disabled={isSubmittingKitchen}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="w-full sm:w-auto"
+                        disabled={isSubmittingKitchen}
+                      >
+                        {isSubmittingKitchen ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            {isEditing ? "Updating..." : "Adding..."}
+                          </>
+                        ) : (
+                          <>{isEditing ? "Update" : "Add"} Kitchen</>
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+          </div>
 
-                <DialogFooter className="flex flex-col sm:flex-row gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setIsDialogOpen(false)}
-                    className="w-full sm:w-auto"
-                    disabled={isSubmittingKitchen}
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    className="w-full sm:w-auto"
-                    disabled={isSubmittingKitchen}
-                  >
-                    {isSubmittingKitchen ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        {isEditing ? "Updating..." : "Adding..."}
-                      </>
-                    ) : (
-                      <>{isEditing ? "Update" : "Add"} Kitchen</>
-                    )}
-                  </Button>
-                </DialogFooter>
-              </form>
-            </ScrollArea>
-          </DialogContent>
-        </Dialog>
-      </div>
+          {/* Kitchens Table */}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Kitchen</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Manager
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Username
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell">
+                      User ID
+                    </TableHead>
+                    <TableHead className="hidden xl:table-cell">
+                      Capacity
+                    </TableHead>
+                    <TableHead>Members</TableHead>
+                    <TableHead className="w-32">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {kitchens.map((kitchen) => (
+                    <TableRow
+                      key={kitchen._id}
+                      className="cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => navigateToKitchenDetails(kitchen)}
+                    >
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">{kitchen.name}</div>
+                          <div className="text-sm text-muted-foreground sm:hidden">
+                            {kitchen.manager}
+                          </div>
+                          <div className="text-xs text-muted-foreground md:hidden">
+                            {kitchen.username}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        {kitchen.manager}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {kitchen.username}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell font-mono text-xs">
+                        {kitchen.userId}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell">
+                        {kitchen.capacity}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-1">
+                          <span className="font-medium">
+                            {kitchen.members.length}
+                          </span>
+                          <span className="text-xs text-muted-foreground">
+                            members
+                          </span>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleEdit(kitchen);
+                            }}
+                          >
+                            <Pencil className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(kitchen._id);
+                            }}
+                            disabled={isDeletingKitchen === kitchen._id}
+                          >
+                            {isDeletingKitchen === kitchen._id ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              navigateToKitchenDetails(kitchen);
+                            }}
+                          >
+                            <ExternalLink className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {kitchens.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="text-lg">No kitchens found.</p>
+              <p className="text-sm">Click "Add New Kitchen" to get started.</p>
+            </div>
+          )}
+        </TabsContent>
+
+        <TabsContent value="canister" className="space-y-6">
+          {/* Canister Management Section */}
+          <div className="flex justify-end">
+            <Dialog
+              open={isCanisterDialogOpen}
+              onOpenChange={(open) => {
+                setIsCanisterDialogOpen(open);
+                if (!open) {
+                  resetCanisterForm();
+                }
+              }}
+            >
+              <DialogTrigger asChild>
+                <Button className="w-full sm:w-auto">
+                  <PlusIcon className="mr-2 h-4 w-4" />
+                  Add New Canister
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="w-[95vw] max-w-2xl max-h-[95vh] overflow-hidden">
+                <DialogHeader>
+                  <DialogTitle>Add New Canister</DialogTitle>
+                  <DialogDescription>
+                    Enter the details of the canister here. Scan ID will be
+                    generated automatically.
+                  </DialogDescription>
+                </DialogHeader>
+                <ScrollArea className="max-h-[calc(95vh-120px)] pr-4">
+                  <form onSubmit={handleCanisterSubmit} className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="canisterKitchenId">Kitchen *</Label>
+                        <Select
+                          value={canister.kitchenId}
+                          onValueChange={(value) =>
+                            handleCanisterSelectChange("kitchenId", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a kitchen" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {kitchens.map((kitchen) => (
+                              <SelectItem
+                                key={kitchen._id}
+                                value={kitchen.userId}
+                              >
+                                {kitchen.name} ({kitchen.userId})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="canisterStatus">Status *</Label>
+                        <Select
+                          value={canister.status}
+                          onValueChange={(value) =>
+                            handleCanisterSelectChange("status", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="ready">Ready</SelectItem>
+                            <SelectItem value="in-use">In Use</SelectItem>
+                            <SelectItem value="maintenance">
+                              Maintenance
+                            </SelectItem>
+                            <SelectItem value="offline">Offline</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="canisterScanType">Scan Type *</Label>
+                        <Select
+                          value={canister.scanType}
+                          onValueChange={(value) =>
+                            handleCanisterSelectChange("scanType", value)
+                          }
+                        >
+                          <SelectTrigger>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Scanner/Manual">
+                              Scanner/Manual
+                            </SelectItem>
+                            <SelectItem value="QR Code">QR Code</SelectItem>
+                            <SelectItem value="RFID">RFID</SelectItem>
+                            <SelectItem value="NFC">NFC</SelectItem>
+                            <SelectItem value="Bluetooth">Bluetooth</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="canisterLatitude">Latitude *</Label>
+                        <Input
+                          id="canisterLatitude"
+                          name="latitude"
+                          type="number"
+                          step="any"
+                          value={canister.latitude}
+                          onChange={handleCanisterInputChange}
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="canisterLongitude">Longitude *</Label>
+                        <Input
+                          id="canisterLongitude"
+                          name="longitude"
+                          type="number"
+                          step="any"
+                          value={canister.longitude}
+                          onChange={handleCanisterInputChange}
+                          required
+                        />
+                      </div>
+                    </div>
+
+                    {/* Info message */}
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                      <p className="text-sm text-green-800">
+                        <strong>Note:</strong> Scan ID (KITCHEN_CAN_1,
+                        KITCHEN_CAN_2, etc.) and registration date/time will be
+                        automatically generated.
+                      </p>
+                    </div>
+
+                    <DialogFooter className="flex flex-col sm:flex-row gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setIsCanisterDialogOpen(false)}
+                        className="w-full sm:w-auto"
+                        disabled={isSubmittingCanister}
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        className="w-full sm:w-auto"
+                        disabled={isSubmittingCanister}
+                      >
+                        {isSubmittingCanister ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Registering...
+                          </>
+                        ) : (
+                          <>Register Canister</>
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+          </div>
+
+          {/* Canisters Table */}
+          <div className="border rounded-lg overflow-hidden">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Scan ID</TableHead>
+                    <TableHead>Kitchen</TableHead>
+                    <TableHead className="hidden sm:table-cell">
+                      Status
+                    </TableHead>
+                    <TableHead className="hidden md:table-cell">
+                      Scan Type
+                    </TableHead>
+                    <TableHead className="hidden lg:table-cell">
+                      Location
+                    </TableHead>
+                    <TableHead className="hidden xl:table-cell">
+                      Registration Date
+                    </TableHead>
+                    <TableHead className="hidden xl:table-cell">
+                      Last Updated
+                    </TableHead>
+                    <TableHead className="w-24">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {canisters.map((canister) => (
+                    <TableRow key={canister._id}>
+                      <TableCell>
+                        <div>
+                          <div className="font-mono font-medium">
+                            {canister.scanId}
+                          </div>
+                          <div className="text-sm text-muted-foreground sm:hidden">
+                            <Badge
+                              variant={getStatusBadgeVariant(canister.status)}
+                            >
+                              {canister.status}
+                            </Badge>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <div className="font-medium">
+                            {getKitchenName(canister.kitchenId)}
+                          </div>
+                          <div className="text-xs text-muted-foreground font-mono">
+                            {canister.kitchenId}
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden sm:table-cell">
+                        <Badge variant={getStatusBadgeVariant(canister.status)}>
+                          {canister.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        {canister.scanType}
+                      </TableCell>
+                      <TableCell className="hidden lg:table-cell">
+                        <div className="text-xs font-mono">
+                          <div>{canister.latitude.toFixed(5)}</div>
+                          <div>{canister.longitude.toFixed(5)}</div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-xs">
+                        {canister.registrationDateTime}
+                      </TableCell>
+                      <TableCell className="hidden xl:table-cell text-xs">
+                        {canister.lastUpdated}
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex space-x-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() =>
+                              handleDeleteCanister(canister.scanId)
+                            }
+                            disabled={isDeletingCanister === canister.scanId}
+                          >
+                            {isDeletingCanister === canister.scanId ? (
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            ) : (
+                              <Trash2 className="h-3 w-3" />
+                            )}
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+
+          {canisters.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="text-lg">No canisters found.</p>
+              <p className="text-sm">
+                Click "Add New Canister" to get started.
+              </p>
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Member Dialog */}
       <Dialog
@@ -896,114 +1450,6 @@ export default function AddKitchen() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
-
-      {/* Kitchens Table - Responsive */}
-      <div className="border rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Kitchen</TableHead>
-                <TableHead className="hidden sm:table-cell">Manager</TableHead>
-                <TableHead className="hidden md:table-cell">Username</TableHead>
-                <TableHead className="hidden lg:table-cell">User ID</TableHead>
-                <TableHead className="hidden xl:table-cell">Capacity</TableHead>
-                <TableHead>Members</TableHead>
-                <TableHead className="w-32">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {kitchens.map((kitchen) => (
-                <TableRow
-                  key={kitchen._id}
-                  className="cursor-pointer hover:bg-muted/50 transition-colors"
-                  onClick={() => navigateToKitchenDetails(kitchen)}
-                >
-                  <TableCell>
-                    <div>
-                      <div className="font-medium">{kitchen.name}</div>
-                      <div className="text-sm text-muted-foreground sm:hidden">
-                        {kitchen.manager}
-                      </div>
-                      <div className="text-xs text-muted-foreground md:hidden">
-                        {kitchen.username}
-                      </div>
-                    </div>
-                  </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {kitchen.manager}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {kitchen.username}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell font-mono text-xs">
-                    {kitchen.userId}
-                  </TableCell>
-                  <TableCell className="hidden xl:table-cell">
-                    {kitchen.capacity}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <span className="font-medium">
-                        {kitchen.members.length}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        members
-                      </span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex space-x-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleEdit(kitchen);
-                        }}
-                      >
-                        <Pencil className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(kitchen._id);
-                        }}
-                        disabled={isDeletingKitchen === kitchen._id}
-                      >
-                        {isDeletingKitchen === kitchen._id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3 w-3" />
-                        )}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigateToKitchenDetails(kitchen);
-                        }}
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      {kitchens.length === 0 && (
-        <div className="text-center py-12 text-muted-foreground">
-          <p className="text-lg">No kitchens found.</p>
-          <p className="text-sm">Click "Add New Kitchen" to get started.</p>
-        </div>
-      )}
     </div>
   );
 }

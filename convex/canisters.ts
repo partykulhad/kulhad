@@ -32,18 +32,15 @@ function generateLogId(): string {
   return `LOG_${timestamp}_${random}`
 }
 
-// Helper function to generate sequential scanId for a kitchen
-async function generateScanId(ctx: any, kitchenId: string): Promise<string> {
-  // Get all existing canisters for this kitchen to find the highest scanId number
-  const existingCanisters = await ctx.db
-    .query("canisters")
-    .withIndex("by_kitchenId", (q: { eq: (arg0: string, arg1: string) => any }) => q.eq("kitchenId", kitchenId))
-    .collect()
+// Helper function to generate globally unique scanId
+async function generateScanId(ctx: any): Promise<string> {
+  // Get ALL existing canisters across all users to find the highest scanId number
+  const allCanisters = await ctx.db.query("canisters").collect()
 
   let maxScanNumber = 0
 
-  // Check all existing scanIds to find the highest number
-  existingCanisters.forEach((canister: { scanId: string }) => {
+  // Check all existing scanIds globally to find the highest number
+  allCanisters.forEach((canister: { scanId: string }) => {
     if (canister.scanId && canister.scanId.startsWith("KITCHEN_CAN_")) {
       const scanNumber = Number.parseInt(canister.scanId.replace("KITCHEN_CAN_", ""))
       if (!isNaN(scanNumber) && scanNumber > maxScanNumber) {
@@ -52,7 +49,7 @@ async function generateScanId(ctx: any, kitchenId: string): Promise<string> {
     }
   })
 
-  // Generate next scanId
+  // Generate next scanId globally
   const nextScanNumber = maxScanNumber + 1
   return `KITCHEN_CAN_${nextScanNumber}`
 }
@@ -60,31 +57,31 @@ async function generateScanId(ctx: any, kitchenId: string): Promise<string> {
 // Register a new canister
 export const registerCanister = mutation({
   args: {
-    kitchenId: v.string(),
+    userId: v.string(), // renamed from kitchenId to userId
     status: v.string(),
     scanType: v.string(),
     latitude: v.number(),
     longitude: v.number(),
   },
   handler: async (ctx, args) => {
-    // Check if kitchen exists
+    // Check if user/kitchen exists
     const kitchen = await ctx.db
       .query("kitchens")
-      .filter((q) => q.eq(q.field("userId"), args.kitchenId))
+      .filter((q) => q.eq(q.field("userId"), args.userId))
       .first()
 
     if (!kitchen) {
       throw new ConvexError("Kitchen not found")
     }
 
-    // Auto-generate scanId
-    const scanId = await generateScanId(ctx, args.kitchenId)
+    // Auto-generate globally unique scanId
+    const scanId = await generateScanId(ctx)
 
     const currentDateTime = getCurrentDateTime()
 
     const canisterId = await ctx.db.insert("canisters", {
       scanId,
-      kitchenId: args.kitchenId,
+      kitchenId: args.userId, // using userId instead of kitchenId
       status: args.status,
       scanType: args.scanType,
       latitude: args.latitude,
@@ -98,13 +95,26 @@ export const registerCanister = mutation({
   },
 })
 
-// Get all canisters for a kitchen
-export const getCanistersByKitchen = query({
-  args: { kitchenId: v.string() },
+// Get all canisters (for admin view)
+export const getAllCanisters = query({
+  handler: async (ctx) => {
+    const canisters = await ctx.db
+      .query("canisters")
+      .filter((q) => q.eq(q.field("isActive"), true))
+      .order("desc")
+      .collect()
+
+    return canisters
+  },
+})
+
+// Get all canisters for a user
+export const getCanistersByUser = query({
+  args: { userId: v.string() }, // renamed from kitchenId to userId
   handler: async (ctx, args) => {
     const canisters = await ctx.db
       .query("canisters")
-      .withIndex("by_kitchenId", (q) => q.eq("kitchenId", args.kitchenId))
+      .withIndex("by_kitchenId", (q) => q.eq("kitchenId", args.userId)) // updated index name
       .filter((q) => q.eq(q.field("isActive"), true))
       .collect()
 
@@ -112,65 +122,52 @@ export const getCanistersByKitchen = query({
   },
 })
 
-// Submit daily scan details
+// Submit daily scan details - Updated to handle new schema
 export const submitDailyScan = mutation({
   args: {
     scanId: v.string(),
     status: v.string(),
     scanType: v.string(),
     scanDateTime: v.string(),
-    kitchenId: v.string(),
+    userId: v.string(), // renamed from kitchenId to userId
     latitude: v.number(),
     longitude: v.number(),
+    orderId: v.optional(v.string()), // added optional orderId
   },
   handler: async (ctx, args) => {
-    // Verify canister exists
-    const canister = await ctx.db
-      .query("canisters")
-      .withIndex("by_scanId", (q) => q.eq("scanId", args.scanId))
-      .first()
-
-    if (!canister) {
-      throw new ConvexError("Canister not found")
-    }
-
-    // Verify kitchen matches
-    if (canister.kitchenId !== args.kitchenId) {
-      throw new ConvexError("Canister does not belong to this kitchen")
-    }
-
     // Extract date from scanDateTime for indexing
     const datePart = args.scanDateTime.split(",")[0] // Gets "28/07/2025" from "28/07/2025,01:15:38pm"
 
     const logId = generateLogId()
 
-    // Insert into daily scan logs
+    // Insert into daily scan logs with new schema
     const scanLogId = await ctx.db.insert("dailyScanLogs", {
-      ...args,
+      scanId: args.scanId,
+      userId: args.userId, // using userId instead of kitchenId
+      status: args.status,
+      scanType: args.scanType,
+      scanDateTime: args.scanDateTime,
+      latitude: args.latitude,
+      longitude: args.longitude,
+      orderId: args.orderId || "", // added orderId with default empty string
       date: datePart,
       logId,
-    })
-
-    // Update canister's last updated time and status
-    await ctx.db.patch(canister._id, {
-      status: args.status,
-      lastUpdated: args.scanDateTime,
     })
 
     return { logId, scanLogId }
   },
 })
 
-// Get daily scan details for a kitchen and date
+// Get daily scan details for a user and date
 export const getDailyScanDetails = query({
   args: {
-    kitchenId: v.string(),
+    userId: v.string(), // renamed from kitchenId to userId
     date: v.string(),
   },
   handler: async (ctx, args) => {
     const scanLogs = await ctx.db
       .query("dailyScanLogs")
-      .withIndex("by_kitchenId_date", (q) => q.eq("kitchenId", args.kitchenId).eq("date", args.date))
+      .withIndex("by_userId_date", (q) => q.eq("userId", args.userId).eq("date", args.date)) // updated index name
       .collect()
 
     return scanLogs.map((log) => ({
@@ -178,9 +175,10 @@ export const getDailyScanDetails = query({
       status: log.status,
       scanType: log.scanType,
       scanDateTime: log.scanDateTime,
-      kitchenId: log.kitchenId,
+      userId: log.userId, // using userId instead of kitchenId
       latitude: log.latitude,
       longitude: log.longitude,
+      orderId: log.orderId, // added orderId to response
     }))
   },
 })
@@ -237,5 +235,18 @@ export const deactivateCanister = mutation({
     })
 
     return canister._id
+  },
+})
+
+// Helper function to get canister details by scanId (useful for debugging)
+export const getCanisterByScanId = query({
+  args: { scanId: v.string() },
+  handler: async (ctx, args) => {
+    const canister = await ctx.db
+      .query("canisters")
+      .withIndex("by_scanId", (q) => q.eq("scanId", args.scanId))
+      .first()
+
+    return canister
   },
 })
