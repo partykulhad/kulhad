@@ -262,3 +262,22 @@ export const updateTransactionRating = mutation({
     return updatedTransaction
   },
 })
+
+export const getTransactionsByDateRange = query({
+  args: {
+    fromDate: v.string(), // ISO date string in IST
+    toDate: v.string(), // ISO date string in IST
+  },
+  handler: async (ctx, args) => {
+    // Convert IST date strings to timestamps
+    const fromTimestamp = new Date(args.fromDate).getTime()
+    const toTimestamp = new Date(args.toDate).getTime() + (24 * 60 * 60 * 1000 - 1) // End of day
+
+    // Get all transactions and filter by date range
+    const allTransactions = await ctx.db.query("transactions").collect()
+
+    return allTransactions
+      .filter((transaction) => transaction.createdAt >= fromTimestamp && transaction.createdAt <= toTimestamp)
+      .sort((a, b) => b.createdAt - a.createdAt) // Sort by newest first
+  },
+})
