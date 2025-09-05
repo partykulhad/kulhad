@@ -135,8 +135,8 @@ export const submitDailyScan = mutation({
     orderId: v.optional(v.string()), // added optional orderId
   },
   handler: async (ctx, args) => {
-    // Extract date from scanDateTime for indexing
-    const datePart = args.scanDateTime.split(",")[0] // Gets "28/07/2025" from "28/07/2025,01:15:38pm"
+    // Extract just the date part (DD/MM/YYYY) from the full datetime string
+    const datePart = args.scanDateTime.split(" ")[0] // Gets "21/08/2025" from "21/08/2025 01:15:12 pm"
 
     const logId = generateLogId()
 
@@ -182,6 +182,7 @@ export const getDailyScanDetails = query({
     }))
   },
 })
+
 
 // Update canister details
 export const updateCanister = mutation({
