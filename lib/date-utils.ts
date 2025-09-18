@@ -10,15 +10,52 @@ export function parseCustomDateFormat(dateString: string | number | Date): Date 
 
     const dateStr = dateString.toString()
 
-    // Handle format "DD/MM/YYYY, HH:MM:SS AM/PM" (e.g., "20/6/2025, 3:18:04 pm")
-    if (dateStr.includes("/") && dateStr.includes(",")) {
-      const [datePart, timePart] = dateStr.split(", ")
-      const [day, month, year] = datePart.split("/").map(Number)
+    if (dateStr.includes("/") && (dateStr.includes(" AM") || dateStr.includes(" PM"))) {
+      const [datePart, timePart] = dateStr.split(" ")
+      const dateParts = datePart.split("/").map(Number)
+
+      // Always treat as DD/MM/YYYY format since your DB stores it this way
+      const [day, month, year] = dateParts
 
       // Parse time with AM/PM
-      const timeMatch = timePart.match(/(\d{1,2}):(\d{2}):(\d{2})\s*(am|pm)/i)
+      const timeMatch = timePart.match(/(\d{1,2}):(\d{2}):(\d{2})\s*(AM|PM)/i)
       if (timeMatch) {
         const [, hours, minutes, seconds, period] = timeMatch
+        let hour24 = Number.parseInt(hours)
+
+        if (period.toUpperCase() === "PM" && hour24 !== 12) {
+          hour24 += 12
+        } else if (period.toUpperCase() === "AM" && hour24 === 12) {
+          hour24 = 0
+        }
+
+        return new Date(year, month - 1, day, hour24, Number.parseInt(minutes), Number.parseInt(seconds))
+      }
+    }
+
+    if (dateStr.includes("/") && dateStr.includes(", ")) {
+      const [datePart, timePart] = dateStr.split(", ")
+      const dateParts = datePart.split("/").map(Number)
+
+      // Determine if it's DD/MM/YYYY or MM/DD/YYYY based on the first number
+      // If first number > 12, it's likely DD/MM/YYYY, otherwise MM/DD/YYYY
+      let day: number, month: number, year: number
+
+      if (dateParts[0] > 12) {
+        // DD/MM/YYYY format
+        ;[day, month, year] = dateParts
+      } else if (dateParts[1] > 12) {
+        // MM/DD/YYYY format
+        ;[month, day, year] = dateParts
+      } else {
+        // Ambiguous case - assume DD/MM/YYYY for Indian format
+        ;[day, month, year] = dateParts
+      }
+
+      // Check if time has AM/PM (12-hour format)
+      const timeMatch12 = timePart.match(/(\d{1,2}):(\d{2}):(\d{2})\s*(am|pm)/i)
+      if (timeMatch12) {
+        const [, hours, minutes, seconds, period] = timeMatch12
         let hour24 = Number.parseInt(hours)
 
         if (period.toLowerCase() === "pm" && hour24 !== 12) {
@@ -28,6 +65,20 @@ export function parseCustomDateFormat(dateString: string | number | Date): Date 
         }
 
         return new Date(year, month - 1, day, hour24, Number.parseInt(minutes), Number.parseInt(seconds))
+      }
+
+      // Handle 24-hour format (HH:MM:SS) - like "16:08:28"
+      const timeMatch24 = timePart.match(/(\d{1,2}):(\d{2}):(\d{2})/)
+      if (timeMatch24) {
+        const [, hours, minutes, seconds] = timeMatch24
+        return new Date(
+          year,
+          month - 1,
+          day,
+          Number.parseInt(hours),
+          Number.parseInt(minutes),
+          Number.parseInt(seconds),
+        )
       }
     }
 
@@ -77,17 +128,16 @@ export function formatRelativeTime(date: Date): string {
   const diffHours = Math.floor(diffMinutes / 60)
   const diffDays = Math.floor(diffHours / 24)
 
-  // Create a human-readable time ago string
   if (diffDays > 0) {
-    return `${diffDays} ${diffDays === 1 ? "day" : "days"} ago`
+    return `${diffDays} day${diffDays === 1 ? "" : "s"} ago`
   } else if (diffHours > 0) {
-    return `${diffHours} ${diffHours === 1 ? "hour" : "hours"} ago`
-  } else if (diffMinutes > 0) {
-    return `${diffMinutes} ${diffMinutes === 1 ? "minute" : "minutes"} ago`
-  } else if (diffSeconds > 30) {
-    return `${diffSeconds} seconds ago`
+    return `${diffHours}hr${diffHours === 1 ? "" : "s"} ago`
+  } else if (diffMinutes > 1) {
+    return `${diffMinutes} min ago`
+  } else if (diffMinutes === 1) {
+    return "1 min ago"
   } else {
-    return "Just now"
+    return "just now"
   }
 }
 
@@ -95,13 +145,9 @@ export function formatDateForDisplay(dateString: string | number | Date): string
   const date = parseCustomDateFormat(dateString)
   if (!date) return "Invalid Date"
 
-  return date.toLocaleString("en-IN", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-    hour12: true,
-  })
+  const day = date.getDate().toString().padStart(2, "0")
+  const month = (date.getMonth() + 1).toString().padStart(2, "0")
+  const year = date.getFullYear()
+
+  return `${day}/${month}/${year}`
 }

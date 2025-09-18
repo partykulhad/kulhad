@@ -31,7 +31,6 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { formatRelativeTime, parseCustomDateFormat } from "@/lib/date-utils";
 
 interface OverviewTabProps {
   machine: any;
@@ -39,26 +38,123 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
-  // Fix the lastRefillTime calculation
   const lastRefillTime = useMemo(() => {
     if (!machine || !machine.lastFulfilled) return null;
 
-    const lastRefillDate = parseCustomDateFormat(machine.lastFulfilled);
-    if (!lastRefillDate || isNaN(lastRefillDate.getTime())) {
-      console.error("Invalid date:", machine.lastFulfilled);
+    try {
+      console.log("[v0] Raw machine.lastFulfilled:", machine.lastFulfilled);
+
+      // Parse "12/09/2025 01:12:35 PM" format directly
+      const dateTimeStr = machine.lastFulfilled.trim();
+
+      // Split date and time parts
+      const [datePart, timePart, ampm] = dateTimeStr.split(" ");
+      console.log(
+        "[v0] Date part:",
+        datePart,
+        "Time part:",
+        timePart,
+        "AM/PM:",
+        ampm
+      );
+
+      // Parse date (DD/MM/YYYY format)
+      const [day, month, year] = datePart
+        .split("/")
+        .map((num: string) => Number.parseInt(num, 10));
+      console.log(
+        "[v0] Parsed components - Day:",
+        day,
+        "Month:",
+        month,
+        "Year:",
+        year
+      );
+
+      // Parse time
+      const [hours, minutes, seconds] = timePart
+        .split(":")
+        .map((num: string) => Number.parseInt(num, 10));
+      let hour24 = hours;
+      if (ampm === "PM" && hours !== 12) {
+        hour24 = hours + 12;
+      } else if (ampm === "AM" && hours === 12) {
+        hour24 = 0;
+      }
+
+      console.log(
+        "[v0] Time components - Hours:",
+        hour24,
+        "Minutes:",
+        minutes,
+        "Seconds:",
+        seconds
+      );
+
+      // Create date object (month is 0-indexed in JavaScript Date)
+      const lastRefillDate = new Date(
+        year,
+        month - 1,
+        day,
+        hour24,
+        minutes,
+        seconds
+      );
+      console.log("[v0] Created date object:", lastRefillDate);
+
+      if (isNaN(lastRefillDate.getTime())) {
+        console.log("[v0] Date parsing failed - invalid date");
+        return null;
+      }
+
+      // Format date as DD/MM/YYYY
+      const formattedDate = `${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}/${year}`;
+      console.log("[v0] Formatted date:", formattedDate);
+
+      // Format time as HH:MM:SS
+      const formattedTime = `${hour24.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+
+      // Calculate relative time
+      const now = new Date();
+      const diffMs = now.getTime() - lastRefillDate.getTime();
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+      const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+
+      console.log(
+        "[v0] Time difference - MS:",
+        diffMs,
+        "Minutes:",
+        diffMinutes,
+        "Hours:",
+        diffHours,
+        "Days:",
+        diffDays
+      );
+
+      let timeAgo;
+      if (diffMinutes < 1) {
+        timeAgo = "just now";
+      } else if (diffMinutes < 60) {
+        timeAgo = `${diffMinutes} minute${diffMinutes !== 1 ? "s" : ""} ago`;
+      } else if (diffHours < 24) {
+        timeAgo = `${diffHours} hour${diffHours !== 1 ? "s" : ""} ago`;
+      } else {
+        timeAgo = `${diffDays} day${diffDays !== 1 ? "s" : ""} ago`;
+      }
+
+      console.log("[v0] Final time ago:", timeAgo);
+
+      return {
+        date: lastRefillDate,
+        formattedDate,
+        formattedTime,
+        timeAgo,
+      };
+    } catch (error) {
+      console.log("[v0] Error in date processing:", error);
       return null;
     }
-
-    const formattedDate = `${lastRefillDate.getDate().toString().padStart(2, "0")}/${(lastRefillDate.getMonth() + 1).toString().padStart(2, "0")}/${lastRefillDate.getFullYear()}`;
-    const formattedTime = lastRefillDate.toLocaleTimeString();
-    const timeAgo = formatRelativeTime(lastRefillDate);
-
-    return {
-      date: lastRefillDate,
-      formattedDate,
-      formattedTime,
-      timeAgo,
-    };
   }, [machine]);
 
   return (
@@ -128,7 +224,6 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
           </CardContent>
         </Card>
 
-        {/* Last Refill Card - FIXED */}
         <Card className="border-purple-100">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium">Last Refilled</CardTitle>

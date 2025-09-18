@@ -61,6 +61,7 @@ export default defineSchema({
       temperature: v.number(),
       rating: v.number(),
       canisterLevel: v.number(),
+      cups: v.optional(v.number()),
       replenishmentOrder: v.object({
         status: v.string(),
         eta: v.union(v.string(), v.null()),

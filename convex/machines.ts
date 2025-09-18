@@ -248,3 +248,122 @@ export const isMachineWorkingToday = query({
     }
   },
 })
+
+export const reduceCupsCount = mutation({
+  args: {
+    machineId: v.string(),
+    numberOfCups: v.number(),
+  },
+  handler: async (ctx, args) => {
+    const { machineId, numberOfCups } = args
+
+    // Validate numberOfCups is positive
+    if (numberOfCups <= 0) {
+      return { success: false, message: "Number of cups must be greater than 0" }
+    }
+
+    // Find the machine with this machineId
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), machineId))
+      .first()
+
+    if (!machine) {
+      return { success: false, message: "Machine not found" }
+    }
+
+    // Check if machine has enough cups
+    const currentCups = machine.cups || 0
+    if (currentCups < numberOfCups) {
+      return {
+        success: false,
+        message: `Insufficient cups. Available: ${currentCups}, Requested: ${numberOfCups}`,
+      }
+    }
+
+    // Calculate new cups count
+    const newCupsCount = currentCups - numberOfCups
+
+    // Update the machine with reduced cups count
+    await ctx.db.patch(machine._id, {
+      cups: newCupsCount,
+    })
+
+    return {
+      success: true,
+      message: `Successfully reduced ${numberOfCups} cups from machine ${machineId}`,
+      previousCups: currentCups,
+      newCups: newCupsCount,
+    }
+  },
+})
+
+export const getMachineCups = query({
+  args: {
+    machineId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { machineId } = args
+
+    // Find the machine with this machineId
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), machineId))
+      .first()
+
+    if (!machine) {
+      return { success: false, message: "Machine not found" }
+    }
+
+    return {
+      success: true,
+      machineId,
+      cups: machine.cups || 0,
+      machineName: machine.name || "Unknown Machine",
+    }
+  },
+})
+
+export const updateMachineStatus = mutation({
+  args: {
+    machineId: v.string(),
+    status: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { machineId, status } = args
+
+    // Validate status value
+    if (status !== "online" && status !== "offline") {
+      return {
+        success: false,
+        message: "Invalid status. Must be 'online' or 'offline'",
+      }
+    }
+
+    // Find the machine with this machineId
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), machineId))
+      .first()
+
+    if (!machine) {
+      return {
+        success: false,
+        message: "Machine not found",
+      }
+    }
+
+    // Update the machine status
+    await ctx.db.patch(machine._id, {
+      status: status,
+    })
+
+    return {
+      success: true,
+      message: `Machine ${machineId} status updated to ${status}`,
+      machineId,
+      previousStatus: machine.status,
+      newStatus: status,
+    }
+  },
+})

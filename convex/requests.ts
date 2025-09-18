@@ -362,6 +362,8 @@ export const updateRequestStatus = mutation({
         // Update the lastFulfilled field with the current dateAndTime
         await ctx.db.patch(machine._id, {
           lastFulfilled: dateAndTime,
+          canisterLevel: 50,
+          cups: 50,
         })
       }
     }

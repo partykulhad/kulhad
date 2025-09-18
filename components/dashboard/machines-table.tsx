@@ -27,6 +27,7 @@ interface Machine {
   status: string;
   temperature: number;
   canisterLevel: number;
+  cups?: number; // Added cups field
   lastFulfilled: string;
 }
 
@@ -35,6 +36,58 @@ interface MachinesTableProps {
   onMachineSelect: (id: Id<"machines">) => void;
   onStatusToggle: (id: Id<"machines">) => void;
 }
+
+const formatRelativeTime = (dateString: string): string => {
+  const now = new Date();
+
+  let date: Date;
+  try {
+    // Parse DD/MM/YYYY HH:MM:SS format (like "25/06/2025, 16:08:28")
+    if (dateString.includes("/")) {
+      // Split the date and time parts
+      const [datePart, timePart] = dateString.split(", ");
+      const [day, month, year] = datePart.split("/");
+
+      // Create date string in MM/DD/YYYY format for JavaScript Date constructor
+      const formattedDateString = `${month}/${day}/${year}${timePart ? `, ${timePart}` : ""}`;
+      date = new Date(formattedDateString);
+    } else {
+      // If it's a timestamp, convert it
+      date = new Date(Number.parseInt(dateString));
+    }
+
+    // If date is invalid, return the original string
+    if (isNaN(date.getTime())) {
+      return dateString;
+    }
+  } catch (error) {
+    return dateString;
+  }
+
+  const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 60) {
+    return "just now";
+  }
+
+  const diffInMinutes = Math.floor(diffInSeconds / 60);
+  if (diffInMinutes < 60) {
+    return `${diffInMinutes} min ago`;
+  }
+
+  const diffInHours = Math.floor(diffInMinutes / 60);
+  if (diffInHours < 24) {
+    return `${diffInHours}hr${diffInHours > 1 ? "s" : ""} ago`;
+  }
+
+  const diffInDays = Math.floor(diffInHours / 24);
+  if (diffInDays < 30) {
+    return `${diffInDays} day${diffInDays > 1 ? "s" : ""} ago`;
+  }
+
+  const diffInMonths = Math.floor(diffInDays / 30);
+  return `${diffInMonths} month${diffInMonths > 1 ? "s" : ""} ago`;
+};
 
 export function MachinesTable({
   machines,
@@ -54,6 +107,11 @@ export function MachinesTable({
   const sortedMachines = [...filteredMachines].sort((a, b) => {
     const aValue = a[sortField as keyof Machine];
     const bValue = b[sortField as keyof Machine];
+
+    if (aValue === undefined && bValue === undefined) return 0;
+    if (aValue === undefined) return sortDirection === "asc" ? 1 : -1;
+    if (bValue === undefined) return sortDirection === "asc" ? -1 : 1;
+
     return sortDirection === "asc"
       ? aValue > bValue
         ? 1
@@ -134,6 +192,21 @@ export function MachinesTable({
                 <TableHead>Status</TableHead>
                 <TableHead>Temperature</TableHead>
                 <TableHead>Canister Level</TableHead>
+                <TableHead>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleSort("cups")}
+                    className="flex items-center gap-2"
+                  >
+                    Cups
+                    {sortField === "cups" &&
+                      (sortDirection === "asc" ? (
+                        <SortAsc className="h-4 w-4" />
+                      ) : (
+                        <SortDesc className="h-4 w-4" />
+                      ))}
+                  </Button>
+                </TableHead>
                 <TableHead>Last Fulfilled</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -189,7 +262,22 @@ export function MachinesTable({
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {new Date(machine.lastFulfilled).toLocaleString()}
+                      <Badge
+                        variant={
+                          (machine.cups || 0) < 10
+                            ? "destructive"
+                            : (machine.cups || 0) < 25
+                              ? "warning"
+                              : "default"
+                        }
+                      >
+                        {machine.cups || 0}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-muted-foreground">
+                        {formatRelativeTime(machine.lastFulfilled)}
+                      </span>
                     </TableCell>
                     <TableCell className="text-right">
                       <div onClick={(e) => e.stopPropagation()}>
