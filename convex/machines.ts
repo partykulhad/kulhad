@@ -367,3 +367,29 @@ export const updateMachineStatus = mutation({
     }
   },
 })
+
+export const getMachineStatus = query({
+  args: {
+    machineId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { machineId } = args
+
+    // Find the machine with this machineId
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), machineId))
+      .first()
+
+    if (!machine) {
+      return { success: false, message: "Machine not found" }
+    }
+
+    return {
+      success: true,
+      machineId,
+      status: machine.status || "offline",
+      machineName: machine.name || "Unknown Machine",
+    }
+  },
+})
