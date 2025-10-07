@@ -198,7 +198,7 @@ export function MachinesTable({
                     onClick={() => handleSort("cups")}
                     className="flex items-center gap-2"
                   >
-                    Cups
+                    Cups Remaining
                     {sortField === "cups" &&
                       (sortDirection === "asc" ? (
                         <SortAsc className="h-4 w-4" />
@@ -207,7 +207,7 @@ export function MachinesTable({
                       ))}
                   </Button>
                 </TableHead>
-                <TableHead>Last Fulfilled</TableHead>
+                <TableHead>Since Last Refilled</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>

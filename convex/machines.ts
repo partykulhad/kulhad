@@ -284,9 +284,15 @@ export const reduceCupsCount = mutation({
     // Calculate new cups count
     const newCupsCount = currentCups - numberOfCups
 
-    // Update the machine with reduced cups count
+    // Assuming maximum capacity is 50 cups = 100% canisterLevel
+    const maxCupsCapacity = 50
+    const currentCanisterLevel = machine.canisterLevel || 0
+    const newCanisterLevel = Math.max(0, Math.round((newCupsCount / maxCupsCapacity) * 100))
+
+    // Update the machine with reduced cups count and updated canisterLevel
     await ctx.db.patch(machine._id, {
       cups: newCupsCount,
+      canisterLevel: newCanisterLevel,
     })
 
     return {
@@ -294,6 +300,8 @@ export const reduceCupsCount = mutation({
       message: `Successfully reduced ${numberOfCups} cups from machine ${machineId}`,
       previousCups: currentCups,
       newCups: newCupsCount,
+      previousCanisterLevel: currentCanisterLevel,
+      newCanisterLevel: newCanisterLevel,
     }
   },
 })
