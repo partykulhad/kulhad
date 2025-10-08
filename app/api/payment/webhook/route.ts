@@ -1,244 +1,156 @@
-import { type NextRequest, NextResponse } from "next/server"
-import { ConvexHttpClient } from "convex/browser"
-import { api } from "@/convex/_generated/api"
-import crypto from "crypto"
+import { type NextRequest, NextResponse } from "next/server";
+import { ConvexHttpClient } from "convex/browser";
+import { api } from "@/convex/_generated/api";
+import crypto from "crypto";
 
 // Initialize Convex client
-const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 
 export async function POST(request: NextRequest) {
-  console.log("Webhook received at:", new Date().toISOString())
-
   try {
-    const headers: Record<string, string> = {}
+    // Gather and parse headers and body
+    const headers: Record<string, string> = {};
     request.headers.forEach((value, key) => {
-      headers[key] = value
-      console.log(`Header: ${key}: ${value}`)
-    })
+      headers[key] = value;
+    });
 
-    const rawBody = await request.text()
-    console.log("Webhook raw body length:", rawBody.length)
-
-    let payload
+    const rawBody = await request.text();
+    let payload;
     try {
-      payload = JSON.parse(rawBody)
-      console.log("Webhook event type:", payload.event)
+      payload = JSON.parse(rawBody);
     } catch (e) {
-      console.error("Failed to parse webhook payload:", e)
-      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 })
+      return NextResponse.json({ error: "Invalid JSON payload" }, { status: 400 });
     }
 
-    // Verify webhook signature
-    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET
-    if (!webhookSecret) {
-      console.error("Razorpay webhook secret not configured")
-      console.warn("Proceeding without signature verification (not recommended for production)")
-    } else {
-      const razorpaySignature = request.headers.get("x-razorpay-signature")
-      if (!razorpaySignature) {
-        console.error("Razorpay signature missing")
-        console.warn("Proceeding without signature verification (not recommended for production)")
-      } else {
-        const expectedSignature = crypto.createHmac("sha256", webhookSecret).update(rawBody).digest("hex")
-        if (expectedSignature !== razorpaySignature) {
-          console.error("Signature verification failed")
-          return NextResponse.json({ error: "Signature verification failed" }, { status: 400 })
-        } else {
-          console.log("Signature verification successful")
-        }
+    // Verify Razorpay webhook signature
+    const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const razorpaySignature = request.headers.get("x-razorpay-signature");
+      const expectedSignature = crypto.createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+      if (!razorpaySignature || expectedSignature !== razorpaySignature) {
+        return NextResponse.json({ error: "Signature verification failed" }, { status: 400 });
       }
     }
 
-    const event = payload.event
-    console.log("Processing event:", event)
-
-    // Helper function to find and update transaction using your existing functions
-    async function findAndUpdateTransaction(
-      possibleIds: string[],
-      newStatus: string,
-      additionalData: Record<string, any> = {},
-    ) {
-      let transactionFound = false
-
+    // Transaction matcher/updater utility
+    async function findAndUpdateTransaction(possibleIds: string[], newStatus: string, additionalData: Record<string, any> = {}) {
+      let transactionFound = false;
       for (const transactionId of possibleIds) {
-        if (!transactionId) continue
-
-        console.log("Checking transaction ID:", transactionId)
-
-        try {
-          // Try to find by main transaction ID first
-          let transaction = await convex.query(api.transactions.getTransactionByTxnId, {
-            transactionId,
-          })
-
-          // If not found, try by custom transaction ID
-          if (!transaction) {
-            transaction = await convex.query(api.transactions.getTransactionByCustomId, {
-              customTransactionId: transactionId,
-            })
-          }
-
-          if (transaction) {
-            console.log("Found transaction with ID:", transaction._id)
-            transactionFound = true
-
-            // Only update if the current status allows it (don't override 'paid' status unless updating to 'paid')
-            if (transaction.status !== "paid" || newStatus === "paid") {
-              await convex.mutation(api.transactions.updateTransactionStatus, {
-                id: transaction._id,
-                status: newStatus,
-                ...additionalData,
-              })
-
-              console.log(`Transaction updated to status: ${newStatus}`)
-            } else {
-              console.log("Transaction already paid, not updating status")
-            }
-            break
-          }
-        } catch (dbError) {
-          console.error(`Error checking transaction ID ${transactionId}:`, dbError)
+        if (!transactionId) continue;
+        let transaction = await convex.query(api.transactions.getTransactionByTxnId, { transactionId });
+        if (!transaction) {
+          transaction = await convex.query(api.transactions.getTransactionByCustomId, { customTransactionId: transactionId });
+        }
+        if (transaction) {
+          transactionFound = true;
+          await convex.mutation(api.transactions.updateTransactionStatus, {
+            id: transaction._id,
+            status: newStatus,
+            ...additionalData,
+          });
+          break;
         }
       }
-
-      return transactionFound
+      return transactionFound;
     }
 
-    // Handle successful payments
-    if (event === "payment.authorized" || event === "payment.captured") {
-      const payment = payload.payload.payment.entity
-      console.log("Payment ID:", payment.id)
+    const event = payload.event;
 
-      const paymentId = payment.id
-      const paymentNotes = payment.notes || {}
+    // ===== STATUS MAPPING BY EVENT =====
 
-      console.log("Payment notes:", JSON.stringify(paymentNotes))
-
-      const possibleTransactionIds = [payment.qr_code_id, paymentNotes.transactionId, paymentNotes.machineId].filter(
-        Boolean,
-      )
-
-      console.log("Possible transaction IDs:", possibleTransactionIds)
-
+    // Payment/Capture/Authorize
+    if (event === "payment.captured" || event === "payment.authorized") {
+      const payment = payload.payload.payment.entity;
+      const possibleTransactionIds = [payment.qr_code_id, payment.notes?.transactionId, payment.notes?.machineId].filter(Boolean);
       const transactionFound = await findAndUpdateTransaction(possibleTransactionIds, "paid", {
-        paymentId: paymentId,
+        paymentId: payment.id,
         vpa: payment.vpa || "",
-      })
-
-      // Create fallback transaction if not found
-      if (!transactionFound && paymentNotes.machineId) {
-        try {
-          console.log("Creating fallback transaction for machine:", paymentNotes.machineId)
-
-          const amount = payment.amount / 100
-          const cups = Number.parseInt(paymentNotes.numberOfCups || "1", 10)
-          const amountPerCup = amount / cups
-
-          const fallbackTransactionId = `fallback-${paymentId}`
-
-          await convex.mutation(api.transactions.createTransaction, {
-            transactionId: fallbackTransactionId,
-            customTransactionId: paymentNotes.transactionId || fallbackTransactionId,
-            imageUrl: "",
-            amount: amount,
-            cups: cups,
-            amountPerCup: amountPerCup,
-            machineId: paymentNotes.machineId,
-            description: `Fallback transaction for payment ${paymentId}`,
-            status: "paid",
-            expiresAt: Date.now() + 24 * 60 * 60 * 1000,
-          })
-
-          console.log("Fallback transaction created successfully")
-        } catch (fallbackError) {
-          console.error("Failed to create fallback transaction:", fallbackError)
-        }
+      });
+      // Fallback: create if not found
+      if (!transactionFound && payment.notes?.machineId) {
+        const amount = payment.amount / 100;
+        const cups = Number.parseInt(payment.notes.numberOfCups || "1", 10);
+        const amountPerCup = amount / cups;
+        const fallbackTransactionId = `fallback-${payment.id}`;
+        await convex.mutation(api.transactions.createTransaction, {
+          transactionId: fallbackTransactionId,
+          customTransactionId: payment.notes.transactionId || fallbackTransactionId,
+          imageUrl: "",
+          amount,
+          cups,
+          amountPerCup,
+          machineId: payment.notes.machineId,
+          description: `Fallback transaction for payment ${payment.id}`,
+          status: "paid",
+          expiresAt: Date.now() + 24 * 60 * 60 * 1000,
+        });
       }
     }
-
-    // Handle QR Code Closed (Expired)
-    else if (event === "qr_code.closed") {
-      const qrCode = payload.payload.qr_code.entity
-      console.log("QR code closed:", qrCode.id)
-
-      await findAndUpdateTransaction([qrCode.id], "expired")
-    }
-
-    // Handle Payment Failed
+    // Payment failed
     else if (event === "payment.failed") {
-      const payment = payload.payload.payment.entity
-      console.log("Payment failed:", payment.id)
-
-      const possibleTransactionIds = [payment.qr_code_id, payment.notes?.transactionId].filter(Boolean)
-
+      const payment = payload.payload.payment.entity;
+      const possibleTransactionIds = [payment.qr_code_id, payment.notes?.transactionId].filter(Boolean);
       await findAndUpdateTransaction(possibleTransactionIds, "failed", {
         failureReason: payment.error_description || "Payment failed",
-      })
+      });
     }
-
-    // Handle Payment Cancelled
+    // Payment cancelled
     else if (event === "payment.cancelled") {
-      const payment = payload.payload.payment.entity
-      console.log("Payment cancelled:", payment.id)
-
-      const possibleTransactionIds = [payment.qr_code_id, payment.notes?.transactionId].filter(Boolean)
-
-      await findAndUpdateTransaction(possibleTransactionIds, "cancelled")
+      const payment = payload.payload.payment.entity;
+      const possibleTransactionIds = [payment.qr_code_id, payment.notes?.transactionId].filter(Boolean);
+      await findAndUpdateTransaction(possibleTransactionIds, "cancelled");
+    }
+    // Payment refunded
+    else if (event === "payment.refunded") {
+      const payment = payload.payload.payment.entity;
+      const possibleTransactionIds = [payment.qr_code_id, payment.notes?.transactionId].filter(Boolean);
+      await findAndUpdateTransaction(possibleTransactionIds, "refunded", {
+        refundId: payment.refund_id || "",
+        refundStatus: payment.refund_status || "",
+      });
     }
 
-    // Handle QR Code Created (ensure status is active)
+    // QR code closed
+    else if (event === "qr_code.closed") {
+      const qrCode = payload.payload.qr_code.entity;
+      await findAndUpdateTransaction([qrCode.id], "closed");
+    }
+    // QR code expired
+    else if (event === "qr_code.expired") {
+      const qrCode = payload.payload.qr_code.entity;
+      await findAndUpdateTransaction([qrCode.id], "expired");
+    }
+    // QR code created/active
     else if (event === "qr_code.created") {
-      const qrCode = payload.payload.qr_code.entity
-      console.log("QR code created:", qrCode.id)
-
-      await findAndUpdateTransaction([qrCode.id], "active")
+      const qrCode = payload.payload.qr_code.entity;
+      await findAndUpdateTransaction([qrCode.id], "active");
     }
 
-    // Handle Invoice Expired (if using invoices)
+    // Invoice expired
     else if (event === "invoice.expired") {
-      const invoice = payload.payload.invoice.entity
-      console.log("Invoice expired:", invoice.id)
-
-      const possibleTransactionIds = [invoice.notes?.transactionId, invoice.notes?.machineId].filter(Boolean)
-
-      if (possibleTransactionIds.length > 0) {
-        await findAndUpdateTransaction(possibleTransactionIds, "expired")
-      }
+      const invoice = payload.payload.invoice.entity;
+      const possibleTransactionIds = [invoice.notes?.transactionId, invoice.notes?.machineId].filter(Boolean);
+      await findAndUpdateTransaction(possibleTransactionIds, "expired");
     }
 
-    // Handle Order Paid (if using orders)
+    // Order paid
     else if (event === "order.paid") {
-      const order = payload.payload.order.entity
-      console.log("Order paid:", order.id)
-
-      const possibleTransactionIds = [order.notes?.transactionId, order.notes?.machineId].filter(Boolean)
-
-      if (possibleTransactionIds.length > 0) {
-        await findAndUpdateTransaction(possibleTransactionIds, "paid")
-      }
+      const order = payload.payload.order.entity;
+      const possibleTransactionIds = [order.notes?.transactionId, order.notes?.machineId].filter(Boolean);
+      await findAndUpdateTransaction(possibleTransactionIds, "paid");
     }
 
-    // Handle Subscription Cancelled (if using subscriptions)
+    // Subscription cancelled
     else if (event === "subscription.cancelled") {
-      const subscription = payload.payload.subscription.entity
-      console.log("Subscription cancelled:", subscription.id)
-
-      const possibleTransactionIds = [subscription.notes?.transactionId, subscription.notes?.machineId].filter(Boolean)
-
-      if (possibleTransactionIds.length > 0) {
-        await findAndUpdateTransaction(possibleTransactionIds, "cancelled")
-      }
+      const subscription = payload.payload.subscription.entity;
+      const possibleTransactionIds = [subscription.notes?.transactionId, subscription.notes?.machineId].filter(Boolean);
+      await findAndUpdateTransaction(possibleTransactionIds, "cancelled");
     }
 
-    // Fallback for unhandled events
-    else {
-      console.log("Unhandled event type:", event)
-      console.log("Event payload:", JSON.stringify(payload, null, 2))
-    }
+    // Fallback for unhandled events (optional: log/unhandled handler)
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true });
   } catch (error: unknown) {
-    console.error("Error processing webhook:", error)
-    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 200 })
+    return NextResponse.json({ success: false, error: "Internal server error" }, { status: 200 });
   }
 }
