@@ -401,8 +401,7 @@ export const getMachineStatus = query({
     }
   },
 })
-
-// Update cup status
+// Update cup status (for POST)
 export const updateCupStatus = mutation({
   args: {
     machineId: v.string(),
@@ -429,9 +428,46 @@ export const updateCupStatus = mutation({
       cup_status: cup_present,
     })
 
+    // Return conditional response based on cupStatus
+    if (cup_present === true) {
+      return {
+        ok: true,
+        next: "START_DISPENSE",
+      }
+    } else {
+      return {
+        ok: true,
+        next: "STOP_DISPENSE",
+      }
+    }
+  },
+})
+
+// Get cup status (for GET)
+export const getCupStatus = query({
+  args: {
+    machineId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { machineId } = args
+
+    // Find the machine with this machineId
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), machineId))
+      .first()
+
+    if (!machine) {
+      return {
+        success: false,
+        error: "Machine not found",
+      }
+    }
+
     return {
-      ok: true,
-      next: "START_DISPENSE",
+      success: true,
+      machineId: machine.id,
+      cupStatus: machine.cup_status ?? false,
     }
   },
 })

@@ -18,15 +18,15 @@ export async function POST(req: NextRequest) {
 
     if (cup_present === undefined) {
       return NextResponse.json(
-        { ok: false, error: "Missing required parameter: cup_present" },
+        { ok: false, error: "Missing required parameter: cupStatus" },
         { status: 400 }
       )
     }
 
-    // Validate cup_present is a boolean
+    // Validate cupStatus is a boolean
     if (typeof cup_present !== "boolean") {
       return NextResponse.json(
-        { ok: false, error: "cup_present must be a boolean value" },
+        { ok: false, error: "cup_present must be a boolean value (true or false)" },
         { status: 400 }
       )
     }
