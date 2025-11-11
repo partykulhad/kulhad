@@ -401,3 +401,37 @@ export const getMachineStatus = query({
     }
   },
 })
+
+// Update cup status
+export const updateCupStatus = mutation({
+  args: {
+    machineId: v.string(),
+    cup_present: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const { machineId, cup_present } = args
+
+    // Find the machine with this machineId
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), machineId))
+      .first()
+
+    if (!machine) {
+      return {
+        ok: false,
+        error: "Machine not found",
+      }
+    }
+
+    // Update the cup_status
+    await ctx.db.patch(machine._id, {
+      cup_status: cup_present,
+    })
+
+    return {
+      ok: true,
+      next: "START_DISPENSE",
+    }
+  },
+})

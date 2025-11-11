@@ -281,3 +281,48 @@ export const getTransactionsByDateRange = query({
       .sort((a, b) => b.createdAt - a.createdAt) // Sort by newest first
   },
 })
+
+// Update dispense status by transactionId
+export const updateDispenseStatus = mutation({
+  args: {
+    transactionId: v.string(),
+    dispenseStatus: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const transaction = await ctx.db
+      .query("transactions")
+      .withIndex("by_transactionId", (q) => q.eq("transactionId", args.transactionId))
+      .first()
+
+    if (!transaction) {
+      throw new Error(`Transaction not found: ${args.transactionId}`)
+    }
+
+    return await ctx.db.patch(transaction._id, {
+      dispenseStatus: args.dispenseStatus,
+      updatedAt: Date.now(),
+    })
+  },
+})
+
+// Get dispense status by transactionId
+export const getDispenseStatus = query({
+  args: {
+    transactionId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const transaction = await ctx.db
+      .query("transactions")
+      .withIndex("by_transactionId", (q) => q.eq("transactionId", args.transactionId))
+      .first()
+
+    if (!transaction) {
+      return null
+    }
+
+    return {
+      transactionId: transaction.transactionId,
+      dispenseStatus: transaction.dispenseStatus,
+    }
+  },
+})

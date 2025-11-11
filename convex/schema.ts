@@ -30,6 +30,7 @@ export default defineSchema({
     machines: defineTable({
       id: v.string(),
       kitchenId: v.optional(v.string()),
+      
       name: v.string(),
       description: v.string(),
       model: v.string(),
@@ -62,6 +63,7 @@ export default defineSchema({
       rating: v.number(),
       canisterLevel: v.number(),
       cups: v.optional(v.number()),
+      cup_status: v.optional(v.boolean()), // Add this field
       replenishmentOrder: v.object({
         status: v.string(),
         eta: v.union(v.string(), v.null()),
@@ -302,6 +304,7 @@ dailyScanLogs : defineTable({
     vpa: v.optional(v.string()),
     failureReason: v.optional(v.string()),
     rating: v.optional(v.number()),
+    dispenseStatus: v.optional(v.string()),
     expiresAt: v.number(),
     createdAt: v.number(),
     updatedAt: v.number(),

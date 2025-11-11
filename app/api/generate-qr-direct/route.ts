@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
     }
 
     const uniqueTransactionId = `${machineId}-${Date.now()}`
-    const closeBy = Math.floor(Date.now() / 1000) + 1800
+    const closeBy = Math.floor(Date.now() / 1000) + 150
 
     console.log(`[DEBUG] Fetching machine details for ID: ${machineId}`)
     const machine = await convex.query(api.machines.getMachineById, { machineId })
