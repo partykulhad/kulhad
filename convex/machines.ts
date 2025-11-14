@@ -471,3 +471,39 @@ export const getCupStatus = query({
     }
   },
 })
+
+// Update machine price
+export const updateMachinePrice = mutation({
+  args: {
+    machineId: v.string(),
+    price: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { machineId, price } = args
+
+    // Find the machine with this machineId
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), machineId))
+      .first()
+
+    if (!machine) {
+      return {
+        success: false,
+        error: "Machine not found",
+      }
+    }
+
+    // Update the price
+    await ctx.db.patch(machine._id, {
+      price: price,
+    })
+
+    return {
+      success: true,
+      message: "Price updated successfully",
+      machineId: machine.id,
+      newPrice: price,
+    }
+  },
+})
