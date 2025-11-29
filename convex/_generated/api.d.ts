@@ -24,6 +24,7 @@ import type * as http from "../http.js";
 import type * as index from "../index.js";
 import type * as iot from "../iot.js";
 import type * as kitchens from "../kitchens.js";
+import type * as machineVideos from "../machineVideos.js";
 import type * as machines from "../machines.js";
 import type * as migrateAppUsers from "../migrateAppUsers.js";
 import type * as requestStatusUpdates from "../requestStatusUpdates.js";
@@ -52,6 +53,7 @@ declare const fullApi: ApiFromModules<{
   index: typeof index;
   iot: typeof iot;
   kitchens: typeof kitchens;
+  machineVideos: typeof machineVideos;
   machines: typeof machines;
   migrateAppUsers: typeof migrateAppUsers;
   requestStatusUpdates: typeof requestStatusUpdates;

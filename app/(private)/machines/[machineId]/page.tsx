@@ -16,6 +16,7 @@ import { DetailsTab } from "@/components/machine-details/details-tab";
 import { LocationTab } from "@/components/machine-details/location-tab";
 import { HistoryTab } from "@/components/machine-details/history-tab";
 import { MaintenanceTab } from "@/components/machine-details/maintenance-tab";
+import { VideosTab } from "@/components/machine-details/videos-tab";
 
 export default function MachineDetailsPage() {
   const router = useRouter();
@@ -192,6 +193,7 @@ export default function MachineDetailsPage() {
           <TabsTrigger value="location">Location</TabsTrigger>
           <TabsTrigger value="history">History</TabsTrigger>
           <TabsTrigger value="maintenance">Maintenance</TabsTrigger>
+          <TabsTrigger value="videos">Videos</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -222,6 +224,9 @@ export default function MachineDetailsPage() {
 
         <TabsContent value="maintenance">
           <MaintenanceTab machine={machine} />
+        </TabsContent>
+        <TabsContent value="videos">
+          <VideosTab machineId={machine.id} />
         </TabsContent>
       </Tabs>
     </div>

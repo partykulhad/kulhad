@@ -344,6 +344,19 @@ dailyScanLogs : defineTable({
     message: v.string(),
     details: v.optional(v.any()),
   }).index("by_jobName", ["jobName"]),
+
+  machineVideos: defineTable({
+    machineId: v.string(),
+    videoStorageId: v.string(),
+    title: v.optional(v.string()),
+    description: v.optional(v.string()),
+    uploadedAt: v.number(),
+    uploadedBy: v.optional(v.string()), // userId of uploader
+    fileSize: v.optional(v.number()),
+    duration: v.optional(v.number()),
+  })
+    .index("by_machineId", ["machineId"])
+    .index("by_storageId", ["videoStorageId"]),
 });
 
 
