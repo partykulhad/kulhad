@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { machineId, numberOfCups } = body
 
+    // Early validation
     if (!machineId || !numberOfCups) {
       return NextResponse.json({ error: "Missing required parameters: machineId or numberOfCups" }, { status: 400 })
     }
@@ -33,7 +34,11 @@ export async function POST(request: NextRequest) {
     const closeBy = Math.floor(Date.now() / 1000) + 151
 
     console.log(`[DEBUG] Fetching machine details for ID: ${machineId}`)
-    const machine = await convex.query(api.machines.getMachineById, { machineId })
+    
+    // Execute machine fetch and Razorpay call in parallel
+    const [machine] = await Promise.all([
+      convex.query(api.machines.getMachineById, { machineId })
+    ])
 
     if (!machine) {
       return NextResponse.json({ error: `Machine not found with ID: ${machineId}` }, { status: 404 })
@@ -113,23 +118,25 @@ export async function POST(request: NextRequest) {
       transactionId: uniqueTransactionId,
     }
 
-    // Store transaction in database (non-blocking)
-    convex
-      .mutation(api.transactions.createTransaction, {
-        transactionId: qrCodeId,
-        customTransactionId: uniqueTransactionId,
-        imageUrl: razorpayResponse.image_url,
-        amount: razorpayResponse.payment_amount / 100,
-        cups: Number(numberOfCups),
-        amountPerCup: amountPerCup,
-        machineId: machineId,
-        description: razorpayResponse.description,
-        status: razorpayResponse.status,
-        expiresAt: razorpayResponse.close_by * 1000,
-      })
-      .catch((error) => {
-        console.error(`[DEBUG] Error storing transaction: ${error}`)
-      })
+    // Store transaction asynchronously without awaiting
+    setImmediate(() => {
+      convex
+        .mutation(api.transactions.createTransaction, {
+          transactionId: qrCodeId,
+          customTransactionId: uniqueTransactionId,
+          imageUrl: razorpayResponse.image_url,
+          amount: razorpayResponse.payment_amount / 100,
+          cups: Number(numberOfCups),
+          amountPerCup: amountPerCup,
+          machineId: machineId,
+          description: razorpayResponse.description,
+          status: razorpayResponse.status,
+          expiresAt: razorpayResponse.close_by * 1000,
+        })
+        .catch((error) => {
+          console.error(`[DEBUG] Error storing transaction: ${error}`)
+        })
+    })
 
     console.log(`[DEBUG] Total API request processing took ${Date.now() - totalStartTime}ms`)
     return NextResponse.json(transactionData)
