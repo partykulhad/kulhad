@@ -44,8 +44,6 @@ interface Machine {
   price?: string;
   startTime?: string;
   endTime?: string;
-  flushTimeMinutes?: number;
-  mlToDispense?: number;
   installedDate?: string;
   status?: string;
   temperature?: number;
@@ -54,6 +52,9 @@ interface Machine {
   replenishmentOrder?: { status: string; eta: string | null };
   deliveryBoy?: any | null;
   lastFulfilled?: string;
+  flushTimeMinutes?: number | "";
+  cups?: number | "";
+  mlToDispense?: number | "";
 }
 
 export default function EditMachinePage() {
@@ -77,10 +78,11 @@ export default function EditMachinePage() {
     gisLatitude: "",
     gisLongitude: "",
     price: "",
+    cups: "",
     startTime: "",
     endTime: "",
-    flushTimeMinutes: 0,
-    mlToDispense: 0,
+    flushTimeMinutes: "",
+    mlToDispense: "",
   });
 
   const machines = useQuery(api.machines.list) || [];
@@ -94,8 +96,9 @@ export default function EditMachinePage() {
         price: foundMachine.price || "",
         startTime: foundMachine.startTime || "",
         endTime: foundMachine.endTime || "",
-        flushTimeMinutes: foundMachine.flushTimeMinutes || 0,
-        mlToDispense: foundMachine.mlToDispense || 0,
+        cups: foundMachine.cups ?? "",
+        flushTimeMinutes: foundMachine.flushTimeMinutes ?? "",
+        mlToDispense: foundMachine.mlToDispense ?? "",
       });
     }
   }, [machines, machineId]);
@@ -114,9 +117,11 @@ export default function EditMachinePage() {
       setMachine((prev) => ({
         ...prev,
         [name]:
-          name === "flushTimeMinutes" || name === "mlToDispense"
+          name === "flushTimeMinutes" ||
+          name === "mlToDispense" ||
+          name === "cups"
             ? value === ""
-              ? undefined
+              ? ""
               : Number.parseInt(value, 10)
             : value,
       }));
@@ -152,8 +157,16 @@ export default function EditMachinePage() {
         price: machine.price,
         startTime: machine.startTime,
         endTime: machine.endTime,
-        flushTimeMinutes: machine.flushTimeMinutes,
-        mlToDispense: machine.mlToDispense,
+
+        cups: machine.cups === "" ? undefined : Number(machine.cups),
+        flushTimeMinutes:
+          machine.flushTimeMinutes === ""
+            ? undefined
+            : Number(machine.flushTimeMinutes),
+        mlToDispense:
+          machine.mlToDispense === ""
+            ? undefined
+            : Number(machine.mlToDispense),
       });
       toast.success("Machine updated successfully");
       router.push(`/machines/${machineId}`);
@@ -236,6 +249,17 @@ export default function EditMachinePage() {
                   value={machine.price}
                   onChange={handleInputChange}
                   placeholder="Enter price"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cups">Total Cup's</Label>
+                <Input
+                  id="cups"
+                  name="cups"
+                  type="number"
+                  value={machine.cups}
+                  onChange={handleInputChange}
+                  min="0"
                 />
               </div>
               <div className="space-y-2">

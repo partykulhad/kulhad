@@ -144,6 +144,7 @@ export const update = mutation({
     gisLatitude: v.string(),
     gisLongitude: v.string(),
     price: v.optional(v.string()),
+    cups: v.optional(v.number()),
     startTime: v.optional(v.string()),
     endTime: v.optional(v.string()),
     teaFillStartQuantity: v.optional(v.number()),
