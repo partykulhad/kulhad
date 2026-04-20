@@ -49,6 +49,7 @@ export default defineSchema({
       breakTime: v.optional(v.string()),
       breakStart: v.optional(v.string()),
       breakEnd: v.optional(v.string()),
+      lockPass: v.optional(v.string()),
       gisLatitude: v.string(),
       gisLongitude: v.string(),
       price: v.optional(v.string()),

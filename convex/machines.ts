@@ -38,6 +38,7 @@ export const add = mutation({
     breakTime: v.optional(v.string()),
     breakStart: v.optional(v.string()),
     breakEnd: v.optional(v.string()),
+    lockPass: v.optional(v.string()),
     // New working days field
     workingDays: v.optional(v.string()),
   },
@@ -121,6 +122,7 @@ export const getMachineData = query({
       email: machine.email,
       machineType: machine.machineType,
       breakTime: machine.breakTime,
+      lockPass: machine.lockPass,
       // Include working days
       workingDays: machine.workingDays,
     }
@@ -159,6 +161,7 @@ export const update = mutation({
     breakTime: v.optional(v.string()),
     breakStart: v.optional(v.string()),
     breakEnd: v.optional(v.string()),
+    lockPass: v.optional(v.string()),
     // New working days field
     workingDays: v.optional(v.string()),
   },
@@ -505,6 +508,52 @@ export const updateMachinePrice = mutation({
       message: "Price updated successfully",
       machineId: machine.id,
       newPrice: price,
+    }
+  },
+})
+
+export const getLockPass = query({
+  args: {
+    machineId: v.string(),
+    lockPass: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { machineId, lockPass } = args
+
+    const machine = await ctx.db
+      .query("machines")
+      .withIndex("by_machineId", (q) => q.eq("id", machineId))
+      .first()
+
+    if (!machine) {
+      return {
+        status: 404,
+        success: false,
+        message: "Machine not found",
+      }
+    }
+
+    if (!machine.lockPass) {
+      return {
+        status: 400,
+        success: false,
+        message: "Lock pass is not set for this machine",
+      }
+    }
+
+    if (machine.lockPass !== lockPass) {
+      return {
+        status: 401,
+        success: false,
+        message: "Invalid lock pass",
+      }
+    }
+
+    return {
+      status: 200,
+      success: true,
+      message: "Lock pass matched successfully",
+      machineId: machine.id,
     }
   },
 })

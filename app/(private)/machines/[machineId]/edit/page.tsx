@@ -55,6 +55,7 @@ interface Machine {
   flushTimeMinutes?: number | "";
   cups?: number | "";
   mlToDispense?: number | "";
+  lockPass?: string;
 }
 
 export default function EditMachinePage() {
@@ -83,6 +84,7 @@ export default function EditMachinePage() {
     endTime: "",
     flushTimeMinutes: "",
     mlToDispense: "",
+    lockPass: "",
   });
 
   const machines = useQuery(api.machines.list) || [];
@@ -99,6 +101,7 @@ export default function EditMachinePage() {
         cups: foundMachine.cups ?? "",
         flushTimeMinutes: foundMachine.flushTimeMinutes ?? "",
         mlToDispense: foundMachine.mlToDispense ?? "",
+        lockPass: foundMachine.lockPass || "",
       });
     }
   }, [machines, machineId]);
@@ -167,6 +170,7 @@ export default function EditMachinePage() {
           machine.mlToDispense === ""
             ? undefined
             : Number(machine.mlToDispense),
+        lockPass: machine.lockPass?.trim() ? machine.lockPass : undefined,
       });
       toast.success("Machine updated successfully");
       router.push(`/machines/${machineId}`);
@@ -260,6 +264,16 @@ export default function EditMachinePage() {
                   value={machine.cups}
                   onChange={handleInputChange}
                   min="0"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="lockPass">Lock Pass</Label>
+                <Input
+                  id="lockPass"
+                  name="lockPass"
+                  value={machine.lockPass || ""}
+                  onChange={handleInputChange}
+                  placeholder="Enter lock pass"
                 />
               </div>
               <div className="space-y-2">
