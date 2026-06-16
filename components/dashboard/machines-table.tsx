@@ -1,7 +1,5 @@
 "use client";
 
-import type React from "react";
-
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -18,6 +16,16 @@ import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Search, SortAsc, SortDesc } from "lucide-react";
 
 interface Machine {
@@ -97,6 +105,7 @@ export function MachinesTable({
   const [search, setSearch] = useState("");
   const [sortField, setSortField] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [pendingMachine, setPendingMachine] = useState<Machine | null>(null);
 
   const filteredMachines = machines.filter(
     (machine) =>
@@ -130,13 +139,14 @@ export function MachinesTable({
     }
   };
 
-  const handleSwitchClick = (
-    e: React.MouseEvent,
-    machineId: Id<"machines">
-  ) => {
-    e.stopPropagation();
-    onStatusToggle(machineId);
+  const handleConfirmToggle = () => {
+    if (pendingMachine) {
+      onStatusToggle(pendingMachine._id);
+      setPendingMachine(null);
+    }
   };
+
+  const goingOnline = pendingMachine ? pendingMachine.status !== "online" : false;
 
   return (
     <Card>
@@ -283,7 +293,7 @@ export function MachinesTable({
                       <div onClick={(e) => e.stopPropagation()}>
                         <Switch
                           checked={machine.status === "online"}
-                          onCheckedChange={() => onStatusToggle(machine._id)}
+                          onCheckedChange={() => setPendingMachine(machine)}
                         />
                       </div>
                     </TableCell>
@@ -294,6 +304,31 @@ export function MachinesTable({
           </Table>
         </div>
       </CardContent>
+
+      <AlertDialog
+        open={pendingMachine !== null}
+        onOpenChange={(open) => !open && setPendingMachine(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Take this machine {goingOnline ? "online" : "offline"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingMachine &&
+                (goingOnline
+                  ? `${pendingMachine.name} will start heating and accepting orders.`
+                  : `${pendingMachine.name} will stop accepting orders and the kiosk will show the maintenance screen.`)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmToggle}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Card>
   );
 }

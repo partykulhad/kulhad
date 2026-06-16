@@ -405,6 +405,70 @@ export const getMachineStatus = query({
     }
   },
 })
+
+export const updateWaterLevel = mutation({
+  args: {
+    machineId: v.string(),
+    waterLevelLow: v.boolean(),
+  },
+  handler: async (ctx, args) => {
+    const { machineId, waterLevelLow } = args
+
+    // Find the machine with this machineId
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), machineId))
+      .first()
+
+    if (!machine) {
+      return {
+        success: false,
+        message: "Machine not found",
+      }
+    }
+
+    const previousValue = machine.waterLevelLow ?? false
+
+    await ctx.db.patch(machine._id, {
+      waterLevelLow: waterLevelLow,
+    })
+
+    return {
+      success: true,
+      message: `Machine ${machineId} waterLevelLow updated to ${waterLevelLow}`,
+      machineId,
+      machineName: machine.name || "Unknown Machine",
+      previousValue,
+      waterLevelLow,
+    }
+  },
+})
+
+export const getMachineWaterLevel = query({
+  args: {
+    machineId: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const { machineId } = args
+
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), machineId))
+      .first()
+
+    if (!machine) {
+      return { success: false, message: "Machine not found" }
+    }
+
+    return {
+      success: true,
+      machineId,
+      machineName: machine.name || "Unknown Machine",
+      waterLevelLow: machine.waterLevelLow ?? false,
+    }
+  },
+})
+
 // Update cup status (for POST)
 export const updateCupStatus = mutation({
   args: {

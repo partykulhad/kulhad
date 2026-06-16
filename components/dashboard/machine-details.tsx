@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { motion } from "framer-motion";
 import type { Id } from "@/convex/_generated/dataModel";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,6 +8,16 @@ import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   ThermometerIcon,
   MapPinIcon,
@@ -25,6 +36,14 @@ export function MachineDetails({
   machine,
   onStatusToggle,
 }: MachineDetailsProps) {
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const goingOnline = machine.status !== "online";
+
+  const handleConfirm = () => {
+    onStatusToggle(machine._id);
+    setConfirmOpen(false);
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -46,10 +65,31 @@ export function MachineDetails({
             </Badge>
             <Switch
               checked={machine.status === "online"}
-              onCheckedChange={() => onStatusToggle(machine._id)}
+              onCheckedChange={() => setConfirmOpen(true)}
             />
           </div>
         </CardHeader>
+
+        <AlertDialog open={confirmOpen} onOpenChange={setConfirmOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>
+                Take this machine {goingOnline ? "online" : "offline"}?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                {goingOnline
+                  ? `${machine.name} will start heating and accepting orders.`
+                  : `${machine.name} will stop accepting orders and the kiosk will show the maintenance screen.`}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirm}>
+                Confirm
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
         <CardContent>
           <Tabs defaultValue="overview" className="space-y-4">
             <TabsList>
