@@ -28,6 +28,7 @@ interface Machine {
   status?: string;
   temperature?: number;
   canisterLevel?: number;
+  waterLevelLow?: boolean;
   lastChecked?: string;
   address?: {
     building: string;
@@ -58,11 +59,13 @@ export function AlertsDialog({
     const temp = m.temperature || 0;
     return temp <= 80;
   });
+  const waterLevelAlerts = machines.filter((m) => m.waterLevelLow);
 
   const totalAlerts =
     offlineMachines.length +
     lowInventoryMachines.length +
-    temperatureAlerts.length;
+    temperatureAlerts.length +
+    waterLevelAlerts.length;
 
   const handleMachineClick = (machineId: string) => {
     onMachineSelect(machineId);
@@ -70,7 +73,7 @@ export function AlertsDialog({
     onOpenChange(false);
   };
 
-  const getAlertIcon = (type: "offline" | "inventory" | "temperature") => {
+  const getAlertIcon = (type: "offline" | "inventory" | "temperature" | "water") => {
     switch (type) {
       case "offline":
         return <WifiOffIcon className="h-4 w-4" />;
@@ -78,12 +81,14 @@ export function AlertsDialog({
         return <DropletIcon className="h-4 w-4" />;
       case "temperature":
         return <ThermometerIcon className="h-4 w-4" />;
+      case "water":
+        return <DropletIcon className="h-4 w-4" />;
       default:
         return <AlertCircleIcon className="h-4 w-4" />;
     }
   };
 
-  const getAlertColor = (type: "offline" | "inventory" | "temperature") => {
+  const getAlertColor = (type: "offline" | "inventory" | "temperature" | "water") => {
     switch (type) {
       case "offline":
         return "from-gray-500/10 to-gray-600/10 border-gray-200";
@@ -91,6 +96,8 @@ export function AlertsDialog({
         return "from-red-500/10 to-red-600/10 border-red-200";
       case "temperature":
         return "from-amber-500/10 to-orange-600/10 border-amber-200";
+      case "water":
+        return "from-blue-500/10 to-blue-600/10 border-blue-200";
       default:
         return "from-gray-500/10 to-gray-600/10 border-gray-200";
     }
@@ -101,7 +108,7 @@ export function AlertsDialog({
     type,
   }: {
     machine: Machine;
-    type: "offline" | "inventory" | "temperature";
+    type: "offline" | "inventory" | "temperature" | "water";
   }) => {
     return (
       <motion.div
@@ -124,7 +131,9 @@ export function AlertsDialog({
                         ? "bg-gray-100"
                         : type === "inventory"
                           ? "bg-red-100"
-                          : "bg-amber-100"
+                          : type === "water"
+                            ? "bg-blue-100"
+                            : "bg-amber-100"
                     }`}
                   >
                     {getAlertIcon(type)}
@@ -144,7 +153,7 @@ export function AlertsDialog({
                 variant={
                   type === "offline"
                     ? "secondary"
-                    : type === "inventory"
+                    : type === "inventory" || type === "water"
                       ? "destructive"
                       : "default"
                 }
@@ -154,7 +163,9 @@ export function AlertsDialog({
                   ? "Offline"
                   : type === "inventory"
                     ? "Low Stock"
-                    : "High Temp"}
+                    : type === "water"
+                      ? "Low Water"
+                      : "High Temp"}
               </Badge>
             </div>
 
@@ -175,6 +186,12 @@ export function AlertsDialog({
                       style={{ width: `${machine.canisterLevel || 0}%` }}
                     />
                   </div>
+                </div>
+              )}
+              {type === "water" && (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <DropletIcon className="h-3 w-3" />
+                  <span>Water tank is low — refill needed</span>
                 </div>
               )}
               {type === "temperature" && (
@@ -256,7 +273,7 @@ export function AlertsDialog({
           <Tabs defaultValue="all" className="flex flex-col h-full">
             {/* Fixed Tabs Header */}
             <div className="px-6 py-4 border-b bg-white flex-shrink-0">
-              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-4 h-auto gap-2">
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto gap-2">
                 <TabsTrigger
                   value="all"
                   className="flex items-center gap-2 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -301,6 +318,17 @@ export function AlertsDialog({
                     {temperatureAlerts.length}
                   </Badge>
                 </TabsTrigger>
+                <TabsTrigger
+                  value="water"
+                  className="flex items-center gap-2 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  <DropletIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">Water Level</span>
+                  <span className="sm:hidden">Water</span>
+                  <Badge variant="secondary" className="ml-1">
+                    {waterLevelAlerts.length}
+                  </Badge>
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -336,6 +364,13 @@ export function AlertsDialog({
                               key={`temperature-${machine._id}`}
                               machine={machine}
                               type="temperature"
+                            />
+                          ))}
+                          {waterLevelAlerts.map((machine) => (
+                            <AlertCard
+                              key={`water-${machine._id}`}
+                              machine={machine}
+                              type="water"
                             />
                           ))}
                         </div>
@@ -390,6 +425,24 @@ export function AlertsDialog({
                               key={machine._id}
                               machine={machine}
                               type="temperature"
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </AnimatePresence>
+                  </TabsContent>
+
+                  <TabsContent value="water" className="mt-0 space-y-0">
+                    <AnimatePresence mode="wait">
+                      {waterLevelAlerts.length === 0 ? (
+                        <EmptyState type="water level" />
+                      ) : (
+                        <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+                          {waterLevelAlerts.map((machine) => (
+                            <AlertCard
+                              key={machine._id}
+                              machine={machine}
+                              type="water"
                             />
                           ))}
                         </div>

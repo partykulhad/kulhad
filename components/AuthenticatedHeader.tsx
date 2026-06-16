@@ -51,6 +51,7 @@ interface HeaderProps {
     status?: string;
     temperature?: number;
     canisterLevel?: number;
+    waterLevelLow?: boolean;
     lastChecked?: string;
     address?: {
       building: string;
@@ -92,8 +93,10 @@ const Header: React.FC<HeaderProps> = ({
     return temp <= 80; // FIXED: Same logic as AlertsDialog
   }).length;
 
+  const waterLevelAlerts = vendingMachines.filter((m) => m.waterLevelLow).length;
+
   const totalAlerts =
-    offlineMachines + lowInventoryMachines + temperatureAlerts;
+    offlineMachines + lowInventoryMachines + temperatureAlerts + waterLevelAlerts;
 
   const navigationItems = [
     {
