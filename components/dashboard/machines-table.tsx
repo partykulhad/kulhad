@@ -238,7 +238,7 @@ export function MachinesTable({
                     <TableCell>{machine.name}</TableCell>
                     <TableCell>
                       {isMachineUnreachable(machine.status, machine.lastSeenAt) ? (
-                        <Badge variant="destructive">unreachable</Badge>
+                        <Badge variant="destructive">offline</Badge>
                       ) : (
                         <Badge
                           variant={

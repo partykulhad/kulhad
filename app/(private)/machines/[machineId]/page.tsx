@@ -169,7 +169,7 @@ export default function MachineDetailsPage() {
                 className="mr-2"
               >
                 {isMachineUnreachable(machine.status, machine.lastSeenAt)
-                  ? "unreachable"
+                  ? "offline"
                   : machine.status}
               </Badge>
               <span className="text-sm text-muted-foreground">

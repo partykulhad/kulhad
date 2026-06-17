@@ -862,7 +862,7 @@ export default function AddMachineContent() {
                     }}
                   >
                     {isMachineUnreachable(machine.status, machine.lastSeenAt)
-                      ? "unreachable"
+                      ? "offline"
                       : machine.status}
                   </Badge>
                 </TableCell>

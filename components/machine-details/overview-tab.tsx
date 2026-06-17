@@ -276,7 +276,7 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
               ></div>
               <span className="text-2xl font-bold">
                 {isMachineUnreachable(machine.status, machine.lastSeenAt)
-                  ? "Unreachable"
+                  ? "Offline"
                   : machine.status === "online"
                     ? "Online"
                     : "Offline"}
