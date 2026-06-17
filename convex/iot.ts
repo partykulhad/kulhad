@@ -43,6 +43,19 @@ export const addIoTData = mutation({
     // Update the machine with provided data
     await ctx.db.patch(machine._id, updateData)
 
+    // Record a history snapshot whenever a real reading comes in (not on
+    // status-only calls) — this table previously had nothing writing to it,
+    // so the dashboard's "Machine Data History" was always empty.
+    if (temperature !== undefined) {
+      await ctx.db.insert("machine_data", {
+        machineId,
+        timestamp: new Date().toISOString(),
+        temperature,
+        rating: machine.rating,
+        canisterLevel: machine.canisterLevel,
+      })
+    }
+
     return {
       success: true,
       message: "IoT data updated successfully",
