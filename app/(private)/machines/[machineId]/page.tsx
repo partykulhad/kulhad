@@ -5,6 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
+import { isMachineUnreachable } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
@@ -158,10 +159,18 @@ export default function MachineDetailsPage() {
             <h1 className="text-2xl md:text-3xl font-bold">{machine.name}</h1>
             <div className="flex items-center mt-1">
               <Badge
-                variant={machine.status === "online" ? "success" : "secondary"}
+                variant={
+                  isMachineUnreachable(machine.status, machine.lastSeenAt)
+                    ? "destructive"
+                    : machine.status === "online"
+                      ? "success"
+                      : "secondary"
+                }
                 className="mr-2"
               >
-                {machine.status}
+                {isMachineUnreachable(machine.status, machine.lastSeenAt)
+                  ? "unreachable"
+                  : machine.status}
               </Badge>
               <span className="text-sm text-muted-foreground">
                 ID: {machine.id}
