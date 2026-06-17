@@ -31,15 +31,12 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { formatRelativeTime } from "@/lib/date-utils";
-
 interface OverviewTabProps {
   machine: any;
   transactionMetrics: any;
-  latestReading?: { timestamp: string } | null;
 }
 
-export function OverviewTab({ machine, transactionMetrics, latestReading }: OverviewTabProps) {
+export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
   const lastRefillTime = useMemo(() => {
     if (!machine || !machine.lastFulfilled) return null;
 
@@ -292,11 +289,6 @@ export function OverviewTab({ machine, transactionMetrics, latestReading }: Over
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Optimal range: 80°C - 82°C
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {latestReading?.timestamp
-                ? `Updated ${formatRelativeTime(new Date(latestReading.timestamp))}`
-                : "No readings recorded yet"}
             </p>
           </CardContent>
         </Card>
