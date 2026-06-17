@@ -207,6 +207,27 @@ const Header: React.FC<HeaderProps> = ({
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-gradient-to-r from-blue-100 to-blue-200 dark:from-blue-900/30 dark:to-blue-800/30 hover:shadow-md transition-all duration-200">
+                    <div className="p-1 rounded-full bg-blue-500/10">
+                      <DropletIcon className="h-3 w-3 text-blue-600 dark:text-blue-300" />
+                    </div>
+                    <span className="font-medium text-blue-700 dark:text-blue-200">
+                      {waterLevelAlerts}
+                    </span>
+                    <span className="text-blue-500 dark:text-blue-400">
+                      water low
+                    </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Machines with low water level</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {totalAlerts > 0 && (

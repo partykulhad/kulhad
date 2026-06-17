@@ -16,6 +16,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Table,
   TableBody,
   TableCell,
@@ -111,6 +121,7 @@ export default function AddMachineContent() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isCalendarOpen, setIsCalendarOpen] = useState(false);
+  const [pendingMachine, setPendingMachine] = useState<Machine | null>(null);
   const [machine, setMachine] = useState<Machine>({
     id: "",
     name: "",
@@ -327,15 +338,20 @@ export default function AddMachineContent() {
     }
   };
 
-  const handleToggleStatus = async (id: Id<"machines">) => {
+  const handleConfirmToggle = async () => {
+    if (!pendingMachine?._id) return;
     try {
-      await toggleStatus({ id });
+      await toggleStatus({ id: pendingMachine._id });
       toast.success("Machine status updated successfully");
     } catch (error) {
       console.error("Error updating machine status:", error);
       toast.error("Failed to update machine status. Please try again.");
+    } finally {
+      setPendingMachine(null);
     }
   };
+
+  const goingOnline = pendingMachine ? pendingMachine.status !== "online" : false;
 
   const navigateToMachineDetails = (machineId: string) => {
     router.push(`/machines/${machineId}`);
@@ -837,7 +853,7 @@ export default function AddMachineContent() {
                     className="cursor-pointer"
                     onClick={(e) => {
                       e.stopPropagation();
-                      handleToggleStatus(machine._id);
+                      setPendingMachine(machine);
                     }}
                   >
                     {machine.status}
@@ -885,6 +901,31 @@ export default function AddMachineContent() {
           </TableBody>
         </Table>
       </div>
+
+      <AlertDialog
+        open={pendingMachine !== null}
+        onOpenChange={(open) => !open && setPendingMachine(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Take this machine {goingOnline ? "online" : "offline"}?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {pendingMachine &&
+                (goingOnline
+                  ? `${pendingMachine.name} will start heating and accepting orders.`
+                  : `${pendingMachine.name} will stop accepting orders and the kiosk will show the maintenance screen.`)}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmToggle}>
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
