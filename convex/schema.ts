@@ -88,6 +88,8 @@ export default defineSchema({
       ),
       // New working days field
       workingDays: v.optional(v.string()),
+      // Last time the kiosk checked in (any getMachineData call) — heartbeat for live status
+      lastSeenAt: v.optional(v.number()),
     })
       .index("by_machineId", ["id"])
       .index("by_status", ["status"]),

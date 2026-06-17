@@ -58,7 +58,7 @@ import {
   Trash2,
   ExternalLink,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, isMachineUnreachable } from "@/lib/utils";
 import { format } from "date-fns";
 
 interface Address {
@@ -87,6 +87,7 @@ interface Machine {
   flushTimeMinutes?: number;
   mlToDispense?: number;
   status?: string;
+  lastSeenAt?: number;
   temperature?: number;
   rating?: number;
   canisterLevel?: number;
@@ -848,7 +849,11 @@ export default function AddMachineContent() {
                 <TableCell>
                   <Badge
                     variant={
-                      machine.status === "online" ? "success" : "secondary"
+                      isMachineUnreachable(machine.status, machine.lastSeenAt)
+                        ? "destructive"
+                        : machine.status === "online"
+                          ? "success"
+                          : "secondary"
                     }
                     className="cursor-pointer"
                     onClick={(e) => {
@@ -856,7 +861,9 @@ export default function AddMachineContent() {
                       setPendingMachine(machine);
                     }}
                   >
-                    {machine.status}
+                    {isMachineUnreachable(machine.status, machine.lastSeenAt)
+                      ? "unreachable"
+                      : machine.status}
                   </Badge>
                 </TableCell>
                 <TableCell>

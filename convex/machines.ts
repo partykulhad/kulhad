@@ -129,6 +129,23 @@ export const getMachineData = query({
   },
 })
 
+// Heartbeat: the kiosk calls getMachineData every 60s regardless of state,
+// so this is the most reliable "still alive" signal without any Pi-side changes.
+export const touchLastSeen = mutation({
+  args: { machineId: v.string() },
+  handler: async (ctx, args) => {
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), args.machineId))
+      .first()
+
+    if (!machine) return { success: false }
+
+    await ctx.db.patch(machine._id, { lastSeenAt: Date.now() })
+    return { success: true }
+  },
+})
+
 export const update = mutation({
   args: {
     machineId: v.id("machines"),

@@ -20,6 +20,13 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Machine not found" }, { status: 404 })
     }
 
+    // The kiosk hits this endpoint every 60s regardless of state — use it as a
+    // heartbeat for live-status detection. Fire-and-forget: never block or fail
+    // this response if the heartbeat write has a hiccup.
+    convex.mutation(api.machines.touchLastSeen, { machineId }).catch((err) => {
+      console.error("Failed to update lastSeenAt:", err)
+    })
+
     return NextResponse.json(
       {
         success: true,

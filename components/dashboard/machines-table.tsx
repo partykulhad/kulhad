@@ -27,6 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Search, SortAsc, SortDesc } from "lucide-react";
+import { isMachineUnreachable } from "@/lib/utils";
 
 interface Machine {
   _id: Id<"machines">;
@@ -37,6 +38,7 @@ interface Machine {
   canisterLevel: number;
   cups?: number; // Added cups field
   lastFulfilled: string;
+  lastSeenAt?: number;
 }
 
 interface MachinesTableProps {
@@ -235,13 +237,17 @@ export function MachinesTable({
                     <TableCell>{machine.id}</TableCell>
                     <TableCell>{machine.name}</TableCell>
                     <TableCell>
-                      <Badge
-                        variant={
-                          machine.status === "online" ? "success" : "secondary"
-                        }
-                      >
-                        {machine.status}
-                      </Badge>
+                      {isMachineUnreachable(machine.status, machine.lastSeenAt) ? (
+                        <Badge variant="destructive">unreachable</Badge>
+                      ) : (
+                        <Badge
+                          variant={
+                            machine.status === "online" ? "success" : "secondary"
+                          }
+                        >
+                          {machine.status}
+                        </Badge>
+                      )}
                     </TableCell>
                     <TableCell>
                       <Badge
