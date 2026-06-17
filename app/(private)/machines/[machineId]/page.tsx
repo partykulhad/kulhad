@@ -200,6 +200,7 @@ export default function MachineDetailsPage() {
           <OverviewTab
             machine={machineWithDefaults}
             transactionMetrics={transactionMetrics}
+            latestReading={machineData[0]}
           />
         </TabsContent>
 
