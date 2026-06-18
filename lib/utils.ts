@@ -16,6 +16,9 @@ export function isMachineUnreachable(
   lastSeenAt: number | undefined
 ) {
   if (status !== "online") return false
-  if (!lastSeenAt) return false
+  // No heartbeat ever recorded is not evidence of life — don't trust "online"
+  // with zero data behind it (this previously showed "Online" + "Last checked
+  // in: never" at the same time, which is a contradiction).
+  if (!lastSeenAt) return true
   return Date.now() - lastSeenAt > MACHINE_STALE_THRESHOLD_MS
 }
