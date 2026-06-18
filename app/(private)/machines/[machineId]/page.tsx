@@ -160,11 +160,10 @@ export default function MachineDetailsPage() {
             <div className="flex items-center mt-1">
               <Badge
                 variant={
-                  isMachineUnreachable(machine.status, machine.lastSeenAt)
-                    ? "destructive"
-                    : machine.status === "online"
-                      ? "success"
-                      : "secondary"
+                  machine.status === "online" &&
+                  !isMachineUnreachable(machine.status, machine.lastSeenAt)
+                    ? "success"
+                    : "destructive"
                 }
                 className="mr-2"
               >

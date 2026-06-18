@@ -9,6 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { isMachineUnreachable } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -141,7 +142,11 @@ export default function DashboardContent({
           <CardContent>
             <div className="text-2xl font-bold">{vendingMachines.length}</div>
             <p className="text-xs text-muted-foreground">
-              {vendingMachines.filter((vm) => vm.status === "online").length}{" "}
+              {
+                vendingMachines.filter(
+                  (vm) => vm.status === "online" && !isMachineUnreachable(vm.status, vm.lastSeenAt)
+                ).length
+              }{" "}
               online
             </p>
           </CardContent>

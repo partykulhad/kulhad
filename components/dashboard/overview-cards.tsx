@@ -18,6 +18,7 @@ import {
   FilterIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
+import { isMachineUnreachable } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -104,9 +105,11 @@ export function OverviewCards({ machines }: OverviewCardsProps) {
 
   // Calculate machine statistics
   const machineStats = useMemo(() => {
-    const onlineMachines = machines.filter((m) => m.status === "online").length;
+    const onlineMachines = machines.filter(
+      (m) => m.status === "online" && !isMachineUnreachable(m.status, m.lastSeenAt)
+    ).length;
     const offlineMachines = machines.filter(
-      (m) => m.status === "offline"
+      (m) => m.status === "offline" || isMachineUnreachable(m.status, m.lastSeenAt)
     ).length;
     const avgTemperature =
       machines.length > 0

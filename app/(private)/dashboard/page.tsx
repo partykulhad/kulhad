@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
+import { isMachineUnreachable } from "@/lib/utils";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { OverviewCards } from "@/components/dashboard/overview-cards";
@@ -60,8 +61,12 @@ export default function DashboardPage() {
   const alerts = {
     low: machines.filter((m) => (m.canisterLevel || 0) < 20).length,
     maintenance: machines.filter((m) => (m.temperature || 0) <= 80).length,
-    offline: machines.filter((m) => m.status === "offline").length,
-    online: machines.filter((m) => m.status === "online").length,
+    offline: machines.filter(
+      (m) => m.status === "offline" || isMachineUnreachable(m.status, m.lastSeenAt)
+    ).length,
+    online: machines.filter(
+      (m) => m.status === "online" && !isMachineUnreachable(m.status, m.lastSeenAt)
+    ).length,
   };
 
   const inventoryData = machines.map((machine) => ({

@@ -849,11 +849,10 @@ export default function AddMachineContent() {
                 <TableCell>
                   <Badge
                     variant={
-                      isMachineUnreachable(machine.status, machine.lastSeenAt)
-                        ? "destructive"
-                        : machine.status === "online"
-                          ? "success"
-                          : "secondary"
+                      machine.status === "online" &&
+                      !isMachineUnreachable(machine.status, machine.lastSeenAt)
+                        ? "success"
+                        : "destructive"
                     }
                     className="cursor-pointer"
                     onClick={(e) => {

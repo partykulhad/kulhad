@@ -26,6 +26,7 @@ import {
   StarIcon,
   TruckIcon,
 } from "lucide-react";
+import { isMachineUnreachable } from "@/lib/utils";
 
 interface MachineDetailsProps {
   machine: any; // Update this with proper type
@@ -58,10 +59,18 @@ export function MachineDetails({
           </div>
           <div className="flex items-center gap-4">
             <Badge
-              variant={machine.status === "online" ? "success" : "secondary"}
+              variant={
+                isMachineUnreachable(machine.status, machine.lastSeenAt)
+                  ? "destructive"
+                  : machine.status === "online"
+                    ? "success"
+                    : "destructive"
+              }
               className="capitalize"
             >
-              {machine.status}
+              {isMachineUnreachable(machine.status, machine.lastSeenAt)
+                ? "offline"
+                : machine.status}
             </Badge>
             <Switch
               checked={machine.status === "online"}

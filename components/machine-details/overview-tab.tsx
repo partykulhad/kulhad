@@ -32,7 +32,6 @@ import {
   Legend,
 } from "recharts";
 import { isMachineUnreachable } from "@/lib/utils";
-import { formatRelativeTime } from "@/lib/date-utils";
 
 interface OverviewTabProps {
   machine: any;
@@ -267,11 +266,10 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
             <div className="flex items-center">
               <div
                 className={`h-4 w-4 rounded-full mr-2 ${
-                  isMachineUnreachable(machine.status, machine.lastSeenAt)
-                    ? "bg-red-500"
-                    : machine.status === "online"
-                      ? "bg-green-500"
-                      : "bg-gray-400"
+                  machine.status === "online" &&
+                  !isMachineUnreachable(machine.status, machine.lastSeenAt)
+                    ? "bg-green-500"
+                    : "bg-red-500"
                 }`}
               ></div>
               <span className="text-2xl font-bold">
@@ -284,7 +282,7 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Last checked in: {machine.lastSeenAt
-                ? formatRelativeTime(new Date(machine.lastSeenAt))
+                ? new Date(machine.lastSeenAt).toLocaleString()
                 : "never"}
             </p>
           </CardContent>

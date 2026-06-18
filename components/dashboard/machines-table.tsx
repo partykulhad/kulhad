@@ -242,7 +242,7 @@ export function MachinesTable({
                       ) : (
                         <Badge
                           variant={
-                            machine.status === "online" ? "success" : "secondary"
+                            machine.status === "online" ? "success" : "destructive"
                           }
                         >
                           {machine.status}
