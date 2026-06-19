@@ -34,7 +34,6 @@ import {
   PieChartIcon,
   Users2Icon,
   WifiIcon,
-  WifiOffIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -143,85 +142,6 @@ export default function DashboardPage() {
                       {/* Cross-Machine Comparison Chart */}
                       <div className="w-full">
                         <MachineComparisonChart machines={machines} />
-                      </div>
-
-                      {/* Status Overview Cards */}
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                        <Card className="relative overflow-hidden bg-gradient-to-br from-white/95 to-blue-50/95 dark:from-gray-900/95 dark:to-blue-900/20 border border-blue-200/50 dark:border-blue-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
-                          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-cyan-500/5" />
-                          <CardContent className="relative p-4 md:p-6">
-                            <div className="flex flex-col items-center text-center space-y-3">
-                              <div className="p-3 rounded-2xl bg-gradient-to-r from-blue-500 to-cyan-500 shadow-lg">
-                                <LayoutDashboardIcon className="h-5 w-5 md:h-6 md:w-6 text-white" />
-                              </div>
-                              <div>
-                                <h3 className="text-xl md:text-2xl font-bold text-blue-900 dark:text-blue-100">
-                                  {machines.length}
-                                </h3>
-                                <p className="text-xs md:text-sm text-blue-600 dark:text-blue-400 font-medium">
-                                  Total Machines
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="relative overflow-hidden bg-gradient-to-br from-white/95 to-emerald-50/95 dark:from-gray-900/95 dark:to-emerald-900/20 border border-emerald-200/50 dark:border-emerald-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
-                          <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 to-teal-500/5" />
-                          <CardContent className="relative p-4 md:p-6">
-                            <div className="flex flex-col items-center text-center space-y-3">
-                              <div className="p-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-teal-500 shadow-lg">
-                                <CheckCircleIcon className="h-5 w-5 md:h-6 md:w-6 text-white" />
-                              </div>
-                              <div>
-                                <h3 className="text-xl md:text-2xl font-bold text-emerald-900 dark:text-emerald-100">
-                                  {alerts.online}
-                                </h3>
-                                <p className="text-xs md:text-sm text-emerald-600 dark:text-emerald-400 font-medium">
-                                  Online Now
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="relative overflow-hidden bg-gradient-to-br from-white/95 to-red-50/95 dark:from-gray-900/95 dark:to-red-900/20 border border-red-200/50 dark:border-red-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
-                          <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-pink-500/5" />
-                          <CardContent className="relative p-4 md:p-6">
-                            <div className="flex flex-col items-center text-center space-y-3">
-                              <div className="p-3 rounded-2xl bg-gradient-to-r from-red-500 to-pink-500 shadow-lg">
-                                <WifiOffIcon className="h-5 w-5 md:h-6 md:w-6 text-white" />
-                              </div>
-                              <div>
-                                <h3 className="text-xl md:text-2xl font-bold text-red-900 dark:text-red-100">
-                                  {alerts.offline}
-                                </h3>
-                                <p className="text-xs md:text-sm text-red-600 dark:text-red-400 font-medium">
-                                  Offline
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-
-                        <Card className="relative overflow-hidden bg-gradient-to-br from-white/95 to-amber-50/95 dark:from-gray-900/95 dark:to-amber-900/20 border border-amber-200/50 dark:border-amber-700/50 shadow-xl hover:shadow-2xl transition-all duration-300 hover:scale-[1.02]">
-                          <div className="absolute inset-0 bg-gradient-to-br from-amber-500/5 to-orange-500/5" />
-                          <CardContent className="relative p-4 md:p-6">
-                            <div className="flex flex-col items-center text-center space-y-3">
-                              <div className="p-3 rounded-2xl bg-gradient-to-r from-amber-500 to-orange-500 shadow-lg">
-                                <AlertTriangleIcon className="h-5 w-5 md:h-6 md:w-6 text-white" />
-                              </div>
-                              <div>
-                                <h3 className="text-xl md:text-2xl font-bold text-amber-900 dark:text-amber-100">
-                                  {alerts.low}
-                                </h3>
-                                <p className="text-xs md:text-sm text-amber-600 dark:text-amber-400 font-medium">
-                                  Low Stock
-                                </p>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
                       </div>
 
                       {/* Inventory Levels Section */}
