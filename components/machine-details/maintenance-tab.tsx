@@ -1,5 +1,8 @@
 "use client";
 
+import { useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import {
   Card,
   CardContent,
@@ -10,15 +13,66 @@ import {
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
-import { Settings, AlertTriangle } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { Settings, AlertTriangle, Droplet } from "lucide-react";
 
 interface MaintenanceTabProps {
   machine: any;
 }
 
 export function MaintenanceTab({ machine }: MaintenanceTabProps) {
+  const updateWaterLevel = useMutation(api.machines.updateWaterLevel);
+  const [isUpdating, setIsUpdating] = useState(false);
+
+  const handleSetWaterLevel = async (waterLevelLow: boolean) => {
+    setIsUpdating(true);
+    try {
+      await updateWaterLevel({ machineId: machine.id, waterLevelLow });
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Droplet className="h-5 w-5" />
+            Water Level Alert
+          </CardTitle>
+          <CardDescription>
+            Reported by the machine&apos;s sensor. Use the manual override
+            below only if the sensor is stuck or unreachable — the machine
+            will overwrite this the next time it reports a real reading.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex items-center gap-3">
+            <span className="text-sm font-medium">Current status:</span>
+            <Badge variant={machine.waterLevelLow ? "destructive" : "success"}>
+              {machine.waterLevelLow ? "Water Level Low" : "OK"}
+            </Badge>
+          </div>
+        </CardContent>
+        <CardFooter className="flex gap-2">
+          <Button
+            variant="outline"
+            disabled={isUpdating || !machine.waterLevelLow}
+            onClick={() => handleSetWaterLevel(false)}
+          >
+            Manually Clear Alert
+          </Button>
+          <Button
+            variant="outline"
+            disabled={isUpdating || machine.waterLevelLow}
+            onClick={() => handleSetWaterLevel(true)}
+          >
+            Mark as Low (testing)
+          </Button>
+        </CardFooter>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Maintenance Schedule</CardTitle>
