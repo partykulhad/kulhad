@@ -146,7 +146,7 @@ export function MachineComparisonChart({ machines }: MachineComparisonChartProps
                   defaultMonth={dateRange?.from}
                   selected={dateRange}
                   onSelect={setDateRange}
-                  numberOfMonths={2}
+                  numberOfMonths={1}
                 />
               </PopoverContent>
             </Popover>
@@ -206,7 +206,7 @@ export function MachineComparisonChart({ machines }: MachineComparisonChartProps
           </div>
 
           {/* Legend */}
-          <div className="flex items-center justify-center gap-8 mt-6 pt-6 border-t border-gray-200/50 dark:border-gray-700/50">
+          <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-8 mt-6 pt-6 border-t border-gray-200/50 dark:border-gray-700/50">
             <div className="flex items-center gap-3 p-3 rounded-2xl bg-green-50/50 dark:bg-green-900/30">
               <div className="w-6 h-6 rounded-2xl bg-green-500 shadow-lg" />
               <span className="text-sm font-bold text-green-700 dark:text-green-300">

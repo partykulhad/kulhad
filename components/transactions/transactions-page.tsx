@@ -184,7 +184,7 @@ export function TransactionsPage() {
 
         {/* Filters */}
         <div className="flex flex-wrap items-center gap-3 mt-4">
-          <div className="relative">
+          <div className="relative w-full sm:w-[220px]">
             <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Search transaction ID..."
@@ -193,7 +193,7 @@ export function TransactionsPage() {
                 setSearch(e.target.value);
                 setPage(0);
               }}
-              className="pl-9 w-[220px] rounded-2xl"
+              className="pl-9 w-full rounded-2xl"
             />
           </div>
 
@@ -204,7 +204,7 @@ export function TransactionsPage() {
               setPage(0);
             }}
           >
-            <SelectTrigger className="w-[180px] rounded-2xl">
+            <SelectTrigger className="w-full sm:w-[180px] rounded-2xl">
               <SelectValue placeholder="Machine" />
             </SelectTrigger>
             <SelectContent>
@@ -224,7 +224,7 @@ export function TransactionsPage() {
               setPage(0);
             }}
           >
-            <SelectTrigger className="w-[150px] rounded-2xl">
+            <SelectTrigger className="w-full sm:w-[150px] rounded-2xl">
               <SelectValue placeholder="Status" />
             </SelectTrigger>
             <SelectContent>
@@ -238,7 +238,7 @@ export function TransactionsPage() {
 
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="rounded-2xl font-medium">
+              <Button variant="outline" className="w-full sm:w-auto rounded-2xl font-medium">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {dateRange?.from ? (
                   dateRange.to ? (
@@ -258,13 +258,13 @@ export function TransactionsPage() {
               <Calendar
                 initialFocus
                 mode="range"
+                numberOfMonths={1}
                 defaultMonth={dateRange?.from}
                 selected={dateRange}
                 onSelect={(range) => {
                   setDateRange(range);
                   setPage(0);
                 }}
-                numberOfMonths={2}
               />
               {dateRange && (
                 <div className="p-3 border-t">
@@ -328,7 +328,7 @@ export function TransactionsPage() {
             </div>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between mt-4">
+            <div className="flex flex-wrap items-center justify-between gap-3 mt-4">
               <span className="text-sm text-gray-500 dark:text-gray-400">
                 Page {page + 1} of {totalPages} ({filtered.length.toLocaleString("en-IN")} results)
               </span>
