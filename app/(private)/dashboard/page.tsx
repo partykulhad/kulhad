@@ -18,6 +18,8 @@ import Header from "@/components/AuthenticatedHeader";
 import AddDeliveryAgent from "@/components/AddDeliveryAgent";
 import { InventoryLevels } from "@/components/charts/inventory-levels";
 import { SalesChart } from "@/components/charts/sales-chart";
+import { MachineComparisonChart } from "@/components/charts/machine-comparison-chart";
+import { TransactionsPage } from "@/components/transactions/transactions-page";
 import { TemperatureMonitor } from "@/components/charts/temperature-monitor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -136,6 +138,11 @@ export default function DashboardPage() {
                       {/* Charts Section - Full Width Sales Chart */}
                       <div className="w-full">
                         <SalesChart />
+                      </div>
+
+                      {/* Cross-Machine Comparison Chart */}
+                      <div className="w-full">
+                        <MachineComparisonChart machines={machines} />
                       </div>
 
                       {/* Status Overview Cards */}
@@ -396,6 +403,17 @@ export default function DashboardPage() {
                 transition={pageTransition}
               >
                 <AddDeliveryAgent />
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="transactions" className="mt-0">
+              <motion.div
+                initial="initial"
+                animate="in"
+                variants={pageVariants}
+                transition={pageTransition}
+              >
+                <TransactionsPage />
               </motion.div>
             </TabsContent>
           </Tabs>

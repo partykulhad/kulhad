@@ -18,6 +18,7 @@ import {
   XIcon,
   DropletIcon,
   ActivityIcon,
+  ReceiptIcon,
 } from "lucide-react";
 
 import { Loading } from "@/components/shared/loading";
@@ -122,6 +123,12 @@ const Header: React.FC<HeaderProps> = ({
       label: "Delivery",
       icon: TruckIcon,
       color: "from-purple-500 to-purple-600",
+    },
+    {
+      id: "transactions",
+      label: "Transactions",
+      icon: ReceiptIcon,
+      color: "from-cyan-500 to-cyan-600",
     },
   ];
 
