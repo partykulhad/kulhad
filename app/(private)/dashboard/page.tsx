@@ -17,7 +17,6 @@ import AddKitchen from "@/components/add-kitchen";
 import Header from "@/components/AuthenticatedHeader";
 import AddDeliveryAgent from "@/components/AddDeliveryAgent";
 import { InventoryLevels } from "@/components/charts/inventory-levels";
-import { SalesChart } from "@/components/charts/sales-chart";
 import { MachineComparisonChart } from "@/components/charts/machine-comparison-chart";
 import { TransactionsPage } from "@/components/transactions/transactions-page";
 import { TemperatureMonitor } from "@/components/charts/temperature-monitor";
@@ -133,11 +132,6 @@ export default function DashboardPage() {
                     <>
                       {/* Overview Cards */}
                       <OverviewCards machines={machines} />
-
-                      {/* Charts Section - Full Width Sales Chart */}
-                      <div className="w-full">
-                        <SalesChart />
-                      </div>
 
                       {/* Cross-Machine Comparison Chart */}
                       <div className="w-full">
