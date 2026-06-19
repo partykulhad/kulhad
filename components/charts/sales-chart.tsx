@@ -56,6 +56,7 @@ import {
   ActivityIcon,
   ZapIcon,
   CrownIcon,
+  ServerIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
 
@@ -68,9 +69,19 @@ interface SalesData {
 export function SalesChart() {
   const [timeRange, setTimeRange] = useState("7days");
   const [chartType, setChartType] = useState<"line" | "area" | "bar">("area");
+  const [selectedMachineId, setSelectedMachineId] = useState("all");
 
-  // Fetch transactions from Convex
-  const transactions = useQuery(api.transactions.list) || [];
+  // Fetch transactions and machines from Convex
+  const allTransactions = useQuery(api.transactions.list) || [];
+  const machines = useQuery(api.machines.list) || [];
+
+  const transactions = useMemo(
+    () =>
+      selectedMachineId === "all"
+        ? allTransactions
+        : allTransactions.filter((t) => t.machineId === selectedMachineId),
+    [allTransactions, selectedMachineId]
+  );
 
   const timeRangeOptions = [
     {
@@ -462,13 +473,48 @@ export function SalesChart() {
                     Sales Analytics
                   </h2>
                   <p className="text-gray-600 dark:text-gray-400 font-medium">
-                    Real-time revenue insights and performance tracking
+                    {selectedMachineId === "all"
+                      ? "Real-time revenue insights and performance tracking — all machines"
+                      : `Real-time revenue insights and performance tracking — ${
+                          machines.find((m) => m.id === selectedMachineId)
+                            ?.name || selectedMachineId
+                        }`}
                   </p>
                 </div>
               </div>
             </div>
 
             <div className="flex flex-col sm:flex-row gap-4">
+              {/* Machine Filter */}
+              <div className="flex items-center gap-2">
+                <ServerIcon className="h-4 w-4 text-gray-500" />
+                <Select
+                  value={selectedMachineId}
+                  onValueChange={setSelectedMachineId}
+                >
+                  <SelectTrigger className="w-[180px] h-12 bg-white/90 dark:bg-gray-800/90 backdrop-blur-md border-2 border-gray-200/60 dark:border-gray-600/60 hover:border-blue-300 dark:hover:border-blue-500 hover:shadow-xl transition-all duration-300 rounded-2xl font-semibold">
+                    <SelectValue placeholder="Select Machine" />
+                  </SelectTrigger>
+                  <SelectContent className="bg-white/95 dark:bg-gray-900/95 backdrop-blur-2xl border border-gray-200/50 dark:border-gray-700/50 shadow-2xl rounded-2xl p-2">
+                    <SelectItem
+                      value="all"
+                      className="rounded-2xl mx-1 my-1 p-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-900/30 dark:hover:to-purple-900/30 cursor-pointer"
+                    >
+                      <span className="font-semibold">All Machines</span>
+                    </SelectItem>
+                    {machines.map((machine) => (
+                      <SelectItem
+                        key={machine.id}
+                        value={machine.id}
+                        className="rounded-2xl mx-1 my-1 p-4 hover:bg-gradient-to-r hover:from-blue-50 hover:to-purple-50 dark:hover:from-blue-900/30 dark:hover:to-purple-900/30 cursor-pointer"
+                      >
+                        <span className="font-semibold">{machine.name}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               {/* Time Range Filter */}
               <div className="flex items-center gap-2">
                 <FilterIcon className="h-4 w-4 text-gray-500" />
