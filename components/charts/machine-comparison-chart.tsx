@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import {
   Bar,
   BarChart,
@@ -46,16 +46,6 @@ export function MachineComparisonChart({ machines }: MachineComparisonChartProps
   });
 
   const transactions = useQuery(api.transactions.list) || [];
-
-  // 2-month calendar on desktop (easier to pick a wide range); a 2-month-wide
-  // popup would overflow a phone screen, so it drops to 1 month below 768px.
-  const [calendarMonths, setCalendarMonths] = useState(1);
-  useEffect(() => {
-    const updateMonths = () => setCalendarMonths(window.innerWidth >= 768 ? 2 : 1);
-    updateMonths();
-    window.addEventListener("resize", updateMonths);
-    return () => window.removeEventListener("resize", updateMonths);
-  }, []);
 
   const chartData = useMemo(() => {
     return machines.map((machine) => {
@@ -153,10 +143,10 @@ export function MachineComparisonChart({ machines }: MachineComparisonChartProps
                 <Calendar
                   initialFocus
                   mode="range"
-                  defaultMonth={dateRange?.from}
+                  defaultMonth={new Date()}
                   selected={dateRange}
                   onSelect={setDateRange}
-                  numberOfMonths={calendarMonths}
+                  numberOfMonths={2}
                 />
               </PopoverContent>
             </Popover>
