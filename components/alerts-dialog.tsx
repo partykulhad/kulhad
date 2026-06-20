@@ -7,8 +7,11 @@ import {
   DropletIcon,
   XIcon,
   AlertTriangleIcon,
+  PackageIcon,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import {
   Dialog,
   DialogContent,
@@ -24,6 +27,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 interface Machine {
   _id: string;
+  id?: string;
   name: string;
   status?: string;
   temperature?: number;
@@ -35,6 +39,8 @@ interface Machine {
     area: string;
   };
 }
+
+const INACTIVE_REQUEST_STATUSES = ["Completed", "Cancelled", "Canceled"];
 
 interface AlertsDialogProps {
   open: boolean;
@@ -61,11 +67,27 @@ export function AlertsDialog({
   });
   const waterLevelAlerts = machines.filter((m) => m.waterLevelLow);
 
+  // Real refill requests created by checkCanisterLevel — distinct from the
+  // canisterLevel<20 check above, which only reflects a raw percentage and
+  // says nothing about whether a request actually reached a kitchen.
+  const allRequests = useQuery(api.requests.list) || [];
+  const refillRequests = allRequests
+    .filter((r) => !INACTIVE_REQUEST_STATUSES.includes(r.requestStatus))
+    .sort((a, b) => (b._creationTime || 0) - (a._creationTime || 0));
+
+  const machineNameById = new Map(
+    machines.map((m) => [m.id || m._id, m.name])
+  );
+  const machineConvexIdById = new Map(
+    machines.map((m) => [m.id || m._id, m._id])
+  );
+
   const totalAlerts =
     offlineMachines.length +
     lowInventoryMachines.length +
     temperatureAlerts.length +
-    waterLevelAlerts.length;
+    waterLevelAlerts.length +
+    refillRequests.length;
 
   const handleMachineClick = (machineId: string) => {
     onMachineSelect(machineId);
@@ -233,6 +255,79 @@ export function AlertsDialog({
     );
   };
 
+  const RefillAlertCard = ({ request }: { request: any }) => {
+    const machineName = machineNameById.get(request.machineId) || request.machineId;
+    const convexId = machineConvexIdById.get(request.machineId);
+    const isUnreached = request.requestStatus === "No Kitchens Found";
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 20 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -20 }}
+        transition={{ duration: 0.2, ease: "easeOut" }}
+        className="w-full mb-4"
+      >
+        <Card
+          className={`group hover:shadow-lg transition-all duration-300 border bg-gradient-to-br hover:scale-[1.01] ${
+            isUnreached
+              ? "from-red-500/10 to-red-600/10 border-red-200"
+              : "from-orange-500/10 to-orange-600/10 border-orange-200"
+          }`}
+        >
+          <CardContent className="p-4">
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start gap-3">
+                  <div className={`p-2 rounded-lg ${isUnreached ? "bg-red-100" : "bg-orange-100"}`}>
+                    <PackageIcon className="h-4 w-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h4 className="font-semibold text-gray-900 truncate">{machineName}</h4>
+                    <p className="text-sm text-gray-600 truncate">
+                      Request {request.requestId}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <Badge variant={isUnreached ? "destructive" : "secondary"} className="flex-shrink-0">
+                {request.requestStatus}
+              </Badge>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {isUnreached ? (
+                <div className="flex items-center gap-2 text-sm text-red-700">
+                  <AlertTriangleIcon className="h-3 w-3" />
+                  <span>No kitchen is mapped to this machine — nobody was notified. Assign a kitchen on the machine's edit page.</span>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 text-sm text-gray-600">
+                  <PackageIcon className="h-3 w-3" />
+                  <span>Qty: {request.quantity ?? "N/A"} &middot; {request.requestDateTime}</span>
+                </div>
+              )}
+            </div>
+
+            {convexId && (
+              <div className="mt-4 flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleMachineClick(convexId)}
+                  className="hover:bg-primary hover:text-primary-foreground transition-colors"
+                >
+                  View Details
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
   const EmptyState = ({ type }: { type: string }) => (
     <div className="flex flex-col items-center justify-center py-12 text-center">
       <div className="p-4 rounded-full bg-green-100 mb-4">
@@ -273,7 +368,7 @@ export function AlertsDialog({
           <Tabs defaultValue="all" className="flex flex-col h-full">
             {/* Fixed Tabs Header */}
             <div className="px-6 py-4 border-b bg-white flex-shrink-0">
-              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-5 h-auto gap-2">
+              <TabsList className="grid w-full grid-cols-2 lg:grid-cols-6 h-auto gap-2">
                 <TabsTrigger
                   value="all"
                   className="flex items-center gap-2 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
@@ -329,6 +424,17 @@ export function AlertsDialog({
                     {waterLevelAlerts.length}
                   </Badge>
                 </TabsTrigger>
+                <TabsTrigger
+                  value="refill"
+                  className="flex items-center gap-2 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  <PackageIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">Refill Requests</span>
+                  <span className="sm:hidden">Refill</span>
+                  <Badge variant="secondary" className="ml-1">
+                    {refillRequests.length}
+                  </Badge>
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -371,6 +477,12 @@ export function AlertsDialog({
                               key={`water-${machine._id}`}
                               machine={machine}
                               type="water"
+                            />
+                          ))}
+                          {refillRequests.map((request) => (
+                            <RefillAlertCard
+                              key={`refill-${request._id}`}
+                              request={request}
                             />
                           ))}
                         </div>
@@ -443,6 +555,23 @@ export function AlertsDialog({
                               key={machine._id}
                               machine={machine}
                               type="water"
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </AnimatePresence>
+                  </TabsContent>
+
+                  <TabsContent value="refill" className="mt-0 space-y-0">
+                    <AnimatePresence mode="wait">
+                      {refillRequests.length === 0 ? (
+                        <EmptyState type="refill request" />
+                      ) : (
+                        <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+                          {refillRequests.map((request) => (
+                            <RefillAlertCard
+                              key={request._id}
+                              request={request}
                             />
                           ))}
                         </div>
