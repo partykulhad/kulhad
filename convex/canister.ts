@@ -338,27 +338,25 @@ export const checkCanisterLevel = mutation({
       )
     }
 
-    // Check if kitchenId exists in the machine record
-    if (!machine.kitchenId) {
-      return {
-        success: false,
-        message: "No kitchen mapped to this machine",
-        requestId: null,
-        kitchenUserIds: [],
-      }
-    }
-
-    const machineLat = Number.parseFloat(machine.gisLatitude)
-    const machineLon = Number.parseFloat(machine.gisLongitude)
-
-    if (isNaN(machineLat) || isNaN(machineLon)) {
-      throw new ConvexError("Invalid machine coordinates")
-    }
+    // Kitchen mapping is no longer required to create/show a request — a
+    // machine with no kitchenId (or bad coordinates) still gets a visible
+    // "No Kitchens Found" request below instead of being silently dropped.
+    // Invalid/placeholder coordinates (e.g. ".") are stored as undefined
+    // rather than blocking the request entirely.
+    const machineLatParsed = Number.parseFloat(machine.gisLatitude)
+    const machineLonParsed = Number.parseFloat(machine.gisLongitude)
+    const machineLat = isNaN(machineLatParsed) ? undefined : machineLatParsed
+    const machineLon = isNaN(machineLonParsed) ? undefined : machineLonParsed
 
     const customRequestId = await generateRequestId(ctx)
 
-    // Get the kitchenId from the machine record
-    const kitchenIds = Array.isArray(machine.kitchenId) ? machine.kitchenId : [machine.kitchenId]
+    // Get the kitchenId from the machine record — empty if none mapped, which
+    // naturally falls into the "no online kitchens found" branch below.
+    const kitchenIds = !machine.kitchenId
+      ? []
+      : Array.isArray(machine.kitchenId)
+        ? machine.kitchenId
+        : [machine.kitchenId]
 
     // Get the kitchen user IDs from the kitchens table
     const kitchenUserIds: string[] = []
