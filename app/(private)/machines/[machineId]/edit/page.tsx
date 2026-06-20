@@ -12,6 +12,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Popover,
@@ -56,6 +63,7 @@ interface Machine {
   cups?: number | "";
   mlToDispense?: number | "";
   lockPass?: string;
+  kitchenId?: string;
 }
 
 export default function EditMachinePage() {
@@ -85,9 +93,11 @@ export default function EditMachinePage() {
     flushTimeMinutes: "",
     mlToDispense: "",
     lockPass: "",
+    kitchenId: "",
   });
 
   const machines = useQuery(api.machines.list) || [];
+  const kitchens = useQuery(api.kitchens.list) || [];
   const editMachine = useMutation(api.machines.update);
 
   useEffect(() => {
@@ -102,6 +112,7 @@ export default function EditMachinePage() {
         flushTimeMinutes: foundMachine.flushTimeMinutes ?? "",
         mlToDispense: foundMachine.mlToDispense ?? "",
         lockPass: foundMachine.lockPass || "",
+        kitchenId: foundMachine.kitchenId || "",
       });
     }
   }, [machines, machineId]);
@@ -171,6 +182,7 @@ export default function EditMachinePage() {
             ? undefined
             : Number(machine.mlToDispense),
         lockPass: machine.lockPass?.trim() ? machine.lockPass : undefined,
+        kitchenId: machine.kitchenId?.trim() ? machine.kitchenId : undefined,
       });
       toast.success("Machine updated successfully");
       router.push(`/machines/${machineId}`);
@@ -275,6 +287,33 @@ export default function EditMachinePage() {
                   onChange={handleInputChange}
                   placeholder="Enter lock pass"
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="kitchenId">Assigned Kitchen</Label>
+                <Select
+                  value={machine.kitchenId || "none"}
+                  onValueChange={(value) =>
+                    setMachine((prev) => ({
+                      ...prev,
+                      kitchenId: value === "none" ? "" : value,
+                    }))
+                  }
+                >
+                  <SelectTrigger id="kitchenId">
+                    <SelectValue placeholder="No kitchen assigned" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No kitchen assigned</SelectItem>
+                    {kitchens.map((kitchen) => (
+                      <SelectItem key={kitchen.userId} value={kitchen.userId}>
+                        {kitchen.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Required for low-canister refill requests to reach a kitchen.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="installedDate">Installation Date</Label>

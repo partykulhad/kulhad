@@ -181,6 +181,9 @@ export const update = mutation({
     lockPass: v.optional(v.string()),
     // New working days field
     workingDays: v.optional(v.string()),
+    // Kitchen this machine is mapped to (kitchens.userId) — required for
+    // canister-low refill requests to reach anyone; see checkCanisterLevel.
+    kitchenId: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { machineId, ...updates } = args
