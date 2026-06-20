@@ -702,3 +702,30 @@ export const checkScheduledRequest = mutation({
     }
   },
 })
+
+// Called by the kiosk when cups go back above CANISTER_ALERT_THRESHOLD —
+// closes any still-open refill requests for this machine so the dashboard's
+// Refill Requests alert clears automatically instead of sitting forever.
+export const resolveOpenRequests = mutation({
+  args: { machineId: v.string() },
+  handler: async (ctx, args) => {
+    const openRequests = await ctx.db
+      .query("requests")
+      .withIndex("by_machineId", (q) => q.eq("machineId", args.machineId))
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("requestStatus"), "Completed"),
+          q.neq(q.field("requestStatus"), "Cancelled"),
+        ),
+      )
+      .collect()
+
+    for (const req of openRequests) {
+      await ctx.db.patch(req._id, { requestStatus: "Completed" })
+    }
+
+    console.log(`[RESOLVE] Closed ${openRequests.length} open request(s) for machine ${args.machineId}`)
+
+    return { success: true, resolvedCount: openRequests.length }
+  },
+})
