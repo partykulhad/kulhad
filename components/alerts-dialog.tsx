@@ -258,7 +258,6 @@ export function AlertsDialog({
   const RefillAlertCard = ({ request }: { request: any }) => {
     const machineName = machineNameById.get(request.machineId) || request.machineId;
     const convexId = machineConvexIdById.get(request.machineId);
-    const isUnreached = request.requestStatus === "No Kitchens Found";
 
     return (
       <motion.div
@@ -268,46 +267,31 @@ export function AlertsDialog({
         transition={{ duration: 0.2, ease: "easeOut" }}
         className="w-full mb-4"
       >
-        <Card
-          className={`group hover:shadow-lg transition-all duration-300 border bg-gradient-to-br hover:scale-[1.01] ${
-            isUnreached
-              ? "from-red-500/10 to-red-600/10 border-red-200"
-              : "from-orange-500/10 to-orange-600/10 border-orange-200"
-          }`}
-        >
+        <Card className="group hover:shadow-lg transition-all duration-300 border bg-gradient-to-br from-orange-500/10 to-orange-600/10 border-orange-200 hover:scale-[1.01]">
           <CardContent className="p-4">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-3">
               <div className="flex-1 min-w-0">
                 <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-lg ${isUnreached ? "bg-red-100" : "bg-orange-100"}`}>
+                  <div className="p-2 rounded-lg bg-orange-100">
                     <PackageIcon className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h4 className="font-semibold text-gray-900 truncate">{machineName}</h4>
-                    <p className="text-sm text-gray-600 truncate">
-                      Request {request.requestId}
-                    </p>
+                    <p className="text-sm text-gray-600 truncate">Refill alert</p>
                   </div>
                 </div>
               </div>
 
-              <Badge variant={isUnreached ? "destructive" : "secondary"} className="flex-shrink-0">
-                {request.requestStatus}
+              <Badge variant="secondary" className="flex-shrink-0">
+                Refill Needed
               </Badge>
             </div>
 
             <div className="mt-4 space-y-2">
-              {isUnreached ? (
-                <div className="flex items-center gap-2 text-sm text-red-700">
-                  <AlertTriangleIcon className="h-3 w-3" />
-                  <span>No kitchen is mapped to this machine — nobody was notified. Assign a kitchen on the machine's edit page.</span>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2 text-sm text-gray-600">
-                  <PackageIcon className="h-3 w-3" />
-                  <span>Qty: {request.quantity ?? "N/A"} &middot; {request.requestDateTime}</span>
-                </div>
-              )}
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <PackageIcon className="h-3 w-3" />
+                <span>Qty: {request.quantity ?? "N/A"} &middot; {request.requestDateTime}</span>
+              </div>
             </div>
 
             {convexId && (
