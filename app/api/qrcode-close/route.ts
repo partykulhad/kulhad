@@ -1,4 +1,14 @@
 import { type NextRequest, NextResponse } from "next/server"
+import { ConvexHttpClient } from "convex/browser"
+import { api } from "@/convex/_generated/api"
+
+const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
+
+// Prefetched-but-unused QR codes only ever get explicitly closed while still
+// in this state. If a transaction has already moved to one of these, a race
+// (customer paid the instant before the app decided to cancel it) means this
+// close request is stale — never downgrade a real outcome back to "closed".
+const TERMINAL_STATUSES = ["paid", "closed", "expired", "failed", "cancelled", "refunded"]
 
 // Prepare Razorpay auth header
 const razorpayKeyId = process.env.RAZORPAY_KEY_ID
@@ -63,6 +73,29 @@ export async function POST(request: NextRequest) {
     // Parse the response
     const razorpayResponse = await response.json()
     console.log(`[DEBUG] QR Code ${qrCodeId} closed successfully`)
+
+    // Update the transaction's own status immediately — don't rely solely on
+    // the qr_code.closed webhook, which isn't 100% reliable for delivery.
+    // This is exactly why ~893 prefetched-but-cancelled QRs were sitting as
+    // permanently "active" ghost records despite being correctly closed on
+    // Razorpay's side. Fire-and-forget: never block the response on this.
+    convex
+      .query(api.transactions.getTransactionByTxnId, { transactionId: qrCodeId })
+      .then((transaction) => {
+        if (!transaction) {
+          console.warn(`[DEBUG] No transaction found for closed QR ${qrCodeId}`)
+          return
+        }
+        if (TERMINAL_STATUSES.includes(transaction.status)) {
+          console.log(`[DEBUG] Transaction for ${qrCodeId} already ${transaction.status} — not overwriting`)
+          return
+        }
+        return convex.mutation(api.transactions.updateTransactionStatus, {
+          id: transaction._id,
+          status: "closed",
+        })
+      })
+      .catch((err) => console.error(`[DEBUG] Failed to update transaction status for ${qrCodeId}:`, err))
 
     // Create response object
     const responseData = {
