@@ -39,7 +39,7 @@ import type { DateRange } from "react-day-picker";
 
 const PAGE_SIZE = 25;
 
-const STATUS_OPTIONS = ["all", "paid", "active", "expired", "closed"];
+const STATUS_OPTIONS = ["all", "paid", "active", "cancelled", "failed"];
 
 function statusBadgeVariant(status: string): "success" | "destructive" | "secondary" | "outline" {
   switch (status) {
@@ -47,8 +47,9 @@ function statusBadgeVariant(status: string): "success" | "destructive" | "second
       return "success";
     case "active":
       return "outline";
-    case "expired":
-    case "closed":
+    case "failed":
+      return "destructive";
+    case "cancelled":
       return "secondary";
     default:
       return "secondary";

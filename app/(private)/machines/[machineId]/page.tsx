@@ -57,7 +57,7 @@ export default function MachineDetailsPage() {
         totalCups: 0,
         totalAmount: 0,
         paidTransactions: 0,
-        activeTransactions: 0,
+        failedTransactions: 0,
         canceledTransactions: 0,
         paidAmount: 0,
         dailySales: [],
@@ -68,8 +68,8 @@ export default function MachineDetailsPage() {
 
     // Filter transactions by status
     const paidTxs = transactions.filter((tx) => tx.status === "paid");
-    const activeTxs = transactions.filter((tx) => tx.status === "active");
-    const canceledTxs = transactions.filter((tx) => tx.status === "canceled");
+    const failedTxs = transactions.filter((tx) => tx.status === "failed");
+    const canceledTxs = transactions.filter((tx) => tx.status === "cancelled");
 
     // Calculate totals
     const totalCups = paidTxs.reduce((sum, tx) => sum + tx.cups, 0);
@@ -101,15 +101,15 @@ export default function MachineDetailsPage() {
     // Status distribution for pie chart
     const statusDistribution = [
       { name: "Paid", value: paidTxs.length },
-      { name: "Active", value: activeTxs.length },
-      { name: "Canceled", value: canceledTxs.length },
+      { name: "Cancelled", value: canceledTxs.length },
+      { name: "Failed", value: failedTxs.length },
     ];
 
     return {
       totalCups,
       totalAmount,
       paidTransactions: paidTxs.length,
-      activeTransactions: activeTxs.length,
+      failedTransactions: failedTxs.length,
       canceledTransactions: canceledTxs.length,
       paidAmount: totalAmount,
       dailySales: Array.from(dailySalesMap.values()),

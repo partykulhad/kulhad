@@ -103,30 +103,35 @@ export async function POST(request: NextRequest) {
       await findAndUpdateTransaction(possibleIds, "cancelled");
     }
     else if (event === "payment.refunded") {
+      // Collapsed into "cancelled" — only paid/cancelled/failed are tracked as
+      // final outcomes now. Refund-specific fields are still recorded.
       const payment = payload.payload.payment.entity;
       const possibleIds = [payment.qr_code_id, payment.notes?.transactionId].filter(Boolean);
-      await findAndUpdateTransaction(possibleIds, "refunded", {
+      await findAndUpdateTransaction(possibleIds, "cancelled", {
         refundId: payment.refund_id || "",
         refundStatus: payment.refund_status || "",
       });
     }
     else if (event === "qr_code.closed") {
+      // A prefetched-but-unused QR being closed, or a customer-initiated
+      // cancel — either way, no payment happened. Collapsed into "cancelled".
       const qrCode = payload.payload.qr_code.entity;
       const possibleIds = [
         qrCode.id,
         qrCode.notes?.transactionId,
         qrCode.notes?.machineId
       ].filter(Boolean);
-      await findAndUpdateTransaction(possibleIds, "closed");
+      await findAndUpdateTransaction(possibleIds, "cancelled");
     }
     else if (event === "qr_code.expired") {
+      // Timed out unpaid, nobody tried — same outcome as cancelled.
       const qrCode = payload.payload.qr_code.entity;
       const possibleIds = [
         qrCode.id,
         qrCode.notes?.transactionId,
         qrCode.notes?.machineId
       ].filter(Boolean);
-      await findAndUpdateTransaction(possibleIds, "expired");
+      await findAndUpdateTransaction(possibleIds, "cancelled");
     }
     else if (event === "qr_code.created") {
       const qrCode = payload.payload.qr_code.entity;
@@ -140,7 +145,7 @@ export async function POST(request: NextRequest) {
     else if (event === "invoice.expired") {
       const invoice = payload.payload.invoice.entity;
       const possibleIds = [invoice.notes?.transactionId, invoice.notes?.machineId].filter(Boolean);
-      await findAndUpdateTransaction(possibleIds, "expired");
+      await findAndUpdateTransaction(possibleIds, "cancelled");
     }
     else if (event === "order.paid") {
       const order = payload.payload.order.entity;

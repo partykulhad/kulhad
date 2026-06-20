@@ -4,11 +4,12 @@ import { api } from "@/convex/_generated/api"
 
 const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 
-// Prefetched-but-unused QR codes only ever get explicitly closed while still
-// in this state. If a transaction has already moved to one of these, a race
-// (customer paid the instant before the app decided to cancel it) means this
-// close request is stale — never downgrade a real outcome back to "closed".
-const TERMINAL_STATUSES = ["paid", "closed", "expired", "failed", "cancelled", "refunded"]
+// Only three final outcomes are tracked: paid, cancelled, failed (plus the
+// transient "active" pending state before any of those happen). If a
+// transaction has already moved to one of these, a race (customer paid the
+// instant before the app decided to cancel it) means this close request is
+// stale — never downgrade a real outcome back to "cancelled".
+const TERMINAL_STATUSES = ["paid", "cancelled", "failed"]
 
 // Prepare Razorpay auth header
 const razorpayKeyId = process.env.RAZORPAY_KEY_ID
@@ -92,7 +93,7 @@ export async function POST(request: NextRequest) {
         }
         return convex.mutation(api.transactions.updateTransactionStatus, {
           id: transaction._id,
-          status: "closed",
+          status: "cancelled",
         })
       })
       .catch((err) => console.error(`[DEBUG] Failed to update transaction status for ${qrCodeId}:`, err))

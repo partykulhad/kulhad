@@ -57,7 +57,7 @@ interface TransactionMetrics {
   totalCups: number;
   totalAmount: number;
   paidTransactions: number;
-  activeTransactions: number;
+  failedTransactions: number;
   canceledTransactions: number;
   paidAmount: number;
   dailySales: Array<{
@@ -109,11 +109,11 @@ export function AnalyticsTab({
       .reduce((sum, tx) => sum + tx.amount, 0),
     paidTransactions: filteredTransactions.filter((tx) => tx.status === "paid")
       .length,
-    activeTransactions: filteredTransactions.filter(
-      (tx) => tx.status === "active"
+    failedTransactions: filteredTransactions.filter(
+      (tx) => tx.status === "failed"
     ).length,
     canceledTransactions: filteredTransactions.filter(
-      (tx) => tx.status === "canceled"
+      (tx) => tx.status === "cancelled"
     ).length,
   };
 
@@ -335,12 +335,12 @@ export function AnalyticsTab({
                           value: filteredMetrics.paidTransactions,
                         },
                         {
-                          name: "Active",
-                          value: filteredMetrics.activeTransactions,
+                          name: "Cancelled",
+                          value: filteredMetrics.canceledTransactions,
                         },
                         {
-                          name: "Canceled",
-                          value: filteredMetrics.canceledTransactions,
+                          name: "Failed",
+                          value: filteredMetrics.failedTransactions,
                         },
                       ]}
                       cx="50%"
@@ -359,12 +359,12 @@ export function AnalyticsTab({
                           value: filteredMetrics.paidTransactions,
                         },
                         {
-                          name: "Active",
-                          value: filteredMetrics.activeTransactions,
+                          name: "Cancelled",
+                          value: filteredMetrics.canceledTransactions,
                         },
                         {
-                          name: "Canceled",
-                          value: filteredMetrics.canceledTransactions,
+                          name: "Failed",
+                          value: filteredMetrics.failedTransactions,
                         },
                       ].map((entry, index) => (
                         <Cell
@@ -433,9 +433,9 @@ export function AnalyticsTab({
                             variant={
                               tx.status === "paid"
                                 ? "success"
-                                : tx.status === "active"
-                                  ? "outline"
-                                  : "destructive"
+                                : tx.status === "failed"
+                                  ? "destructive"
+                                  : "secondary"
                             }
                           >
                             {tx.status}
