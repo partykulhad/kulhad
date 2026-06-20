@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Search, SortAsc, SortDesc } from "lucide-react";
-import { isMachineUnreachable, useNow } from "@/lib/utils";
+import { deriveCanisterLevel, isMachineUnreachable, useNow } from "@/lib/utils";
 
 interface Machine {
   _id: Id<"machines">;
@@ -268,14 +268,14 @@ export function MachinesTable({
                     <TableCell>
                       <Badge
                         variant={
-                          machine.canisterLevel < 20
+                          deriveCanisterLevel(machine.cups) < 20
                             ? "destructive"
-                            : machine.canisterLevel < 40
+                            : deriveCanisterLevel(machine.cups) < 40
                               ? "warning"
                               : "default"
                         }
                       >
-                        {machine.canisterLevel}%
+                        {deriveCanisterLevel(machine.cups)}%
                       </Badge>
                     </TableCell>
                     <TableCell>

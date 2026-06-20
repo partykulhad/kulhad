@@ -24,7 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
-import { isMachineOffline, useNow } from "@/lib/utils";
+import { deriveCanisterLevel, isMachineOffline, useNow } from "@/lib/utils";
 
 interface Machine {
   _id: string;
@@ -32,7 +32,7 @@ interface Machine {
   name: string;
   status?: string;
   temperature?: number;
-  canisterLevel?: number;
+  cups?: number;
   waterLevelLow?: boolean;
   lastChecked?: string;
   lastSeenAt?: number;
@@ -64,7 +64,7 @@ export function AlertsDialog({
     isMachineOffline(m.status, m.lastSeenAt, now)
   );
   const lowInventoryMachines = machines.filter(
-    (m) => (m.canisterLevel || 0) < 20
+    (m) => deriveCanisterLevel(m.cups) < 20
   );
   const temperatureAlerts = machines.filter((m) => {
     const temp = m.temperature || 0;
@@ -206,11 +206,11 @@ export function AlertsDialog({
               {type === "inventory" && (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <DropletIcon className="h-3 w-3" />
-                  <span>Level: {machine.canisterLevel}%</span>
+                  <span>Level: {deriveCanisterLevel(machine.cups)}%</span>
                   <div className="flex-1 bg-gray-200 rounded-full h-2 ml-2">
                     <div
                       className="bg-red-500 h-2 rounded-full transition-all duration-300"
-                      style={{ width: `${machine.canisterLevel || 0}%` }}
+                      style={{ width: `${deriveCanisterLevel(machine.cups)}%` }}
                     />
                   </div>
                 </div>

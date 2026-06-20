@@ -56,3 +56,17 @@ export function useNow(intervalMs = 5000) {
   }, [intervalMs])
   return now
 }
+
+// Machines have no per-unit capacity field — every machine's canisterLevel
+// was apparently set once at creation as cups/50*100 and never touched
+// again, so it silently drifts out of sync with the real cup count (one
+// machine was already wrong by 28 points when this was checked). Deriving
+// it live from cups means there's nothing to drift — it's always correct by
+// construction. Use this instead of reading machine.canisterLevel directly
+// anywhere it's displayed.
+export const ASSUMED_MAX_CUPS = 50
+
+export function deriveCanisterLevel(cups: number | undefined): number {
+  if (!cups) return 0
+  return Math.min(100, Math.round((cups / ASSUMED_MAX_CUPS) * 100))
+}

@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 import { Loading } from "@/components/shared/loading";
-import { cn, isMachineOffline, useNow } from "@/lib/utils";
+import { cn, deriveCanisterLevel, isMachineOffline, useNow } from "@/lib/utils";
 import Logo from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import {
@@ -51,7 +51,7 @@ interface HeaderProps {
     name: string;
     status?: string;
     temperature?: number;
-    canisterLevel?: number;
+    cups?: number;
     waterLevelLow?: boolean;
     lastChecked?: string;
     lastSeenAt?: number;
@@ -90,7 +90,7 @@ const Header: React.FC<HeaderProps> = ({
   ).length;
 
   const lowInventoryMachines = vendingMachines.filter(
-    (m) => (m.canisterLevel || 0) < 20
+    (m) => deriveCanisterLevel(m.cups) < 20
   ).length;
 
   const temperatureAlerts = vendingMachines.filter((m) => {
@@ -314,7 +314,7 @@ const Header: React.FC<HeaderProps> = ({
                           Offline
                         </Badge>
                       )}
-                      {(machine.canisterLevel || 0) < 20 && (
+                      {deriveCanisterLevel(machine.cups) < 20 && (
                         <Badge variant="destructive" className="text-xs">
                           Low
                         </Badge>
@@ -396,7 +396,7 @@ const Header: React.FC<HeaderProps> = ({
                             Offline
                           </Badge>
                         )}
-                        {(machine.canisterLevel || 0) < 20 && (
+                        {deriveCanisterLevel(machine.cups) < 20 && (
                           <Badge variant="destructive" className="text-xs">
                             Low
                           </Badge>

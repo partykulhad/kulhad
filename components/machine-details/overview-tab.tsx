@@ -31,7 +31,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { isMachineUnreachable, useNow } from "@/lib/utils";
+import { deriveCanisterLevel, isMachineUnreachable, useNow } from "@/lib/utils";
 
 interface OverviewTabProps {
   machine: any;
@@ -318,22 +318,22 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
             <div className="space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm font-medium">
-                  {machine.canisterLevel}%
+                  {deriveCanisterLevel(machine.cups)}%
                 </span>
                 <span className="text-sm text-muted-foreground">
-                  {machine.canisterLevel < 20
+                  {deriveCanisterLevel(machine.cups) < 20
                     ? "Low"
-                    : machine.canisterLevel < 50
+                    : deriveCanisterLevel(machine.cups) < 50
                       ? "Medium"
                       : "Good"}
                 </span>
               </div>
-              <Progress value={machine.canisterLevel} className="h-2" />
+              <Progress value={deriveCanisterLevel(machine.cups)} className="h-2" />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {machine.canisterLevel < 20
+              {deriveCanisterLevel(machine.cups) < 20
                 ? "Refill needed soon"
-                : machine.canisterLevel < 50
+                : deriveCanisterLevel(machine.cups) < 50
                   ? "Monitor levels"
                   : "Level is good"}
             </p>

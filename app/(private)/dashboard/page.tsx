@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { isMachineOffline, useNow } from "@/lib/utils";
+import { deriveCanisterLevel, isMachineOffline, useNow } from "@/lib/utils";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { OverviewCards } from "@/components/dashboard/overview-cards";
@@ -60,7 +60,7 @@ export default function DashboardPage() {
 
   // Calculate overview metrics
   const alerts = {
-    low: machines.filter((m) => (m.canisterLevel || 0) < 20).length,
+    low: machines.filter((m) => deriveCanisterLevel(m.cups) < 20).length,
     maintenance: machines.filter((m) => (m.temperature || 0) <= 80).length,
     offline: machines.filter((m) => isMachineOffline(m.status, m.lastSeenAt, now)).length,
     online: machines.filter((m) => !isMachineOffline(m.status, m.lastSeenAt, now)).length,
@@ -68,7 +68,7 @@ export default function DashboardPage() {
 
   const inventoryData = machines.map((machine) => ({
     name: machine.name,
-    level: machine.canisterLevel || 0,
+    level: deriveCanisterLevel(machine.cups),
     threshold: 20,
   }));
 

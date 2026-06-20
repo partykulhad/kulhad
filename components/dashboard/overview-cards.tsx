@@ -18,7 +18,7 @@ import {
   FilterIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { isMachineUnreachable, useNow } from "@/lib/utils";
+import { deriveCanisterLevel, isMachineUnreachable, useNow } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -118,7 +118,7 @@ export function OverviewCards({ machines }: OverviewCardsProps) {
           machines.length
         : 0;
     const lowInventoryCount = machines.filter(
-      (m) => (m.canisterLevel || 0) < 20
+      (m) => deriveCanisterLevel(m.cups) < 20
     ).length;
 
     return {

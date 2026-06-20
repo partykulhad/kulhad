@@ -26,7 +26,7 @@ import {
   StarIcon,
   TruckIcon,
 } from "lucide-react";
-import { isMachineUnreachable, useNow } from "@/lib/utils";
+import { deriveCanisterLevel, isMachineUnreachable, useNow } from "@/lib/utils";
 
 interface MachineDetailsProps {
   machine: any; // Update this with proper type
@@ -150,9 +150,9 @@ export function MachineDetails({
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold">
-                      {machine.canisterLevel}%
+                      {deriveCanisterLevel(machine.cups)}%
                     </div>
-                    <Progress value={machine.canisterLevel} className="mt-2" />
+                    <Progress value={deriveCanisterLevel(machine.cups)} className="mt-2" />
                   </CardContent>
                 </Card>
 
