@@ -5,9 +5,11 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-// The kiosk calls /api/getMachineData every 60s as a heartbeat. 150s (2.5x)
-// gives buffer for network jitter while still catching a dead kiosk quickly.
-export const MACHINE_STALE_THRESHOLD_MS = 150_000
+// The kiosk calls /api/getMachineData every 60s as a heartbeat. 240s (4x)
+// gives more buffer for network jitter on flaky kiosk Wi-Fi — a single slow
+// or missed heartbeat shouldn't flip a genuinely-online machine to "offline"
+// on the dashboard. Still catches a truly dead kiosk within a few minutes.
+export const MACHINE_STALE_THRESHOLD_MS = 240_000
 
 // True when a machine claims "online" but hasn't checked in recently — distinct
 // from a deliberately-toggled offline, since this means it stopped responding.
