@@ -53,7 +53,6 @@ interface HeaderProps {
     temperature?: number;
     cups?: number;
     waterLevelLow?: boolean;
-    lastChecked?: string;
     lastSeenAt?: number;
     address?: {
       building: string;

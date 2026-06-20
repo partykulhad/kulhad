@@ -34,7 +34,6 @@ interface Machine {
   temperature?: number;
   cups?: number;
   waterLevelLow?: boolean;
-  lastChecked?: string;
   lastSeenAt?: number;
   address?: {
     building: string;
@@ -200,7 +199,12 @@ export function AlertsDialog({
               {type === "offline" && (
                 <div className="flex items-center gap-2 text-sm text-gray-600">
                   <AlertTriangleIcon className="h-3 w-3" />
-                  <span>Last seen: {machine.lastChecked || "Unknown"}</span>
+                  <span>
+                    Last seen:{" "}
+                    {machine.lastSeenAt
+                      ? new Date(machine.lastSeenAt).toLocaleString()
+                      : "Never"}
+                  </span>
                 </div>
               )}
               {type === "inventory" && (
