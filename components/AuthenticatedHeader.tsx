@@ -22,7 +22,7 @@ import {
 } from "lucide-react";
 
 import { Loading } from "@/components/shared/loading";
-import { cn } from "@/lib/utils";
+import { cn, isMachineOffline, useNow } from "@/lib/utils";
 import Logo from "@/components/logo";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,6 +54,7 @@ interface HeaderProps {
     canisterLevel?: number;
     waterLevelLow?: boolean;
     lastChecked?: string;
+    lastSeenAt?: number;
     address?: {
       building: string;
       area: string;
@@ -70,6 +71,7 @@ const Header: React.FC<HeaderProps> = ({
   const [menuOpen, setMenuOpen] = useState(false);
   const [alertsOpen, setAlertsOpen] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
+  const now = useNow();
 
   // Track scroll for glassmorphism effect
   useEffect(() => {
@@ -80,9 +82,11 @@ const Header: React.FC<HeaderProps> = ({
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // Fixed: Use same filtering logic as AlertsDialog
-  const offlineMachines = vendingMachines.filter(
-    (m) => m.status === "offline"
+  // Same unified check used everywhere else (OverviewCards, AlertsDialog,
+  // dashboard page) — counts a machine as offline whether it was explicitly
+  // toggled offline OR has gone stale while still claiming "online".
+  const offlineMachines = vendingMachines.filter((m) =>
+    isMachineOffline(m.status, m.lastSeenAt, now)
   ).length;
 
   const lowInventoryMachines = vendingMachines.filter(
@@ -305,7 +309,7 @@ const Header: React.FC<HeaderProps> = ({
                     <Coffee className="h-4 w-4" />
                     {machine.name}
                     <div className="flex gap-1">
-                      {machine.status === "offline" && (
+                      {isMachineOffline(machine.status, machine.lastSeenAt, now) && (
                         <Badge variant="secondary" className="text-xs">
                           Offline
                         </Badge>
@@ -387,7 +391,7 @@ const Header: React.FC<HeaderProps> = ({
                       <Coffee className="h-4 w-4" />
                       {machine.name}
                       <div className="flex gap-1">
-                        {machine.status === "offline" && (
+                        {isMachineOffline(machine.status, machine.lastSeenAt, now) && (
                           <Badge variant="secondary" className="text-xs">
                             Offline
                           </Badge>

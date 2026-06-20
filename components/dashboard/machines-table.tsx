@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Search, SortAsc, SortDesc } from "lucide-react";
-import { isMachineUnreachable } from "@/lib/utils";
+import { isMachineUnreachable, useNow } from "@/lib/utils";
 
 interface Machine {
   _id: Id<"machines">;
@@ -108,6 +108,7 @@ export function MachinesTable({
   const [sortField, setSortField] = useState<string>("name");
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const [pendingMachine, setPendingMachine] = useState<Machine | null>(null);
+  const now = useNow();
 
   const filteredMachines = machines.filter(
     (machine) =>
@@ -237,7 +238,7 @@ export function MachinesTable({
                     <TableCell>{machine.id}</TableCell>
                     <TableCell>{machine.name}</TableCell>
                     <TableCell>
-                      {isMachineUnreachable(machine.status, machine.lastSeenAt) ? (
+                      {isMachineUnreachable(machine.status, machine.lastSeenAt, now) ? (
                         <Badge variant="destructive">offline</Badge>
                       ) : (
                         <Badge

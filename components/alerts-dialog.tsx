@@ -24,6 +24,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { isMachineOffline, useNow } from "@/lib/utils";
 
 interface Machine {
   _id: string;
@@ -34,6 +35,7 @@ interface Machine {
   canisterLevel?: number;
   waterLevelLow?: boolean;
   lastChecked?: string;
+  lastSeenAt?: number;
   address?: {
     building: string;
     area: string;
@@ -57,7 +59,10 @@ export function AlertsDialog({
   onMachineSelect,
   setActiveTab,
 }: AlertsDialogProps) {
-  const offlineMachines = machines.filter((m) => m.status === "offline");
+  const now = useNow();
+  const offlineMachines = machines.filter((m) =>
+    isMachineOffline(m.status, m.lastSeenAt, now)
+  );
   const lowInventoryMachines = machines.filter(
     (m) => (m.canisterLevel || 0) < 20
   );

@@ -5,7 +5,7 @@ import { useQuery } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import { useParams, useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
-import { isMachineUnreachable } from "@/lib/utils";
+import { isMachineUnreachable, useNow } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, AlertTriangle } from "lucide-react";
@@ -26,6 +26,7 @@ export default function MachineDetailsPage() {
 
   // Get all machines and find the one that matches the ID
   const machines = useQuery(api.machines.list) || [];
+  const now = useNow();
   const machine = machines.find((m) => m.id === machineId);
 
   // Get machine data history
@@ -161,13 +162,13 @@ export default function MachineDetailsPage() {
               <Badge
                 variant={
                   machine.status === "online" &&
-                  !isMachineUnreachable(machine.status, machine.lastSeenAt)
+                  !isMachineUnreachable(machine.status, machine.lastSeenAt, now)
                     ? "success"
                     : "destructive"
                 }
                 className="mr-2"
               >
-                {isMachineUnreachable(machine.status, machine.lastSeenAt)
+                {isMachineUnreachable(machine.status, machine.lastSeenAt, now)
                   ? "offline"
                   : machine.status}
               </Badge>

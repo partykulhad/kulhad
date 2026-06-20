@@ -26,7 +26,7 @@ import {
   StarIcon,
   TruckIcon,
 } from "lucide-react";
-import { isMachineUnreachable } from "@/lib/utils";
+import { isMachineUnreachable, useNow } from "@/lib/utils";
 
 interface MachineDetailsProps {
   machine: any; // Update this with proper type
@@ -38,6 +38,7 @@ export function MachineDetails({
   onStatusToggle,
 }: MachineDetailsProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
+  const now = useNow();
   const goingOnline = machine.status !== "online";
 
   const handleConfirm = () => {
@@ -60,7 +61,7 @@ export function MachineDetails({
           <div className="flex items-center gap-4">
             <Badge
               variant={
-                isMachineUnreachable(machine.status, machine.lastSeenAt)
+                isMachineUnreachable(machine.status, machine.lastSeenAt, now)
                   ? "destructive"
                   : machine.status === "online"
                     ? "success"
@@ -68,7 +69,7 @@ export function MachineDetails({
               }
               className="capitalize"
             >
-              {isMachineUnreachable(machine.status, machine.lastSeenAt)
+              {isMachineUnreachable(machine.status, machine.lastSeenAt, now)
                 ? "offline"
                 : machine.status}
             </Badge>

@@ -18,7 +18,7 @@ import {
   FilterIcon,
 } from "lucide-react";
 import { motion } from "framer-motion";
-import { isMachineUnreachable } from "@/lib/utils";
+import { isMachineUnreachable, useNow } from "@/lib/utils";
 import {
   Select,
   SelectContent,
@@ -42,6 +42,7 @@ interface OverviewCardsProps {
 
 export function OverviewCards({ machines }: OverviewCardsProps) {
   const [timeRange, setTimeRange] = useState("7days");
+  const now = useNow();
 
   // Fetch transactions from Convex
   const transactions = useQuery(api.transactions.list) || [];
@@ -106,10 +107,10 @@ export function OverviewCards({ machines }: OverviewCardsProps) {
   // Calculate machine statistics
   const machineStats = useMemo(() => {
     const onlineMachines = machines.filter(
-      (m) => m.status === "online" && !isMachineUnreachable(m.status, m.lastSeenAt)
+      (m) => m.status === "online" && !isMachineUnreachable(m.status, m.lastSeenAt, now)
     ).length;
     const offlineMachines = machines.filter(
-      (m) => m.status === "offline" || isMachineUnreachable(m.status, m.lastSeenAt)
+      (m) => m.status === "offline" || isMachineUnreachable(m.status, m.lastSeenAt, now)
     ).length;
     const avgTemperature =
       machines.length > 0
@@ -127,7 +128,7 @@ export function OverviewCards({ machines }: OverviewCardsProps) {
       lowInventoryCount,
       totalMachines: machines.length,
     };
-  }, [machines]);
+  }, [machines, now]);
 
   const container = {
     hidden: { opacity: 0 },

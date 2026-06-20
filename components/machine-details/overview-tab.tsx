@@ -31,7 +31,7 @@ import {
   Tooltip,
   Legend,
 } from "recharts";
-import { isMachineUnreachable } from "@/lib/utils";
+import { isMachineUnreachable, useNow } from "@/lib/utils";
 
 interface OverviewTabProps {
   machine: any;
@@ -39,6 +39,7 @@ interface OverviewTabProps {
 }
 
 export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
+  const now = useNow();
   const lastRefillTime = useMemo(() => {
     if (!machine || !machine.lastFulfilled) return null;
 
@@ -267,13 +268,13 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
               <div
                 className={`h-4 w-4 rounded-full mr-2 ${
                   machine.status === "online" &&
-                  !isMachineUnreachable(machine.status, machine.lastSeenAt)
+                  !isMachineUnreachable(machine.status, machine.lastSeenAt, now)
                     ? "bg-green-500"
                     : "bg-red-500"
                 }`}
               ></div>
               <span className="text-2xl font-bold">
-                {isMachineUnreachable(machine.status, machine.lastSeenAt)
+                {isMachineUnreachable(machine.status, machine.lastSeenAt, now)
                   ? "Offline"
                   : machine.status === "online"
                     ? "Online"

@@ -9,7 +9,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { isMachineUnreachable } from "@/lib/utils";
+import { isMachineUnreachable, useNow } from "@/lib/utils";
 import { Switch } from "@/components/ui/switch";
 import { Progress } from "@/components/ui/progress";
 import {
@@ -62,6 +62,7 @@ export default function DashboardContent({
   vendingMachines,
 }: DashboardContentProps) {
   const toggleMachineStatus = useMutation(api.machines.toggleStatus);
+  const now = useNow();
 
   const selectedMachineData =
     selectedMachine === "all"
@@ -144,7 +145,7 @@ export default function DashboardContent({
             <p className="text-xs text-muted-foreground">
               {
                 vendingMachines.filter(
-                  (vm) => vm.status === "online" && !isMachineUnreachable(vm.status, vm.lastSeenAt)
+                  (vm) => vm.status === "online" && !isMachineUnreachable(vm.status, vm.lastSeenAt, now)
                 ).length
               }{" "}
               online

@@ -58,7 +58,7 @@ import {
   Trash2,
   ExternalLink,
 } from "lucide-react";
-import { cn, isMachineUnreachable } from "@/lib/utils";
+import { cn, isMachineUnreachable, useNow } from "@/lib/utils";
 import { format } from "date-fns";
 
 interface Address {
@@ -155,6 +155,7 @@ export default function AddMachineContent() {
   });
 
   const machines = useQuery(api.machines.list) || [];
+  const now = useNow();
   const addMachine = useMutation(api.machines.add);
   const editMachine = useMutation(api.machines.update);
   const deleteMachine = useMutation(api.machines.remove);
@@ -850,7 +851,7 @@ export default function AddMachineContent() {
                   <Badge
                     variant={
                       machine.status === "online" &&
-                      !isMachineUnreachable(machine.status, machine.lastSeenAt)
+                      !isMachineUnreachable(machine.status, machine.lastSeenAt, now)
                         ? "success"
                         : "destructive"
                     }
@@ -860,7 +861,7 @@ export default function AddMachineContent() {
                       setPendingMachine(machine);
                     }}
                   >
-                    {isMachineUnreachable(machine.status, machine.lastSeenAt)
+                    {isMachineUnreachable(machine.status, machine.lastSeenAt, now)
                       ? "offline"
                       : machine.status}
                   </Badge>
