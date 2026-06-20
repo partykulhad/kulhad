@@ -90,6 +90,11 @@ export default defineSchema({
       workingDays: v.optional(v.string()),
       // Last time the kiosk checked in (any getMachineData call) — heartbeat for live status
       lastSeenAt: v.optional(v.number()),
+      // Remote monitoring — reported on the same heartbeat as lastSeenAt
+      currentPage: v.optional(v.string()),
+      cpuPercent: v.optional(v.number()),
+      memPercent: v.optional(v.number()),
+      diskPercent: v.optional(v.number()),
     })
       .index("by_machineId", ["id"])
       .index("by_status", ["status"]),

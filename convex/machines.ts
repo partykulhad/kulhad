@@ -132,16 +132,27 @@ export const getMachineData = query({
 // Heartbeat: the kiosk calls getMachineData every 60s regardless of state,
 // so this is the most reliable "still alive" signal without any Pi-side changes.
 export const touchLastSeen = mutation({
-  args: { machineId: v.string() },
+  args: {
+    machineId: v.string(),
+    // Remote monitoring fields — piggybacked on the same 60s heartbeat call
+    // the kiosk already makes (getMachineData), rather than a separate
+    // polling cycle. All optional: an older kiosk build that doesn't send
+    // them yet just leaves these fields unchanged.
+    currentPage: v.optional(v.string()),
+    cpuPercent: v.optional(v.number()),
+    memPercent: v.optional(v.number()),
+    diskPercent: v.optional(v.number()),
+  },
   handler: async (ctx, args) => {
+    const { machineId, ...telemetry } = args
     const machine = await ctx.db
       .query("machines")
-      .filter((q) => q.eq(q.field("id"), args.machineId))
+      .filter((q) => q.eq(q.field("id"), machineId))
       .first()
 
     if (!machine) return { success: false }
 
-    await ctx.db.patch(machine._id, { lastSeenAt: Date.now() })
+    await ctx.db.patch(machine._id, { lastSeenAt: Date.now(), ...telemetry })
     return { success: true }
   },
 })

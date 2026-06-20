@@ -339,6 +339,43 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
             </p>
           </CardContent>
         </Card>
+
+        {/* Remote Monitoring Card — current screen + Pi system health,
+            reported on the same 60s heartbeat as lastSeenAt */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Remote Monitoring</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-1 text-sm">
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Current screen</span>
+                <span className="font-medium">{machine.currentPage || "Unknown"}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">CPU</span>
+                <span className="font-medium">
+                  {machine.cpuPercent !== undefined ? `${machine.cpuPercent}%` : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Memory</span>
+                <span className="font-medium">
+                  {machine.memPercent !== undefined ? `${machine.memPercent}%` : "—"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Disk</span>
+                <span className="font-medium">
+                  {machine.diskPercent !== undefined ? `${machine.diskPercent}%` : "—"}
+                </span>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              Updated on the same ~60s heartbeat as last-seen status
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Recent Sales Chart */}

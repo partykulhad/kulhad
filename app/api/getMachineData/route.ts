@@ -21,9 +21,22 @@ export async function GET(request: NextRequest) {
     }
 
     // The kiosk hits this endpoint every 60s regardless of state — use it as a
-    // heartbeat for live-status detection. Fire-and-forget: never block or fail
-    // this response if the heartbeat write has a hiccup.
-    convex.mutation(api.machines.touchLastSeen, { machineId }).catch((err) => {
+    // heartbeat for live-status detection, and piggyback remote-monitoring
+    // telemetry (current page, Pi system health) on the same call rather than
+    // a separate polling cycle. Fire-and-forget: never block or fail this
+    // response if the heartbeat write has a hiccup.
+    const currentPage = searchParams.get("currentPage") || undefined
+    const cpuPercent = searchParams.has("cpu_percent") ? Number(searchParams.get("cpu_percent")) : undefined
+    const memPercent = searchParams.has("mem_percent") ? Number(searchParams.get("mem_percent")) : undefined
+    const diskPercent = searchParams.has("disk_percent") ? Number(searchParams.get("disk_percent")) : undefined
+
+    convex.mutation(api.machines.touchLastSeen, {
+      machineId,
+      currentPage,
+      cpuPercent,
+      memPercent,
+      diskPercent,
+    }).catch((err) => {
       console.error("Failed to update lastSeenAt:", err)
     })
 
