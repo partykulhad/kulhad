@@ -54,6 +54,11 @@ export function MaintenanceTab({ machine }: MaintenanceTabProps) {
               {machine.waterLevelLow ? "Water Level Low" : "OK"}
             </Badge>
           </div>
+          <p className="text-xs text-muted-foreground mt-2">
+            {machine.waterLevelLowAt
+              ? `Since ${new Date(machine.waterLevelLowAt).toLocaleString()}`
+              : "No change recorded yet"}
+          </p>
         </CardContent>
         <CardFooter className="flex gap-2">
           <Button

@@ -441,9 +441,14 @@ export const updateWaterLevel = mutation({
   args: {
     machineId: v.string(),
     waterLevelLow: v.boolean(),
+    // Kiosk-side timestamp (ISO string), for cross-referencing against this
+    // server's own receipt time if the two ever look suspiciously far apart
+    // (network delay, retried request, clock drift on the Pi). Not used as
+    // the authoritative timestamp — waterLevelLowAt below is server time.
+    reportedAt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const { machineId, waterLevelLow } = args
+    const { machineId, waterLevelLow, reportedAt } = args
 
     // Find the machine with this machineId
     const machine = await ctx.db
@@ -459,10 +464,23 @@ export const updateWaterLevel = mutation({
     }
 
     const previousValue = machine.waterLevelLow ?? false
+    // Only bump the timestamp on a genuine transition — a duplicate/retried
+    // report of the same value shouldn't make it look like the state just
+    // changed again.
+    const changed = waterLevelLow !== previousValue
+    const waterLevelLowAt = changed ? Date.now() : machine.waterLevelLowAt
 
     await ctx.db.patch(machine._id, {
-      waterLevelLow: waterLevelLow,
+      waterLevelLow,
+      waterLevelLowAt,
     })
+
+    if (changed) {
+      console.log(
+        `[WaterLevel] Machine ${machineId} waterLevelLow ${previousValue} -> ${waterLevelLow} ` +
+          `at ${new Date(waterLevelLowAt!).toISOString()} (kiosk reported: ${reportedAt || "n/a"})`,
+      )
+    }
 
     return {
       success: true,
@@ -471,6 +489,7 @@ export const updateWaterLevel = mutation({
       machineName: machine.name || "Unknown Machine",
       previousValue,
       waterLevelLow,
+      waterLevelLowAt,
     }
   },
 })
@@ -496,6 +515,7 @@ export const getMachineWaterLevel = query({
       machineId,
       machineName: machine.name || "Unknown Machine",
       waterLevelLow: machine.waterLevelLow ?? false,
+      waterLevelLowAt: machine.waterLevelLowAt,
     }
   },
 })

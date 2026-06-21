@@ -10,7 +10,7 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!)
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { machineId, waterLevelLow } = body
+    const { machineId, waterLevelLow, reportedAt } = body
 
     if (!machineId || typeof waterLevelLow !== "boolean") {
       return NextResponse.json(
@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     const result = await convex.mutation(api.machines.updateWaterLevel, {
       machineId,
       waterLevelLow,
+      reportedAt,
     })
 
     if (!result.success) {
@@ -40,6 +41,7 @@ export async function POST(request: NextRequest) {
       machineName: result.machineName,
       previousValue: result.previousValue,
       waterLevelLow: result.waterLevelLow,
+      waterLevelLowAt: result.waterLevelLowAt,
     })
   } catch (error) {
     console.error("Error updating water level:", error)
@@ -68,6 +70,7 @@ export async function GET(request: NextRequest) {
       machineId: result.machineId,
       machineName: result.machineName,
       waterLevelLow: result.waterLevelLow,
+      waterLevelLowAt: result.waterLevelLowAt,
     })
   } catch (error) {
     console.error("Error getting water level:", error)
