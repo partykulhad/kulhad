@@ -20,6 +20,7 @@ import {
   Clock3,
   Thermometer,
   BarChart3,
+  Droplet,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -303,6 +304,30 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Optimal range: 80°C - 82°C
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Water Level Card — simple presence indicator, separate from the
+            alert system (Maintenance tab / Alerts dialog), which is unchanged.
+            ESP32 reports waterLevelLow=true meaning water is NOT present. */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Water Level</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center">
+              <Droplet
+                className={`h-5 w-5 mr-2 ${machine.waterLevelLow ? "text-red-500" : "text-blue-500"}`}
+              />
+              <span className="text-2xl font-bold">
+                {machine.waterLevelLow ? "Not Present" : "Present"}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {machine.waterLevelLow
+                ? "Tank is empty — refill needed"
+                : "Tank has water"}
             </p>
           </CardContent>
         </Card>
