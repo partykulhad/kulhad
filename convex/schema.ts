@@ -58,10 +58,12 @@ export default defineSchema({
       flushTimeMinutes: v.optional(v.number()),
       mlToDispense: v.optional(v.number()),
       waterLevelLow: v.optional(v.boolean()),
-      // When waterLevelLow last actually changed (server-side receipt time,
-      // not the kiosk's clock — avoids clock-skew issues between the Pi and
-      // this server). Lets the dashboard show "since when" not just current state.
-      waterLevelLowAt: v.optional(v.number()),
+      // Separate timestamps for each direction — a single "last changed at"
+      // field gets overwritten the moment the alert clears, losing the
+      // original trigger time right when you'd want to look back at it.
+      // Server-side receipt time (not the kiosk's clock) to avoid clock-skew.
+      waterLevelWentLowAt: v.optional(v.number()),
+      waterLevelClearedAt: v.optional(v.number()),
       teaFillStartQuantity: v.optional(v.number()),
       teaFillEndQuantity: v.optional(v.number()),
       status: v.string(),

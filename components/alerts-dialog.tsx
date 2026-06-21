@@ -34,7 +34,7 @@ interface Machine {
   temperature?: number;
   cups?: number;
   waterLevelLow?: boolean;
-  waterLevelLowAt?: number;
+  waterLevelWentLowAt?: number;
   lastSeenAt?: number;
   address?: {
     building: string;
@@ -225,8 +225,8 @@ export function AlertsDialog({
                   <DropletIcon className="h-3 w-3" />
                   <span>
                     Water tank is low — refill needed
-                    {machine.waterLevelLowAt &&
-                      ` (since ${new Date(machine.waterLevelLowAt).toLocaleString()})`}
+                    {machine.waterLevelWentLowAt &&
+                      ` (since ${new Date(machine.waterLevelWentLowAt).toLocaleString()})`}
                   </span>
                 </div>
               )}

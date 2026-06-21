@@ -41,7 +41,8 @@ export async function POST(request: NextRequest) {
       machineName: result.machineName,
       previousValue: result.previousValue,
       waterLevelLow: result.waterLevelLow,
-      waterLevelLowAt: result.waterLevelLowAt,
+      waterLevelWentLowAt: result.waterLevelWentLowAt,
+      waterLevelClearedAt: result.waterLevelClearedAt,
     })
   } catch (error) {
     console.error("Error updating water level:", error)
@@ -70,7 +71,8 @@ export async function GET(request: NextRequest) {
       machineId: result.machineId,
       machineName: result.machineName,
       waterLevelLow: result.waterLevelLow,
-      waterLevelLowAt: result.waterLevelLowAt,
+      waterLevelWentLowAt: result.waterLevelWentLowAt,
+      waterLevelClearedAt: result.waterLevelClearedAt,
     })
   } catch (error) {
     console.error("Error getting water level:", error)

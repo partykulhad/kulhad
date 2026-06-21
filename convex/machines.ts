@@ -444,7 +444,7 @@ export const updateWaterLevel = mutation({
     // Kiosk-side timestamp (ISO string), for cross-referencing against this
     // server's own receipt time if the two ever look suspiciously far apart
     // (network delay, retried request, clock drift on the Pi). Not used as
-    // the authoritative timestamp — waterLevelLowAt below is server time.
+    // the authoritative timestamp — the server-side fields below are.
     reportedAt: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
@@ -464,21 +464,32 @@ export const updateWaterLevel = mutation({
     }
 
     const previousValue = machine.waterLevelLow ?? false
-    // Only bump the timestamp on a genuine transition — a duplicate/retried
-    // report of the same value shouldn't make it look like the state just
-    // changed again.
     const changed = waterLevelLow !== previousValue
-    const waterLevelLowAt = changed ? Date.now() : machine.waterLevelLowAt
+
+    // Separate fields per direction — clearing the alert must not erase the
+    // original "went low" time, and vice versa. Only the field matching this
+    // specific transition gets a new timestamp; the other is left untouched.
+    let waterLevelWentLowAt = machine.waterLevelWentLowAt
+    let waterLevelClearedAt = machine.waterLevelClearedAt
+    if (changed) {
+      if (waterLevelLow) {
+        waterLevelWentLowAt = Date.now()
+      } else {
+        waterLevelClearedAt = Date.now()
+      }
+    }
 
     await ctx.db.patch(machine._id, {
       waterLevelLow,
-      waterLevelLowAt,
+      waterLevelWentLowAt,
+      waterLevelClearedAt,
     })
 
     if (changed) {
       console.log(
         `[WaterLevel] Machine ${machineId} waterLevelLow ${previousValue} -> ${waterLevelLow} ` +
-          `at ${new Date(waterLevelLowAt!).toISOString()} (kiosk reported: ${reportedAt || "n/a"})`,
+          `at ${new Date(waterLevelLow ? waterLevelWentLowAt! : waterLevelClearedAt!).toISOString()} ` +
+          `(kiosk reported: ${reportedAt || "n/a"})`,
       )
     }
 
@@ -489,7 +500,8 @@ export const updateWaterLevel = mutation({
       machineName: machine.name || "Unknown Machine",
       previousValue,
       waterLevelLow,
-      waterLevelLowAt,
+      waterLevelWentLowAt,
+      waterLevelClearedAt,
     }
   },
 })
@@ -515,7 +527,8 @@ export const getMachineWaterLevel = query({
       machineId,
       machineName: machine.name || "Unknown Machine",
       waterLevelLow: machine.waterLevelLow ?? false,
-      waterLevelLowAt: machine.waterLevelLowAt,
+      waterLevelWentLowAt: machine.waterLevelWentLowAt,
+      waterLevelClearedAt: machine.waterLevelClearedAt,
     }
   },
 })
