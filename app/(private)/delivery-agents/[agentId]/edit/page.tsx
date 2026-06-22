@@ -86,8 +86,9 @@ export default function EditDeliveryAgentPage() {
     if (foundAgent) {
       setAgent({
         ...foundAgent,
+        uid: foundAgent.uid || "", // Fallback to empty string
         photo: null,
-      });
+      } as DeliveryAgent);
     }
   }, [deliveryAgents, agentId]);
 

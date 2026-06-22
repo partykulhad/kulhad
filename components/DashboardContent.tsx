@@ -62,7 +62,19 @@ export default function DashboardContent({
   vendingMachines,
 }: DashboardContentProps) {
   const toggleMachineStatus = useMutation(api.machines.toggleStatus);
+  const logAction = useMutation(api.adminAuditLogs.logAction);
   const now = useNow();
+
+  const handleToggleStatus = async (machine: any) => {
+    const newStatus = machine.status === "online" ? "offline" : "online";
+    await toggleMachineStatus({ id: machine._id });
+    await logAction({
+      action: `machine_${newStatus}`,
+      targetId: machine.id,
+      targetType: "machine",
+      details: `Toggled machine "${machine.name}" (${machine.id}) to ${newStatus} from dashboard`,
+    });
+  };
 
   const selectedMachineData =
     selectedMachine === "all"
@@ -256,9 +268,7 @@ export default function DashboardContent({
                     <TableCell>
                       <Switch
                         checked={machine.status === "online"}
-                        onCheckedChange={() =>
-                          toggleMachineStatus({ id: machine._id })
-                        }
+                        onCheckedChange={() => handleToggleStatus(machine)}
                       />
                     </TableCell>
                   </TableRow>
@@ -284,11 +294,7 @@ export default function DashboardContent({
                 <div className="flex items-center space-x-2">
                   <Switch
                     checked={selectedMachineData.status === "online"}
-                    onCheckedChange={() =>
-                      toggleMachineStatus({
-                        id: selectedMachineData._id,
-                      })
-                    }
+                    onCheckedChange={() => handleToggleStatus(selectedMachineData)}
                   />
                   <span>
                     {selectedMachineData.status === "online"

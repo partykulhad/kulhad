@@ -1,12 +1,47 @@
 "use client";
 
 import type React from "react";
+import { useEffect } from "react";
 
-import { AuthLoading, Authenticated, Unauthenticated } from "convex/react";
-import { SignInButton } from "@clerk/nextjs";
+import { AuthLoading, Authenticated, Unauthenticated, useQuery } from "convex/react";
+import { SignInButton, useUser } from "@clerk/nextjs";
+import { useRouter } from "next/navigation";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
 import { Loading } from "@/components/shared/loading";
+import { api } from "@/convex/_generated/api";
+
+function EmailGuard({ children }: { children: React.ReactNode }) {
+  const { user, isLoaded } = useUser();
+  const router = useRouter();
+
+  const email = user?.primaryEmailAddress?.emailAddress || "";
+
+  const isAllowed = useQuery(
+    api.adminAuditLogs.isEmailAllowed,
+    isLoaded && email ? { email } : "skip"
+  );
+
+  useEffect(() => {
+    if (isLoaded && isAllowed === false) {
+      router.push("/access-denied");
+    }
+  }, [isLoaded, isAllowed, router]);
+
+  if (!isLoaded || isAllowed === undefined) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Loading />
+      </div>
+    );
+  }
+
+  if (isAllowed === false) {
+    return null; // Will redirect in useEffect
+  }
+
+  return <>{children}</>;
+}
 
 export default function DashboardLayout({
   children,
@@ -36,7 +71,9 @@ export default function DashboardLayout({
         </div>
       </Unauthenticated>
 
-      <Authenticated>{children}</Authenticated>
+      <Authenticated>
+        <EmailGuard>{children}</EmailGuard>
+      </Authenticated>
     </div>
   );
 }

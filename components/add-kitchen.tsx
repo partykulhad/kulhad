@@ -401,7 +401,7 @@ export default function KitchenCanisterManagement() {
     setIsSubmittingCanister(true);
     try {
       const result = await registerCanister({
-        kitchenId: canister.kitchenId,
+        userId: "admin", // Required by backend schema
         status: canister.status,
         scanType: canister.scanType,
         latitude: canister.latitude,

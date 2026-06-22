@@ -51,7 +51,7 @@ interface KitchenMember {
   email: string;
   adhaar: string;
   address: string;
-  uid: string;
+  uid?: string;
   startingDate: string;
   company: string;
   pan: string;
@@ -204,7 +204,7 @@ export default function EditKitchenPage() {
         capacity: Number(kitchen.capacity),
         username: kitchen.username,
         password: kitchen.password,
-        members: updatedMembers,
+        members: updatedMembers as any,
       };
 
       await editKitchen({ id: kitchen._id, ...kitchenData });

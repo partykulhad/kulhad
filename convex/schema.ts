@@ -12,6 +12,26 @@ export default defineSchema({
     .index("by_clerk_id", ["userId"])
     .index("by_email", ["email"]),
 
+  // Audit trail — every significant admin action logged with actor email + timestamp
+  adminAuditLogs: defineTable({
+    actorEmail: v.string(),   // Clerk email of who did it
+    actorName: v.string(),    // Display name
+    action: v.string(),       // e.g. "machine_edit", "machine_offline", "machine_online"
+    targetId: v.string(),     // ID of the affected entity
+    targetType: v.string(),   // e.g. "machine", "kitchen", "agent"
+    details: v.optional(v.string()), // Human-readable summary of what changed
+    timestamp: v.number(),    // Unix ms
+  })
+    .index("by_timestamp", ["timestamp"])
+    .index("by_actor", ["actorEmail"])
+    .index("by_target", ["targetId"]),
+
+  // Admin configuration — a single document storing the email allowlist.
+  // Edit directly from the Convex dashboard (Data tab) to add/remove admin emails.
+  adminConfig: defineTable({
+    allowedEmails: v.array(v.string()), // e.g. ["admin@partykulhad.com"]
+  }),
+
   appUser: defineTable({
     username: v.string(),
     password: v.string(),

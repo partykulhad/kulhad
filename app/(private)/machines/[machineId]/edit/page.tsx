@@ -103,6 +103,7 @@ export default function EditMachinePage() {
   const machines = useQuery(api.machines.list) || [];
   const kitchens = useQuery(api.kitchens.list) || [];
   const editMachine = useMutation(api.machines.update);
+  const logAction = useMutation(api.adminAuditLogs.logAction);
 
   useEffect(() => {
     const foundMachine = machines.find((m) => m.id === machineId);
@@ -193,6 +194,13 @@ export default function EditMachinePage() {
         kitchenId: machine.kitchenId?.trim() ? machine.kitchenId : undefined,
       });
       toast.success("Machine updated successfully");
+      // Audit log
+      await logAction({
+        action: "machine_edit",
+        targetId: machine.id,
+        targetType: "machine",
+        details: `Edited machine "${machine.name}" (${machine.id})`,
+      });
       router.push(`/machines/${machineId}`);
     } catch (error) {
       console.error("Error updating machine:", error);

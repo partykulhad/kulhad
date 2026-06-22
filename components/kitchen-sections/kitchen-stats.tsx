@@ -17,7 +17,7 @@ interface KitchenMember {
   email: string;
   adhaar: string;
   address: string;
-  uid: string;
+  uid?: string;
   startingDate: string;
   company: string;
   pan: string;

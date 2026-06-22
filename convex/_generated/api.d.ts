@@ -13,12 +13,14 @@ import type {
   FilterApi,
   FunctionReference,
 } from "convex/server";
+import type * as adminAuditLogs from "../adminAuditLogs.js";
 import type * as adminrequests from "../adminrequests.js";
 import type * as agentLocations from "../agentLocations.js";
 import type * as appUsers from "../appUsers.js";
 import type * as canister from "../canister.js";
 import type * as canisterCheck from "../canisterCheck.js";
 import type * as canisters from "../canisters.js";
+import type * as crons from "../crons.js";
 import type * as deliveryAgents from "../deliveryAgents.js";
 import type * as http from "../http.js";
 import type * as index from "../index.js";
@@ -42,12 +44,14 @@ import type * as vendors from "../vendors.js";
  * ```
  */
 declare const fullApi: ApiFromModules<{
+  adminAuditLogs: typeof adminAuditLogs;
   adminrequests: typeof adminrequests;
   agentLocations: typeof agentLocations;
   appUsers: typeof appUsers;
   canister: typeof canister;
   canisterCheck: typeof canisterCheck;
   canisters: typeof canisters;
+  crons: typeof crons;
   deliveryAgents: typeof deliveryAgents;
   http: typeof http;
   index: typeof index;
