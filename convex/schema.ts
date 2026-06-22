@@ -101,6 +101,10 @@ export default defineSchema({
       cpuPercent: v.optional(v.number()),
       memPercent: v.optional(v.number()),
       diskPercent: v.optional(v.number()),
+      // Service refill window — during this time, if cups run low the kiosk shows
+      // "Refill at {serviceRefillEnd}" instead of a generic "Refill on its way" message.
+      serviceRefillStart: v.optional(v.string()), // e.g. "13:00"
+      serviceRefillEnd: v.optional(v.string()),   // e.g. "17:00"
     })
       .index("by_machineId", ["id"])
       .index("by_status", ["status"]),

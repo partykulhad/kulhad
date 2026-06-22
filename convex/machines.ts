@@ -195,6 +195,9 @@ export const update = mutation({
     // Kitchen this machine is mapped to (kitchens.userId) — required for
     // canister-low refill requests to reach anyone; see checkCanisterLevel.
     kitchenId: v.optional(v.string()),
+    // Service refill window
+    serviceRefillStart: v.optional(v.string()),
+    serviceRefillEnd: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { machineId, ...updates } = args

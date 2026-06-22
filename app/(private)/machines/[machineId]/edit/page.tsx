@@ -51,6 +51,8 @@ interface Machine {
   price?: string;
   startTime?: string;
   endTime?: string;
+  serviceRefillStart?: string;
+  serviceRefillEnd?: string;
   installedDate?: string;
   status?: string;
   temperature?: number;
@@ -90,6 +92,8 @@ export default function EditMachinePage() {
     cups: "",
     startTime: "",
     endTime: "",
+    serviceRefillStart: "",
+    serviceRefillEnd: "",
     flushTimeMinutes: "",
     mlToDispense: "",
     lockPass: "",
@@ -108,6 +112,8 @@ export default function EditMachinePage() {
         price: foundMachine.price || "",
         startTime: foundMachine.startTime || "",
         endTime: foundMachine.endTime || "",
+        serviceRefillStart: (foundMachine as any).serviceRefillStart || "",
+        serviceRefillEnd: (foundMachine as any).serviceRefillEnd || "",
         cups: foundMachine.cups ?? "",
         flushTimeMinutes: foundMachine.flushTimeMinutes ?? "",
         mlToDispense: foundMachine.mlToDispense ?? "",
@@ -171,6 +177,8 @@ export default function EditMachinePage() {
         price: machine.price,
         startTime: machine.startTime,
         endTime: machine.endTime,
+        serviceRefillStart: machine.serviceRefillStart?.trim() || undefined,
+        serviceRefillEnd: machine.serviceRefillEnd?.trim() || undefined,
 
         cups: machine.cups === "" ? undefined : Number(machine.cups),
         flushTimeMinutes:
@@ -389,6 +397,32 @@ export default function EditMachinePage() {
                   value={machine.endTime}
                   onChange={handleInputChange}
                 />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="serviceRefillStart">Service Refill Start</Label>
+                <Input
+                  id="serviceRefillStart"
+                  name="serviceRefillStart"
+                  type="time"
+                  value={machine.serviceRefillStart}
+                  onChange={handleInputChange}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Start of low-cup service window (e.g. 13:00)
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="serviceRefillEnd">Service Refill End</Label>
+                <Input
+                  id="serviceRefillEnd"
+                  name="serviceRefillEnd"
+                  type="time"
+                  value={machine.serviceRefillEnd}
+                  onChange={handleInputChange}
+                />
+                <p className="text-xs text-muted-foreground">
+                  End of service window — shown to customers as refill time (e.g. 17:00)
+                </p>
               </div>
             </div>
           </CardContent>
