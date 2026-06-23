@@ -395,6 +395,12 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
                   {machine.diskPercent !== undefined ? `${machine.diskPercent}%` : "—"}
                 </span>
               </div>
+              <div className="flex justify-between">
+                <span className="text-muted-foreground">Network</span>
+                <span className="font-medium">
+                  {machine.latencyMs !== undefined ? `${machine.latencyMs.toFixed(1)} ms` : "—"}
+                </span>
+              </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Updated on the same ~60s heartbeat as last-seen status
