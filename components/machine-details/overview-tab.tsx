@@ -398,7 +398,21 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
               <div className="flex justify-between">
                 <span className="text-muted-foreground">Network</span>
                 <span className="font-medium">
-                  {machine.latencyMs !== undefined ? `${machine.latencyMs.toFixed(1)} ms` : "—"}
+                  {machine.latencyMs !== undefined ? (
+                    <span
+                      className={
+                        machine.latencyMs < 100
+                          ? "text-green-500" // Excellent
+                          : machine.latencyMs < 300
+                            ? "text-yellow-500" // Fair
+                            : "text-red-500" // Poor
+                      }
+                    >
+                      {machine.latencyMs.toFixed(1)} ms
+                    </span>
+                  ) : (
+                    "—"
+                  )}
                 </span>
               </div>
             </div>
