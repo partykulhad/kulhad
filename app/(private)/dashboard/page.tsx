@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
@@ -33,7 +33,10 @@ import {
   PieChartIcon,
   Users2Icon,
   WifiIcon,
+  Save,
+  RefreshCw,
 } from "lucide-react";
+import { toast } from "react-toastify";
 import { motion, AnimatePresence } from "framer-motion";
 
 // Sample data generators for charts that need sample data
@@ -52,11 +55,41 @@ const generateTemperatureData = (hours: number) => {
 export default function DashboardPage() {
   const [selectedMachine, setSelectedMachine] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<string>("dashboard");
+  const [newFlushTime, setNewFlushTime] = useState<string>("");
+  const [isUpdatingFlush, setIsUpdatingFlush] = useState(false);
 
   const machines = useQuery(api.machines.list) || [];
   const vendors = useQuery(api.vendors.list) || [];
   const toggleStatus = useMutation(api.machines.toggleStatus);
   const now = useNow();
+
+  const globalFlushTime = useQuery(api.globalSettings.getFlushTime);
+  const updateGlobalFlushTime = useMutation(api.globalSettings.updateFlushTime);
+
+  useEffect(() => {
+    if (globalFlushTime !== undefined && newFlushTime === "") {
+      setNewFlushTime(globalFlushTime.toString());
+    }
+  }, [globalFlushTime]);
+
+  const handleUpdateGlobalFlush = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsUpdatingFlush(true);
+    try {
+      const parsedTime = Number.parseInt(newFlushTime, 10);
+      if (isNaN(parsedTime) || parsedTime < 0) {
+        toast.error("Please enter a valid number of minutes");
+        return;
+      }
+      await updateGlobalFlushTime({ flushTimeMinutes: parsedTime });
+      toast.success("Global flush time updated for all machines!");
+    } catch (error) {
+      console.error("Error updating global flush time:", error);
+      toast.error("Failed to update flush time");
+    } finally {
+      setIsUpdatingFlush(false);
+    }
+  };
 
   // Calculate overview metrics
   const alerts = {
@@ -129,6 +162,50 @@ export default function DashboardPage() {
                     <>
                       {/* Overview Cards */}
                       <OverviewCards machines={machines} />
+
+                      {/* Global Settings */}
+                      <Card className="relative overflow-hidden bg-gradient-to-br from-white/95 to-gray-50/95 dark:from-gray-900/95 dark:to-gray-800/95 border border-white/20 dark:border-gray-700/50 shadow-2xl">
+                        <div className="absolute inset-0 bg-gradient-to-br from-purple-50/30 via-pink-50/20 to-rose-50/30 dark:from-purple-900/10 dark:via-pink-900/5 dark:to-rose-900/10" />
+                        <CardContent className="relative p-6">
+                          <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 mb-4">
+                            Global Settings
+                          </h3>
+                          <form
+                            onSubmit={handleUpdateGlobalFlush}
+                            className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4"
+                          >
+                            <div className="flex-1 w-full flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4">
+                              <span className="font-medium text-gray-700 dark:text-gray-300 whitespace-nowrap">
+                                Auto-Flush Timer (Minutes):
+                              </span>
+                              <input
+                                type="number"
+                                min="0"
+                                value={newFlushTime}
+                                onChange={(e) => setNewFlushTime(e.target.value)}
+                                className="w-full md:w-48 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500"
+                                placeholder="e.g. 40"
+                              />
+                              <span className="text-xs text-gray-500 dark:text-gray-400 max-w-xs">
+                                This setting applies to <b>all machines</b> network-wide.
+                              </span>
+                            </div>
+                            
+                            <Button
+                              type="submit"
+                              disabled={isUpdatingFlush}
+                              className="w-full md:w-auto bg-purple-600 hover:bg-purple-700 text-white"
+                            >
+                              {isUpdatingFlush ? (
+                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <Save className="w-4 h-4 mr-2" />
+                              )}
+                              Save Config
+                            </Button>
+                          </form>
+                        </CardContent>
+                      </Card>
 
                       {/* Cross-Machine Comparison Chart */}
                       <div className="w-full">
