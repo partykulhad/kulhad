@@ -116,7 +116,6 @@ export default function EditMachinePage() {
         serviceRefillStart: (foundMachine as any).serviceRefillStart || "",
         serviceRefillEnd: (foundMachine as any).serviceRefillEnd || "",
         cups: foundMachine.cups ?? "",
-        flushTimeMinutes: foundMachine.flushTimeMinutes ?? "",
         mlToDispense: foundMachine.mlToDispense ?? "",
         lockPass: foundMachine.lockPass || "",
         kitchenId: foundMachine.kitchenId || "",
@@ -138,7 +137,6 @@ export default function EditMachinePage() {
       setMachine((prev) => ({
         ...prev,
         [name]:
-          name === "flushTimeMinutes" ||
           name === "mlToDispense" ||
           name === "cups"
             ? value === ""
@@ -182,10 +180,6 @@ export default function EditMachinePage() {
         serviceRefillEnd: machine.serviceRefillEnd?.trim() || undefined,
 
         cups: machine.cups === "" ? undefined : Number(machine.cups),
-        flushTimeMinutes:
-          machine.flushTimeMinutes === ""
-            ? undefined
-            : Number(machine.flushTimeMinutes),
         mlToDispense:
           machine.mlToDispense === ""
             ? undefined
@@ -442,17 +436,6 @@ export default function EditMachinePage() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="flushTimeMinutes">Flush Time (minutes)</Label>
-                <Input
-                  id="flushTimeMinutes"
-                  name="flushTimeMinutes"
-                  type="number"
-                  value={machine.flushTimeMinutes}
-                  onChange={handleInputChange}
-                  min="0"
-                />
-              </div>
               <div className="space-y-2">
                 <Label htmlFor="mlToDispense">ML to Dispense</Label>
                 <Input
