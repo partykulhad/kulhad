@@ -12,6 +12,7 @@ import {
   CheckCircle,
   XCircle,
   Coffee,
+  Save,
 } from "lucide-react";
 
 export default function AdminPage() {
@@ -21,6 +22,35 @@ export default function AdminPage() {
 
   const requests = useQuery(api.adminrequests.getAllRequests);
   const machines = useQuery(api.adminrequests.getMachines);
+  
+  const globalFlushTime = useQuery(api.globalSettings.getFlushTime);
+  const updateGlobalFlushTime = useMutation(api.globalSettings.updateFlushTime);
+  const [newFlushTime, setNewFlushTime] = useState<string>("");
+
+  useEffect(() => {
+    if (globalFlushTime !== undefined && newFlushTime === "") {
+      setNewFlushTime(globalFlushTime.toString());
+    }
+  }, [globalFlushTime]);
+
+  const handleUpdateGlobalFlush = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    try {
+      const parsedTime = Number.parseInt(newFlushTime, 10);
+      if (isNaN(parsedTime) || parsedTime < 0) {
+        toast.error("Please enter a valid number of minutes");
+        return;
+      }
+      await updateGlobalFlushTime({ flushTimeMinutes: parsedTime });
+      toast.success("Global flush time updated for all machines!");
+    } catch (error) {
+      console.error("Error updating global flush time:", error);
+      toast.error("Failed to update flush time");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const createRequest = useMutation(api.adminrequests.createRequest);
 
@@ -157,6 +187,53 @@ export default function AdminPage() {
               <PlusCircle className="w-5 h-5" />
             )}
             <span>{isLoading ? "Creating..." : "Create Request"}</span>
+          </motion.button>
+        </form>
+      </motion.div>
+
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 0.1 }}
+        className="bg-white rounded-lg shadow-lg p-6 mb-8"
+      >
+        <h2 className="text-2xl font-semibold mb-4 text-gray-800">
+          Global Settings
+        </h2>
+        <form
+          onSubmit={handleUpdateGlobalFlush}
+          className="flex flex-col md:flex-row items-center space-y-4 md:space-y-0 md:space-x-4"
+        >
+          <div className="flex-1 w-full flex flex-col md:flex-row items-center space-y-2 md:space-y-0 md:space-x-4">
+            <span className="font-medium text-gray-700 whitespace-nowrap">
+              Auto-Flush Timer (Minutes):
+            </span>
+            <input
+              type="number"
+              min="0"
+              value={newFlushTime}
+              onChange={(e) => setNewFlushTime(e.target.value)}
+              className="w-full md:w-48 border border-gray-300 p-2 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="e.g. 40"
+            />
+            <span className="text-xs text-gray-500 max-w-xs">
+              This setting applies to <b>all machines</b> network-wide.
+            </span>
+          </div>
+          
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            type="submit"
+            className="w-full md:w-1/3 bg-purple-500 text-white px-6 py-3 rounded-md flex items-center justify-center space-x-2 transition duration-300 ease-in-out hover:bg-purple-600 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-opacity-50"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <RefreshCw className="animate-spin" />
+            ) : (
+              <Save className="w-5 h-5" />
+            )}
+            <span>{isLoading ? "Saving..." : "Save Global Config"}</span>
           </motion.button>
         </form>
       </motion.div>
