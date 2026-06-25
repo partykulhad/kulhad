@@ -268,18 +268,23 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
             <div className="flex items-center">
               <div
                 className={`h-4 w-4 rounded-full mr-2 ${
-                  machine.status === "online" &&
-                  !isMachineUnreachable(machine.status, machine.lastSeenAt, now)
-                    ? "bg-green-500"
-                    : "bg-red-500"
+                  isMachineUnreachable(machine.status, machine.lastSeenAt, now)
+                    ? "bg-red-500"
+                    : machine.waterLevelLow
+                      ? "bg-orange-500"
+                      : machine.status === "online"
+                        ? "bg-green-500"
+                        : "bg-red-500"
                 }`}
               ></div>
               <span className="text-2xl font-bold">
                 {isMachineUnreachable(machine.status, machine.lastSeenAt, now)
                   ? "Offline"
-                  : machine.status === "online"
-                    ? "Online"
-                    : "Offline"}
+                  : machine.waterLevelLow
+                    ? "Maintenance"
+                    : machine.status === "online"
+                      ? "Online"
+                      : "Offline"}
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
