@@ -105,6 +105,8 @@ export const getMachineData = query({
       return { success: false, error: "Machine not found" }
     }
 
+    const globalSettings = await ctx.db.query("globalSettings").first()
+
     return {
       success: true,
       machineId: machine.id,
@@ -114,7 +116,7 @@ export const getMachineData = query({
       endTime: machine.endTime,
       teaFillStartQuantity: machine.teaFillStartQuantity,
       teaFillEndQuantity: machine.teaFillEndQuantity,
-      flushTimeMinutes: machine.flushTimeMinutes,
+      flushTimeMinutes: globalSettings?.flushTimeMinutes ?? machine.flushTimeMinutes,
       mlToDispense: machine.mlToDispense,
       // Include manager fields
       managerName: machine.managerName,

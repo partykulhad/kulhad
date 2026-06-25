@@ -32,6 +32,11 @@ export default defineSchema({
     allowedEmails: v.array(v.string()), // e.g. ["admin@partykulhad.com"]
   }),
 
+  // Global settings that apply to all machines
+  globalSettings: defineTable({
+    flushTimeMinutes: v.optional(v.number()),
+  }),
+
   appUser: defineTable({
     username: v.string(),
     password: v.string(),
