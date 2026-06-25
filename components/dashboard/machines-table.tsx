@@ -37,6 +37,7 @@ interface Machine {
   temperature: number;
   canisterLevel: number;
   cups?: number; // Added cups field
+  waterLevelLow?: boolean;
   lastFulfilled: string;
   lastSeenAt?: number;
 }
@@ -47,7 +48,11 @@ interface MachinesTableProps {
   onStatusToggle: (id: Id<"machines">) => void;
 }
 
-const formatRelativeTime = (dateString: string): string => {
+const formatRelativeTime = (dateString: string | undefined): string => {
+  if (!dateString || dateString === "N/A" || dateString === "0" || dateString.trim() === "") {
+    return "N/A";
+  }
+
   const now = new Date();
 
   let date: Date;
@@ -63,7 +68,12 @@ const formatRelativeTime = (dateString: string): string => {
       date = new Date(formattedDateString);
     } else {
       // If it's a timestamp, convert it
-      date = new Date(Number.parseInt(dateString));
+      const numDate = Number.parseInt(dateString, 10);
+      if (numDate < 1000000000) {
+        // likely 0 or very small number, return N/A rather than 1970
+        return "N/A";
+      }
+      date = new Date(numDate);
     }
 
     // If date is invalid, return the original string
@@ -75,6 +85,10 @@ const formatRelativeTime = (dateString: string): string => {
   }
 
   const diffInSeconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+
+  if (diffInSeconds < 0) {
+    return "just now"; // Catch future dates
+  }
 
   if (diffInSeconds < 60) {
     return "just now";
@@ -204,7 +218,7 @@ export function MachinesTable({
                 </TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Temperature</TableHead>
-                <TableHead>Canister Level</TableHead>
+                <TableHead>Water Status</TableHead>
                 <TableHead>
                   <Button
                     variant="ghost"
@@ -268,14 +282,12 @@ export function MachinesTable({
                     <TableCell>
                       <Badge
                         variant={
-                          deriveCanisterLevel(machine.cups) < 20
+                          machine.waterLevelLow
                             ? "destructive"
-                            : deriveCanisterLevel(machine.cups) < 40
-                              ? "warning"
-                              : "default"
+                            : "success"
                         }
                       >
-                        {deriveCanisterLevel(machine.cups)}%
+                        {machine.waterLevelLow ? "Not Present" : "Present"}
                       </Badge>
                     </TableCell>
                     <TableCell>
