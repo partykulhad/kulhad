@@ -75,8 +75,9 @@ export const deleteExpiredLogs = internalMutation({
 export const getAllowedEmails = query({
   args: {},
   handler: async (ctx) => {
-    const config = await ctx.db.query("adminConfig").first();
-    return config?.allowedEmails ?? null;
+    const configs = await ctx.db.query("adminConfig").collect();
+    if (configs.length === 0) return null;
+    return configs.flatMap((c) => c.allowedEmails);
   },
 });
 
@@ -87,10 +88,14 @@ export const getAllowedEmails = query({
 export const isEmailAllowed = query({
   args: { email: v.string() },
   handler: async (ctx, args) => {
-    const config = await ctx.db.query("adminConfig").first();
-    if (!config || config.allowedEmails.length === 0) return true; // no restriction set
+    const configs = await ctx.db.query("adminConfig").collect();
+    if (configs.length === 0) return true; // no restriction set
+    
+    const allAllowedEmails = configs.flatMap((c) => c.allowedEmails);
+    if (allAllowedEmails.length === 0) return true;
+
     const normalizedTarget = args.email.toLowerCase().trim();
-    return config.allowedEmails.some((e) => e.toLowerCase().trim() === normalizedTarget);
+    return allAllowedEmails.some((e) => e.toLowerCase().trim() === normalizedTarget);
   },
 });
 
