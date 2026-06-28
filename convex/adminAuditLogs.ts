@@ -89,7 +89,8 @@ export const isEmailAllowed = query({
   handler: async (ctx, args) => {
     const config = await ctx.db.query("adminConfig").first();
     if (!config || config.allowedEmails.length === 0) return true; // no restriction set
-    return config.allowedEmails.includes(args.email.toLowerCase().trim());
+    const normalizedTarget = args.email.toLowerCase().trim();
+    return config.allowedEmails.some((e) => e.toLowerCase().trim() === normalizedTarget);
   },
 });
 
