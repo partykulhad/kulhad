@@ -295,6 +295,31 @@ export const checkCanisterLevel = mutation({
       throw new ConvexError("Machine not found")
     }
 
+    // CHECK: Prevent duplicate active refill requests
+    const openRequests = await ctx.db
+      .query("requests")
+      .withIndex("by_machineId", (q) => q.eq("machineId", machineId))
+      .filter((q) =>
+        q.and(
+          q.neq(q.field("requestStatus"), "Completed"),
+          q.neq(q.field("requestStatus"), "Cancelled"),
+          q.neq(q.field("requestStatus"), "Canceled") // just in case
+        ),
+      )
+      .collect()
+
+    if (openRequests.length > 0) {
+      console.log(`[DYNAMIC] Machine ${machineId} already has ${openRequests.length} open refill request(s). Blocking duplicate.`)
+      return { 
+        success: true, 
+        message: "Machine already has an active refill request",
+        requestId: openRequests[0].requestId,
+        kitchenUserIds: openRequests[0].kitchenUserId || [],
+        priority: openRequests[0].priority,
+        quantity: openRequests[0].quantity
+      }
+    }
+
     console.log(
       `[DYNAMIC] Machine found: ${machine.name}, Type: ${machine.machineType}, Start Time: ${machine.startTime}, End Time: ${machine.endTime}`,
     )
