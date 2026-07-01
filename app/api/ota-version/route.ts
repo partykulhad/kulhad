@@ -8,12 +8,12 @@ const convex = new ConvexHttpClient(process.env.NEXT_PUBLIC_CONVEX_URL!);
 export async function GET() {
   try {
     const config = await convex.query(api.ota.getOtaConfig);
-    return new NextResponse(config.version, {
-      status: 200,
-      headers: { "Content-Type": "text/plain" },
+    return NextResponse.json({
+      version: config.version,
+      debUrl: config.debUrl,
     });
   } catch {
-    return new NextResponse("1.2.0", { status: 200 });
+    return NextResponse.json({ version: "1.2.0", debUrl: "" });
   }
 }
 
