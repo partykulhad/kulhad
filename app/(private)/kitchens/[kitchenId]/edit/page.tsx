@@ -127,14 +127,17 @@ export default function EditKitchenPage() {
   const kitchens = useQuery(api.kitchens.list) || [];
   const editKitchen = useMutation(api.kitchens.edit);
   const generateUploadUrl = useMutation(api.kitchens.generateUploadUrl);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    if (isInitialized) return;
     // Find kitchen by userId instead of username
     const foundKitchen = kitchens.find((k) => k.userId === kitchenId);
     if (foundKitchen) {
       setKitchen(foundKitchen);
+      setIsInitialized(true);
     }
-  }, [kitchens, kitchenId]);
+  }, [kitchens, kitchenId, isInitialized]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>

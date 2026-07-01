@@ -104,8 +104,10 @@ export default function EditMachinePage() {
   const kitchens = useQuery(api.kitchens.list) || [];
   const editMachine = useMutation(api.machines.update);
   const logAction = useMutation(api.adminAuditLogs.logAction);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    if (isInitialized) return;
     const foundMachine = machines.find((m) => m.id === machineId);
     if (foundMachine) {
       setMachine({
@@ -120,8 +122,9 @@ export default function EditMachinePage() {
         lockPass: foundMachine.lockPass || "",
         kitchenId: foundMachine.kitchenId || "",
       });
+      setIsInitialized(true);
     }
-  }, [machines, machineId]);
+  }, [machines, machineId, isInitialized]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>

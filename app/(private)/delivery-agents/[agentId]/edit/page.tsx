@@ -79,8 +79,10 @@ export default function EditDeliveryAgentPage() {
   const deliveryAgents = useQuery(api.deliveryAgents.list) || [];
   const editDeliveryAgent = useMutation(api.deliveryAgents.edit);
   const generateUploadUrl = useMutation(api.deliveryAgents.generateUploadUrl);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   useEffect(() => {
+    if (isInitialized) return;
     // Find agent by userId instead of username
     const foundAgent = deliveryAgents.find((a) => a.userId === agentId);
     if (foundAgent) {
@@ -89,8 +91,9 @@ export default function EditDeliveryAgentPage() {
         uid: foundAgent.uid || "", // Fallback to empty string
         photo: null,
       } as DeliveryAgent);
+      setIsInitialized(true);
     }
-  }, [deliveryAgents, agentId]);
+  }, [deliveryAgents, agentId, isInitialized]);
 
   const handleInputChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
