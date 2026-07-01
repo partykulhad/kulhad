@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { upload } from "@vercel/blob/client";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Package,
@@ -77,24 +78,23 @@ export default function OTAPage() {
     setIsUploading(true);
     setUploadResult(null);
 
-    const formData = new FormData();
-    formData.append("file", selectedFile);
-    formData.append("version", newVersion.trim());
-
     try {
-      const res = await fetch("/api/ota-upload", {
-        method: "POST",
-        body: formData,
+      const filename = `urban-kettle_${newVersion.trim()}_all.deb`;
+
+      // Uploads directly from browser to Vercel Blob — no body size limit!
+      const blob = await upload(filename, selectedFile, {
+        access: "public",
+        handleUploadUrl: "/api/ota-upload",
       });
-      const data = await res.json();
-      if (res.ok) {
-        setUploadedUrl(data.url);
-        setUploadResult({ type: "success", message: `✅ ${data.filename} uploaded! Now click Deploy below.` });
-      } else {
-        setUploadResult({ type: "error", message: data.error });
-      }
-    } catch {
-      setUploadResult({ type: "error", message: "Network error. Please try again." });
+
+      setUploadedUrl(blob.url);
+      setUploadResult({
+        type: "success",
+        message: `✅ ${filename} uploaded! Now click Deploy below.`,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Upload failed";
+      setUploadResult({ type: "error", message: msg });
     } finally {
       setIsUploading(false);
     }
