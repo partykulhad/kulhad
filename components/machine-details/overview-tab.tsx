@@ -47,75 +47,41 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
     try {
       console.log("[v0] Raw machine.lastFulfilled:", machine.lastFulfilled);
 
-      // Parse "12/09/2025 01:12:35 PM" format directly
       const dateTimeStr = machine.lastFulfilled.trim();
+      let lastRefillDate;
 
-      // Split date and time parts
-      const [datePart, timePart, ampm] = dateTimeStr.split(" ");
-      console.log(
-        "[v0] Date part:",
-        datePart,
-        "Time part:",
-        timePart,
-        "AM/PM:",
-        ampm
-      );
-
-      // Parse date (DD/MM/YYYY format)
-      const [day, month, year] = datePart
-        .split("/")
-        .map((num: string) => Number.parseInt(num, 10));
-      console.log(
-        "[v0] Parsed components - Day:",
-        day,
-        "Month:",
-        month,
-        "Year:",
-        year
-      );
-
-      // Parse time
-      const [hours, minutes, seconds] = timePart
-        .split(":")
-        .map((num: string) => Number.parseInt(num, 10));
-      let hour24 = hours;
-      if (ampm === "PM" && hours !== 12) {
-        hour24 = hours + 12;
-      } else if (ampm === "AM" && hours === 12) {
-        hour24 = 0;
+      // Check if it's an ISO string (contains 'T') or old DD/MM/YYYY format
+      if (dateTimeStr.includes('T') || dateTimeStr.includes('-')) {
+        lastRefillDate = new Date(dateTimeStr);
+      } else {
+        const parts = dateTimeStr.split(" ");
+        if (parts.length >= 2) {
+          const [datePart, timePart, ampm] = parts;
+          const [day, month, year] = datePart.split("/").map((num: string) => Number.parseInt(num, 10));
+          const [hours, minutes, seconds] = timePart.split(":").map((num: string) => Number.parseInt(num, 10));
+          let hour24 = hours;
+          if (ampm === "PM" && hours !== 12) hour24 = hours + 12;
+          else if (ampm === "AM" && hours === 12) hour24 = 0;
+          lastRefillDate = new Date(year, month - 1, day, hour24, minutes, seconds);
+        } else {
+          lastRefillDate = new Date(dateTimeStr);
+        }
       }
 
-      console.log(
-        "[v0] Time components - Hours:",
-        hour24,
-        "Minutes:",
-        minutes,
-        "Seconds:",
-        seconds
-      );
-
-      // Create date object (month is 0-indexed in JavaScript Date)
-      const lastRefillDate = new Date(
-        year,
-        month - 1,
-        day,
-        hour24,
-        minutes,
-        seconds
-      );
-      console.log("[v0] Created date object:", lastRefillDate);
-
       if (isNaN(lastRefillDate.getTime())) {
-        console.log("[v0] Date parsing failed - invalid date");
+        console.log("[v0] Date parsing failed - invalid date:", dateTimeStr);
         return null;
       }
 
-      // Format date as DD/MM/YYYY
+      const day = lastRefillDate.getDate();
+      const month = lastRefillDate.getMonth() + 1;
+      const year = lastRefillDate.getFullYear();
       const formattedDate = `${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}/${year}`;
-      console.log("[v0] Formatted date:", formattedDate);
 
-      // Format time as HH:MM:SS
-      const formattedTime = `${hour24.toString().padStart(2, "0")}:${minutes.toString().padStart(2, "0")}:${seconds.toString().padStart(2, "0")}`;
+      const h = lastRefillDate.getHours();
+      const m = lastRefillDate.getMinutes();
+      const s = lastRefillDate.getSeconds();
+      const formattedTime = `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 
       // Calculate relative time
       const now = new Date();

@@ -235,7 +235,7 @@ export const getByMachineId = query({
   handler: async (ctx, args) => {
     const machineData = await ctx.db
       .query("machine_data")
-      .filter((q) => q.eq(q.field("machineId"), args.machineId))
+      .withIndex("by_machineId", (q) => q.eq("machineId", args.machineId))
       .order("desc")
       .take(10)
     return machineData

@@ -185,7 +185,7 @@ dailyScanLogs : defineTable({
     temperature: v.optional(v.number()),
     rating: v.optional(v.number()),
     canisterLevel: v.optional(v.number()),
-  }),
+  }).index("by_machineId", ["machineId"]),
 
   deliveryAgents: defineTable({
     name: v.string(),
