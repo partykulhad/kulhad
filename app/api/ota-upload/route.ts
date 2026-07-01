@@ -25,8 +25,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Upload the .deb file to Vercel Blob
     const filename = `urban-kettle_${version}_all.deb`;
+
+    // Upload to Vercel Blob (requires BLOB_READ_WRITE_TOKEN in env)
     const blob = await put(filename, file, {
       access: "public",
       contentType: "application/octet-stream",
@@ -38,19 +39,23 @@ export async function POST(req: NextRequest) {
       filename,
       version,
       size: file.size,
-      message: `Uploaded ${filename} successfully. Now set the version in the Deploy section.`,
+      message: `✅ ${filename} uploaded! Now click Deploy below.`,
     });
-  } catch (error) {
+  } catch (error: unknown) {
     console.error("Upload error:", error);
-    return NextResponse.json(
-      { error: "Upload failed. Make sure BLOB_READ_WRITE_TOKEN is set in Vercel." },
-      { status: 500 }
-    );
+    const msg = error instanceof Error ? error.message : "Unknown error";
+
+    // Give a clear hint if the Blob token is the issue
+    if (msg.includes("token") || msg.includes("BLOB")) {
+      return NextResponse.json(
+        {
+          error:
+            "Vercel Blob token missing. Go to Vercel Dashboard → Storage → connect kulhad-blob to this project, then redeploy.",
+        },
+        { status: 500 }
+      );
+    }
+
+    return NextResponse.json({ error: `Upload failed: ${msg}` }, { status: 500 });
   }
 }
-
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};

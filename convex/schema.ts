@@ -37,6 +37,13 @@ export default defineSchema({
     flushTimeMinutes: v.optional(v.number()),
   }),
 
+  // OTA Update Config — stores the live version and .deb download URL
+  otaConfig: defineTable({
+    version: v.string(),         // e.g. "1.2.0"
+    debUrl: v.optional(v.string()), // Vercel Blob URL or public path
+    deployedAt: v.number(),      // Unix ms timestamp
+  }),
+
   appUser: defineTable({
     username: v.string(),
     password: v.string(),
