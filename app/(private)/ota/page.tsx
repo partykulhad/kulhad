@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef } from "react";
 import { upload } from "@vercel/blob/client";
 import { motion, AnimatePresence } from "framer-motion";
+import { useQuery, useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import {
   Package,
   Upload,
@@ -35,10 +37,15 @@ export default function OTAPage() {
     type: "success" | "error";
     message: string;
   } | null>(null);
-  const [uploadResult, setUploadResult] = useState<{
+  const uploadResult = { type: "success", message: "" } as any; // placeholder unused
+  const [uploadResultState, setUploadResult] = useState<{
     type: "success" | "error";
     message: string;
   } | null>(null);
+  
+  const otaSuccessLogs = useQuery(api.otaSuccess.listSuccessLogs) || [];
+  const deleteSuccessLog = useMutation(api.otaSuccess.deleteSuccessLog);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -343,21 +350,21 @@ export default function OTAPage() {
               )}
 
               <AnimatePresence>
-                {uploadResult && (
+                {uploadResultState && (
                   <motion.div
                     initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
                     className="overflow-hidden mt-4"
                   >
                     <div className={`p-4 rounded-xl flex items-start gap-3 border ${
-                      uploadResult.type === "success" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
+                      uploadResultState.type === "success" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
                     }`}>
-                      {uploadResult.type === "success" ? (
+                      {uploadResultState.type === "success" ? (
                         <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
                       ) : (
                         <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
                       )}
-                      <p className={`text-sm font-medium ${uploadResult.type === "success" ? "text-emerald-800" : "text-red-800"}`}>
-                        {uploadResult.message}
+                      <p className={`text-sm font-medium ${uploadResultState.type === "success" ? "text-emerald-800" : "text-red-800"}`}>
+                        {uploadResultState.message}
                       </p>
                     </div>
                   </motion.div>
@@ -429,6 +436,61 @@ export default function OTAPage() {
             </motion.div>
           </div>
         </div>
+
+        {/* OTA Success Logs Section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+          className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm mt-6"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-slate-800 font-bold flex items-center gap-2">
+              <CheckCircle className="w-5 h-5 text-emerald-500" />
+              Machine Update Acknowledgements
+            </h2>
+            <div className="text-xs font-medium text-slate-500 bg-slate-100 px-3 py-1 rounded-full">
+              {otaSuccessLogs.length} Pending
+            </div>
+          </div>
+
+          {otaSuccessLogs.length === 0 ? (
+            <div className="text-center py-8 bg-slate-50 rounded-xl border border-slate-100">
+              <CheckCircle className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+              <p className="text-slate-500 font-medium">No pending update acknowledgements.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <AnimatePresence>
+                {otaSuccessLogs.map((log) => (
+                  <motion.div
+                    key={log._id}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    className="flex items-center justify-between p-4 bg-slate-50 border border-slate-100 rounded-xl"
+                  >
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-4">
+                      <p className="font-bold text-slate-800">{log.machineName}</p>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs font-medium bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded-full">
+                          Updated to v{log.version}
+                        </span>
+                        <span className="text-xs text-slate-400 font-medium hidden sm:inline">
+                          {new Date(log.timestamp).toLocaleString()}
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => deleteSuccessLog({ id: log._id })}
+                      className="text-sm font-bold text-slate-500 hover:text-slate-800 hover:bg-slate-200 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Confirm & Dismiss
+                    </button>
+                  </motion.div>
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </motion.div>
       </div>
     </div>
   );

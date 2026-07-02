@@ -44,6 +44,12 @@ export default defineSchema({
     deployedAt: v.number(),      // Unix ms timestamp
   }),
 
+  otaSuccessLogs: defineTable({
+    machineId: v.string(),
+    version: v.string(),
+    timestamp: v.number(),
+  }),
+
   appUser: defineTable({
     username: v.string(),
     password: v.string(),
@@ -134,6 +140,7 @@ export default defineSchema({
       memPercent: v.optional(v.number()),
       diskPercent: v.optional(v.number()),
       latencyMs: v.optional(v.number()),
+      heatingIssue: v.optional(v.boolean()),
       // Service refill window — during this time, if cups run low the kiosk shows
       // "Refill at {serviceRefillEnd}" instead of a generic "Refill on its way" message.
       serviceRefillStart: v.optional(v.string()), // e.g. "13:00"

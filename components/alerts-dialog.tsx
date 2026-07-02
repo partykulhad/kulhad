@@ -40,6 +40,7 @@ interface Machine {
     building: string;
     area: string;
   };
+  heatingIssue?: boolean;
 }
 
 const INACTIVE_REQUEST_STATUSES = ["Completed", "Cancelled", "Canceled"];
@@ -71,6 +72,7 @@ export function AlertsDialog({
     return temp <= 80;
   });
   const waterLevelAlerts = machines.filter((m) => m.waterLevelLow);
+  const heatingIssueAlerts = machines.filter((m) => m.heatingIssue);
 
   // Real refill requests created by checkCanisterLevel — distinct from the
   // canisterLevel<20 check above, which only reflects a raw percentage and
@@ -92,6 +94,7 @@ export function AlertsDialog({
     lowInventoryMachines.length +
     temperatureAlerts.length +
     waterLevelAlerts.length +
+    heatingIssueAlerts.length +
     refillRequests.length;
 
   const handleMachineClick = (machineId: string) => {
@@ -108,6 +111,8 @@ export function AlertsDialog({
         return <DropletIcon className="h-4 w-4" />;
       case "temperature":
         return <ThermometerIcon className="h-4 w-4" />;
+      case "heating":
+        return <ThermometerIcon className="h-4 w-4" />;
       case "water":
         return <DropletIcon className="h-4 w-4" />;
       default:
@@ -115,7 +120,7 @@ export function AlertsDialog({
     }
   };
 
-  const getAlertColor = (type: "offline" | "inventory" | "temperature" | "water") => {
+  const getAlertColor = (type: "offline" | "inventory" | "temperature" | "water" | "heating") => {
     switch (type) {
       case "offline":
         return "from-gray-500/10 to-gray-600/10 border-gray-200";
@@ -123,6 +128,8 @@ export function AlertsDialog({
         return "from-red-500/10 to-red-600/10 border-red-200";
       case "temperature":
         return "from-amber-500/10 to-orange-600/10 border-amber-200";
+      case "heating":
+        return "from-red-600/10 to-red-700/10 border-red-300";
       case "water":
         return "from-blue-500/10 to-blue-600/10 border-blue-200";
       default:
@@ -135,7 +142,7 @@ export function AlertsDialog({
     type,
   }: {
     machine: Machine;
-    type: "offline" | "inventory" | "temperature" | "water";
+    type: "offline" | "inventory" | "temperature" | "water" | "heating";
   }) => {
     return (
       <motion.div
@@ -160,7 +167,9 @@ export function AlertsDialog({
                           ? "bg-red-100"
                           : type === "water"
                             ? "bg-blue-100"
-                            : "bg-amber-100"
+                            : type === "heating"
+                              ? "bg-red-200"
+                              : "bg-amber-100"
                     }`}
                   >
                     {getAlertIcon(type)}
@@ -180,7 +189,7 @@ export function AlertsDialog({
                 variant={
                   type === "offline"
                     ? "secondary"
-                    : type === "inventory" || type === "water"
+                    : type === "inventory" || type === "water" || type === "heating"
                       ? "destructive"
                       : "default"
                 }
@@ -192,7 +201,9 @@ export function AlertsDialog({
                     ? "Low Stock"
                     : type === "water"
                       ? "Low Water"
-                      : "High Temp"}
+                      : type === "heating"
+                        ? "Heating Error"
+                        : "High Temp"}
               </Badge>
             </div>
 
@@ -249,6 +260,12 @@ export function AlertsDialog({
                         ? "Warning"
                         : "Critical"}
                   </span>
+                </div>
+              )}
+              {type === "heating" && (
+                <div className="flex items-center gap-2 text-sm text-red-600 font-medium">
+                  <AlertTriangleIcon className="h-4 w-4" />
+                  <span>Machine temperature is not rising!</span>
                 </div>
               )}
             </div>
@@ -433,6 +450,17 @@ export function AlertsDialog({
                     {refillRequests.length}
                   </Badge>
                 </TabsTrigger>
+                <TabsTrigger
+                  value="heating"
+                  className="flex items-center gap-2 py-3 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+                >
+                  <ThermometerIcon className="h-4 w-4" />
+                  <span className="hidden sm:inline">Heating</span>
+                  <span className="sm:hidden">Heat</span>
+                  <Badge variant="secondary" className="ml-1">
+                    {heatingIssueAlerts.length}
+                  </Badge>
+                </TabsTrigger>
               </TabsList>
             </div>
 
@@ -475,6 +503,13 @@ export function AlertsDialog({
                               key={`water-${machine._id}`}
                               machine={machine}
                               type="water"
+                            />
+                          ))}
+                          {heatingIssueAlerts.map((machine) => (
+                            <AlertCard
+                              key={`heating-${machine._id}`}
+                              machine={machine}
+                              type="heating"
                             />
                           ))}
                           {refillRequests.map((request) => (
@@ -553,6 +588,24 @@ export function AlertsDialog({
                               key={machine._id}
                               machine={machine}
                               type="water"
+                            />
+                          ))}
+                        </div>
+                      )}
+                    </AnimatePresence>
+                  </TabsContent>
+
+                  <TabsContent value="heating" className="mt-0 space-y-0">
+                    <AnimatePresence mode="wait">
+                      {heatingIssueAlerts.length === 0 ? (
+                        <EmptyState type="heating issue" />
+                      ) : (
+                        <div className="grid gap-4 sm:grid-cols-1 lg:grid-cols-2">
+                          {heatingIssueAlerts.map((machine) => (
+                            <AlertCard
+                              key={machine._id}
+                              machine={machine}
+                              type="heating"
                             />
                           ))}
                         </div>
