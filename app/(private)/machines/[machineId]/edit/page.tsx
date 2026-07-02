@@ -105,11 +105,17 @@ export default function EditMachinePage() {
   const editMachine = useMutation(api.machines.update);
   const logAction = useMutation(api.adminAuditLogs.logAction);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [hasNoServiceTime, setHasNoServiceTime] = useState(false);
 
   useEffect(() => {
     if (isInitialized) return;
     const foundMachine = machines.find((m) => m.id === machineId);
     if (foundMachine) {
+      const initServiceStart = (foundMachine as any).serviceRefillStart || "";
+      const initServiceEnd = (foundMachine as any).serviceRefillEnd || "";
+
+      setHasNoServiceTime(!!initServiceStart || !!initServiceEnd);
+
       setMachine({
         ...foundMachine,
         price: foundMachine.price || "",
@@ -141,7 +147,7 @@ export default function EditMachinePage() {
         ...prev,
         [name]:
           name === "mlToDispense" ||
-          name === "cups"
+            name === "cups"
             ? value === ""
               ? ""
               : Number.parseInt(value, 10)
@@ -179,8 +185,8 @@ export default function EditMachinePage() {
         price: machine.price,
         startTime: machine.startTime,
         endTime: machine.endTime,
-        serviceRefillStart: machine.serviceRefillStart?.trim() || undefined,
-        serviceRefillEnd: machine.serviceRefillEnd?.trim() || undefined,
+        serviceRefillStart: hasNoServiceTime ? (machine.serviceRefillStart?.trim() || undefined) : "",
+        serviceRefillEnd: hasNoServiceTime ? (machine.serviceRefillEnd?.trim() || undefined) : "",
 
         cups: machine.cups === "" ? undefined : Number(machine.cups),
         mlToDispense:
@@ -403,32 +409,50 @@ export default function EditMachinePage() {
                   onChange={handleInputChange}
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="serviceRefillStart">No Service Start</Label>
-                <Input
-                  id="serviceRefillStart"
-                  name="serviceRefillStart"
-                  type="time"
-                  value={machine.serviceRefillStart}
-                  onChange={handleInputChange}
+
+              <div className="space-y-2 md:col-span-2 flex items-center mt-4">
+                <input
+                  type="checkbox"
+                  id="hasNoServiceTime"
+                  checked={hasNoServiceTime}
+                  onChange={(e) => setHasNoServiceTime(e.target.checked)}
+                  className="mr-2 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
-                <p className="text-xs text-muted-foreground">
-                  Start of low-cup service window (e.g. 13:00)
-                </p>
+                <Label htmlFor="hasNoServiceTime" className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                  Enable No Service Time Window
+                </Label>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="serviceRefillEnd">No Service End</Label>
-                <Input
-                  id="serviceRefillEnd"
-                  name="serviceRefillEnd"
-                  type="time"
-                  value={machine.serviceRefillEnd}
-                  onChange={handleInputChange}
-                />
-                <p className="text-xs text-muted-foreground">
-                  End of service window — shown to customers as refill time (e.g. 17:00)
-                </p>
-              </div>
+
+              {hasNoServiceTime && (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceRefillStart">No Service Start</Label>
+                    <Input
+                      id="serviceRefillStart"
+                      name="serviceRefillStart"
+                      type="time"
+                      value={machine.serviceRefillStart}
+                      onChange={handleInputChange}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Start of low-cup service window (e.g. 13:00)
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="serviceRefillEnd">No Service End</Label>
+                    <Input
+                      id="serviceRefillEnd"
+                      name="serviceRefillEnd"
+                      type="time"
+                      value={machine.serviceRefillEnd}
+                      onChange={handleInputChange}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      End of service window — shown to customers as refill time (e.g. 17:00)
+                    </p>
+                  </div>
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -440,7 +464,7 @@ export default function EditMachinePage() {
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="mlToDispense">ML to Dispense</Label>
+                <Label htmlFor="mlToDispense">ML's to Dispense</Label>
                 <Input
                   id="mlToDispense"
                   name="mlToDispense"
