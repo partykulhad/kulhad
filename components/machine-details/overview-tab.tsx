@@ -233,12 +233,11 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
           <CardContent>
             <div className="flex items-center">
               <div
-                className={`h-4 w-4 rounded-full mr-2 ${
-                  machine.status === "online" &&
+                className={`h-4 w-4 rounded-full mr-2 ${machine.status === "online" &&
                   !isMachineUnreachable(machine.status, machine.lastSeenAt, now)
-                    ? "bg-green-500"
-                    : "bg-red-500"
-                }`}
+                  ? "bg-green-500"
+                  : "bg-red-500"
+                  }`}
               ></div>
               <span className="text-2xl font-bold">
                 {isMachineUnreachable(machine.status, machine.lastSeenAt, now)
@@ -249,7 +248,7 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
               </span>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Last checked in: {machine.lastSeenAt
+              Last ping is: {machine.lastSeenAt
                 ? new Date(machine.lastSeenAt).toLocaleString()
                 : "never"}
             </p>
