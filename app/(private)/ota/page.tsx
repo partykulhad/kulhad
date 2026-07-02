@@ -15,9 +15,14 @@ import {
   Clock,
   FileArchive,
   X,
+  Lock,
 } from "lucide-react";
 
 export default function OTAPage() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [password, setPassword] = useState("");
+  const [authError, setAuthError] = useState("");
+
   const [currentVersion, setCurrentVersion] = useState<string>("...");
   const [newVersion, setNewVersion] = useState("");
   const [isDeploying, setIsDeploying] = useState(false);
@@ -36,6 +41,17 @@ export default function OTAPage() {
   } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (password === "mitron@123") {
+      setIsAuthenticated(true);
+      setAuthError("");
+    } else {
+      setAuthError("Invalid credentials");
+      setPassword("");
+    }
+  };
+
   const fetchCurrentVersion = async () => {
     setIsFetching(true);
     try {
@@ -50,10 +66,11 @@ export default function OTAPage() {
   };
 
   useEffect(() => {
-    fetchCurrentVersion();
-  }, []);
+    if (isAuthenticated) {
+      fetchCurrentVersion();
+    }
+  }, [isAuthenticated]);
 
-  // Auto-fill version from filename
   const handleFileSelect = (file: File) => {
     if (!file.name.endsWith(".deb")) {
       setUploadResult({ type: "error", message: "Only .deb files are allowed." });
@@ -61,7 +78,6 @@ export default function OTAPage() {
     }
     setSelectedFile(file);
     setUploadResult(null);
-    // Try to extract version from filename like urban-kettle_1.3.0_all.deb
     const match = file.name.match(/(\d+\.\d+\.\d+)/);
     if (match) setNewVersion(match[1]);
   };
@@ -80,8 +96,6 @@ export default function OTAPage() {
 
     try {
       const filename = `urban-kettle_${newVersion.trim()}_all.deb`;
-
-      // Uploads directly from browser to Vercel Blob — no body size limit!
       const blob = await upload(filename, selectedFile, {
         access: "public",
         handleUploadUrl: "/api/ota-upload",
@@ -90,7 +104,7 @@ export default function OTAPage() {
       setUploadedUrl(blob.url);
       setUploadResult({
         type: "success",
-        message: `✅ ${filename} uploaded! Now click Deploy below.`,
+        message: `File ${filename} uploaded successfully. Ready to deploy.`,
       });
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Upload failed";
@@ -117,7 +131,7 @@ export default function OTAPage() {
       });
       const data = await res.json();
       if (res.ok) {
-        setDeployResult({ type: "success", message: data.message });
+        setDeployResult({ type: "success", message: "Version deployed successfully. Kiosks will auto-update within 2 minutes." });
         setCurrentVersion(newVersion.trim());
         setNewVersion("");
         setSelectedFile(null);
@@ -133,10 +147,10 @@ export default function OTAPage() {
   };
 
   const steps = [
-    { icon: FileArchive, title: "Build .deb", desc: "Run ./build_deb.sh 1.x.x", color: "text-blue-500", bg: "bg-blue-50" },
-    { icon: Upload, title: "Upload Here", desc: "Drag & drop your .deb file", color: "text-purple-500", bg: "bg-purple-50" },
-    { icon: Cpu, title: "Deploy", desc: "Click Deploy to go live", color: "text-amber-500", bg: "bg-amber-50" },
-    { icon: Wifi, title: "Auto Update", desc: "All kiosks update at 2 AM!", color: "text-emerald-500", bg: "bg-emerald-50" },
+    { icon: FileArchive, title: "Build Package", desc: "./build_deb.sh <version>", color: "text-blue-600", bg: "bg-blue-50" },
+    { icon: Upload, title: "Upload", desc: "Select .deb artifact", color: "text-purple-600", bg: "bg-purple-50" },
+    { icon: Cpu, title: "Deploy", desc: "Commit to production", color: "text-amber-600", bg: "bg-amber-50" },
+    { icon: Wifi, title: "Auto-Update", desc: "Fleet syncs every 2m", color: "text-emerald-600", bg: "bg-emerald-50" },
   ];
 
   const formatSize = (bytes: number) => {
@@ -144,213 +158,277 @@ export default function OTAPage() {
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   };
 
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.95 }} 
+          animate={{ opacity: 1, scale: 1 }} 
+          className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full border border-slate-100"
+        >
+          <div className="flex justify-center mb-6">
+            <div className="p-4 bg-orange-50 rounded-full">
+              <Lock className="w-8 h-8 text-orange-500" />
+            </div>
+          </div>
+          <h1 className="text-2xl font-bold text-center text-slate-800 mb-2">Developer Access</h1>
+          <p className="text-center text-slate-500 mb-8 text-sm">Enter the developer password to manage OTA deployments.</p>
+          
+          <form onSubmit={handleLogin} className="space-y-4">
+            <div>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Password"
+                className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all text-slate-800"
+                autoFocus
+              />
+            </div>
+            {authError && (
+              <p className="text-red-500 text-sm text-center font-medium">{authError}</p>
+            )}
+            <button
+              type="submit"
+              className="w-full py-3 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl transition-colors"
+            >
+              Authenticate
+            </button>
+          </form>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 p-6">
-      <div className="max-w-3xl mx-auto space-y-5">
+    <div className="min-h-screen bg-slate-50 p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
 
         {/* Header */}
-        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }}>
-          <div className="flex items-center gap-3 mb-1">
-            <div className="p-2 bg-emerald-500/20 rounded-xl">
-              <Package className="w-6 h-6 text-emerald-400" />
+        <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-orange-50 rounded-xl border border-orange-100">
+              <Package className="w-6 h-6 text-orange-500" />
             </div>
-            <h1 className="text-2xl font-bold text-white">OTA Update Manager</h1>
-          </div>
-          <p className="text-slate-400 ml-14">Upload and deploy software to all Urban Kettle kiosks worldwide.</p>
-        </motion.div>
-
-        {/* Current Version */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
-          className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-5"
-        >
-          <div className="flex items-center justify-between">
             <div>
-              <p className="text-slate-400 text-sm mb-1">Live Version (All Kiosks)</p>
-              <div className="flex items-center gap-3">
-                {isFetching ? (
-                  <RefreshCw className="w-5 h-5 text-slate-400 animate-spin" />
-                ) : (
-                  <span className="text-4xl font-mono font-bold text-white">v{currentVersion}</span>
-                )}
-                <span className="px-2 py-1 bg-emerald-500/20 text-emerald-400 rounded-full text-xs font-medium">Live</span>
-              </div>
+              <h1 className="text-2xl font-bold text-slate-800">OTA Pipeline Manager</h1>
+              <p className="text-slate-500 text-sm">Kulhad Production Deployment Infrastructure</p>
             </div>
-            <button onClick={fetchCurrentVersion} className="p-2 hover:bg-white/10 rounded-xl transition-colors">
-              <RefreshCw className={`w-5 h-5 text-slate-400 ${isFetching ? "animate-spin" : ""}`} />
-            </button>
           </div>
-          <div className="flex items-center gap-2 mt-3 text-slate-500 text-xs">
-            <Clock className="w-3.5 h-3.5" />
-            <span>Kiosks check for updates every night at 2:00 AM</span>
-          </div>
+          <button onClick={() => setIsAuthenticated(false)} className="px-4 py-2 text-sm text-slate-500 hover:bg-slate-100 rounded-lg transition-colors">
+            Sign Out
+          </button>
         </motion.div>
 
-        {/* Steps */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
-          className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-5"
-        >
-          <h2 className="text-white font-semibold mb-4">How to Deploy</h2>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-            {steps.map((step, i) => (
-              <div key={i} className="flex items-center gap-2 flex-1">
-                <div className={`p-2 ${step.bg} rounded-xl shrink-0`}>
-                  <step.icon className={`w-4 h-4 ${step.color}`} />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-white text-xs font-semibold">{step.title}</p>
-                  <p className="text-slate-400 text-xs">{step.desc}</p>
-                </div>
-                {i < steps.length - 1 && <ArrowRight className="w-4 h-4 text-slate-600 shrink-0 hidden sm:block" />}
-              </div>
-            ))}
-          </div>
-        </motion.div>
-
-        {/* Upload Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
-          className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-5 space-y-4"
-        >
-          <h2 className="text-white font-semibold">Step 1 — Upload .deb File</h2>
-
-          {/* Dropzone */}
-          <div
-            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
-              dragOver
-                ? "border-emerald-400 bg-emerald-500/10"
-                : selectedFile
-                ? "border-emerald-500/50 bg-emerald-500/5"
-                : "border-white/10 hover:border-white/30 hover:bg-white/5"
-            }`}
-          >
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".deb"
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }}
-            />
-            {selectedFile ? (
-              <div className="flex items-center justify-center gap-3">
-                <FileArchive className="w-8 h-8 text-emerald-400" />
-                <div className="text-left">
-                  <p className="text-white font-medium">{selectedFile.name}</p>
-                  <p className="text-slate-400 text-sm">{formatSize(selectedFile.size)}</p>
-                </div>
-                <button
-                  onClick={(e) => { e.stopPropagation(); setSelectedFile(null); setUploadedUrl(null); setUploadResult(null); }}
-                  className="ml-auto p-1 hover:bg-white/10 rounded-lg"
-                >
-                  <X className="w-4 h-4 text-slate-400" />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Left Column: Status & Steps */}
+          <div className="md:col-span-1 space-y-6">
+            {/* Current Version */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.1 }}
+              className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm"
+            >
+              <div className="flex items-start justify-between mb-4">
+                <p className="text-slate-500 text-sm font-medium">Production Release</p>
+                <button onClick={fetchCurrentVersion} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors">
+                  <RefreshCw className={`w-4 h-4 text-slate-400 ${isFetching ? "animate-spin" : ""}`} />
                 </button>
               </div>
-            ) : (
-              <div>
-                <Upload className="w-8 h-8 text-slate-500 mx-auto mb-2" />
-                <p className="text-slate-300 font-medium">Drop your .deb file here</p>
-                <p className="text-slate-500 text-sm mt-1">or click to browse</p>
+              <div className="flex items-end gap-3 mb-4">
+                {isFetching ? (
+                  <div className="h-10 w-24 bg-slate-100 animate-pulse rounded-lg"></div>
+                ) : (
+                  <span className="text-4xl font-mono font-bold text-slate-800">v{currentVersion}</span>
+                )}
               </div>
-            )}
+              <div className="flex items-center gap-2 text-slate-500 text-xs bg-slate-50 p-3 rounded-lg border border-slate-100">
+                <Clock className="w-4 h-4 text-orange-400" />
+                <span className="font-medium">Fleet sync polling: 2m intervals</span>
+              </div>
+            </motion.div>
+
+            {/* Workflow Steps */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}
+              className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm"
+            >
+              <h2 className="text-slate-800 font-bold mb-4">Deployment Workflow</h2>
+              <div className="space-y-4">
+                {steps.map((step, i) => (
+                  <div key={i} className="flex items-center gap-3 relative">
+                    <div className={`p-2.5 ${step.bg} rounded-xl shrink-0 border border-white/50`}>
+                      <step.icon className={`w-4 h-4 ${step.color}`} />
+                    </div>
+                    <div>
+                      <p className="text-slate-800 text-sm font-bold">{step.title}</p>
+                      <p className="text-slate-500 text-xs font-medium">{step.desc}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
           </div>
 
-          {selectedFile && (
-            <motion.button
-              initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-              whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-              onClick={handleUpload}
-              disabled={isUploading || !!uploadedUrl}
-              className="w-full py-3 bg-purple-500 hover:bg-purple-400 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold rounded-xl flex items-center justify-center gap-2 transition-colors"
+          {/* Right Column: Actions */}
+          <div className="md:col-span-2 space-y-6">
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}
+              className="bg-white border border-slate-100 rounded-2xl p-6 shadow-sm"
             >
-              {isUploading ? <RefreshCw className="w-4 h-4 animate-spin" /> : uploadedUrl ? <CheckCircle className="w-4 h-4" /> : <Upload className="w-4 h-4" />}
-              {isUploading ? "Uploading..." : uploadedUrl ? "Uploaded to Vercel Blob ✓" : "Upload to Vercel Blob"}
-            </motion.button>
-          )}
+              <h2 className="text-slate-800 font-bold mb-6 flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-xs">1</span> 
+                Upload Build Artifact
+              </h2>
 
-          <AnimatePresence>
-            {uploadResult && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                className={`p-4 rounded-xl flex items-start gap-3 ${
-                  uploadResult.type === "success" ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-red-500/10 border border-red-500/20"
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`relative border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all ${
+                  dragOver
+                    ? "border-orange-400 bg-orange-50"
+                    : selectedFile
+                    ? "border-orange-200 bg-orange-50/50"
+                    : "border-slate-200 hover:border-slate-300 hover:bg-slate-50"
                 }`}
               >
-                {uploadResult.type === "success" ? (
-                  <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".deb"
+                  className="hidden"
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileSelect(f); }}
+                />
+                {selectedFile ? (
+                  <div className="flex items-center justify-center gap-4">
+                    <div className="p-3 bg-white rounded-xl shadow-sm border border-slate-100">
+                      <FileArchive className="w-8 h-8 text-orange-500" />
+                    </div>
+                    <div className="text-left">
+                      <p className="text-slate-800 font-bold">{selectedFile.name}</p>
+                      <p className="text-slate-500 text-sm font-medium">{formatSize(selectedFile.size)}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setSelectedFile(null); setUploadedUrl(null); setUploadResult(null); }}
+                      className="ml-auto p-2 hover:bg-slate-200 rounded-lg transition-colors"
+                    >
+                      <X className="w-5 h-5 text-slate-400" />
+                    </button>
+                  </div>
                 ) : (
-                  <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                  <div>
+                    <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Upload className="w-6 h-6 text-slate-500" />
+                    </div>
+                    <p className="text-slate-700 font-bold">Select .deb package</p>
+                    <p className="text-slate-500 text-sm mt-1 font-medium">Drag and drop or click to browse</p>
+                  </div>
                 )}
-                <p className={`text-sm ${uploadResult.type === "success" ? "text-emerald-300" : "text-red-300"}`}>
-                  {uploadResult.message}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
-
-        {/* Deploy Section */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-          className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-5 space-y-4"
-        >
-          <h2 className="text-white font-semibold">Step 2 — Deploy Version</h2>
-
-          <form onSubmit={handleDeploy} className="space-y-4">
-            <div>
-              <label className="text-slate-400 text-sm block mb-2">Version Number</label>
-              <div className="flex gap-3">
-                <div className="relative flex-1">
-                  <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 font-mono">v</span>
-                  <input
-                    type="text"
-                    value={newVersion}
-                    onChange={(e) => setNewVersion(e.target.value)}
-                    placeholder="1.3.0"
-                    pattern="\d+\.\d+\.\d+"
-                    required
-                    className="w-full bg-white/5 border border-white/10 rounded-xl pl-8 pr-4 py-3 text-white font-mono placeholder-slate-600 focus:outline-none focus:border-emerald-500/50 focus:bg-white/10 transition-all"
-                  />
-                </div>
-                <motion.button
-                  whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  type="submit"
-                  disabled={isDeploying || !newVersion.trim()}
-                  className="px-6 py-3 bg-emerald-500 hover:bg-emerald-400 disabled:bg-slate-700 disabled:text-slate-500 text-white font-semibold rounded-xl flex items-center gap-2 transition-colors"
-                >
-                  {isDeploying ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Cpu className="w-4 h-4" />}
-                  {isDeploying ? "Deploying..." : "Deploy"}
-                </motion.button>
               </div>
-              <p className="text-slate-600 text-xs mt-2">Auto-filled from filename. Format: major.minor.patch</p>
-            </div>
-          </form>
 
-          <AnimatePresence>
-            {deployResult && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
-                className={`p-4 rounded-xl flex items-start gap-3 ${
-                  deployResult.type === "success" ? "bg-emerald-500/10 border border-emerald-500/20" : "bg-red-500/10 border border-red-500/20"
-                }`}
-              >
-                {deployResult.type === "success" ? (
-                  <CheckCircle className="w-5 h-5 text-emerald-400 shrink-0" />
-                ) : (
-                  <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+              {selectedFile && (
+                <div className="mt-4">
+                  <motion.button
+                    initial={{ opacity: 0 }} animate={{ opacity: 1 }}
+                    whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                    onClick={handleUpload}
+                    disabled={isUploading || !!uploadedUrl}
+                    className="w-full py-3.5 bg-slate-800 hover:bg-slate-900 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors"
+                  >
+                    {isUploading ? <RefreshCw className="w-5 h-5 animate-spin" /> : uploadedUrl ? <CheckCircle className="w-5 h-5" /> : <Upload className="w-5 h-5" />}
+                    {isUploading ? "Uploading Artifact..." : uploadedUrl ? "Artifact Uploaded" : "Upload to Storage"}
+                  </motion.button>
+                </div>
+              )}
+
+              <AnimatePresence>
+                {uploadResult && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden mt-4"
+                  >
+                    <div className={`p-4 rounded-xl flex items-start gap-3 border ${
+                      uploadResult.type === "success" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
+                    }`}>
+                      {uploadResult.type === "success" ? (
+                        <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                      )}
+                      <p className={`text-sm font-medium ${uploadResult.type === "success" ? "text-emerald-800" : "text-red-800"}`}>
+                        {uploadResult.message}
+                      </p>
+                    </div>
+                  </motion.div>
                 )}
-                <p className={`text-sm ${deployResult.type === "success" ? "text-emerald-300" : "text-red-300"}`}>
-                  {deployResult.message}
-                </p>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </motion.div>
+              </AnimatePresence>
+            </motion.div>
 
+            {/* Deploy Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
+              className={`bg-white border border-slate-100 rounded-2xl p-6 shadow-sm transition-opacity ${!uploadedUrl ? 'opacity-50 pointer-events-none' : ''}`}
+            >
+              <h2 className="text-slate-800 font-bold mb-6 flex items-center gap-2">
+                <span className="flex items-center justify-center w-6 h-6 rounded-full bg-slate-100 text-slate-600 text-xs">2</span> 
+                Push to Production
+              </h2>
+
+              <form onSubmit={handleDeploy} className="space-y-4">
+                <div>
+                  <label className="text-slate-600 text-sm font-bold block mb-2">Target Version</label>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-mono font-bold">v</span>
+                      <input
+                        type="text"
+                        value={newVersion}
+                        onChange={(e) => setNewVersion(e.target.value)}
+                        placeholder="1.0.0"
+                        pattern="\d+\.\d+\.\d+"
+                        required
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-8 pr-4 py-3 text-slate-800 font-mono font-bold placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all"
+                      />
+                    </div>
+                    <motion.button
+                      whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                      type="submit"
+                      disabled={isDeploying || !newVersion.trim() || !uploadedUrl}
+                      className="px-8 py-3 bg-orange-500 hover:bg-orange-600 disabled:bg-slate-100 disabled:text-slate-400 text-white font-bold rounded-xl flex items-center justify-center gap-2 transition-colors shadow-sm shadow-orange-500/20"
+                    >
+                      {isDeploying ? <RefreshCw className="w-5 h-5 animate-spin" /> : <Cpu className="w-5 h-5" />}
+                      {isDeploying ? "Deploying..." : "Execute Deploy"}
+                    </motion.button>
+                  </div>
+                  <p className="text-slate-500 text-xs font-medium mt-2">Requires Semantic Versioning (Major.Minor.Patch). Ensure the uploaded artifact matches this version.</p>
+                </div>
+              </form>
+
+              <AnimatePresence>
+                {deployResult && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }}
+                    className="overflow-hidden mt-6"
+                  >
+                    <div className={`p-4 rounded-xl flex items-start gap-3 border ${
+                      deployResult.type === "success" ? "bg-emerald-50 border-emerald-200" : "bg-red-50 border-red-200"
+                    }`}>
+                      {deployResult.type === "success" ? (
+                        <CheckCircle className="w-5 h-5 text-emerald-500 shrink-0 mt-0.5" />
+                      ) : (
+                        <AlertTriangle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                      )}
+                      <p className={`text-sm font-medium ${deployResult.type === "success" ? "text-emerald-800" : "text-red-800"}`}>
+                        {deployResult.message}
+                      </p>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+        </div>
       </div>
     </div>
   );
