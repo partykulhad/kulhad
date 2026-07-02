@@ -404,7 +404,7 @@ export default function EditMachinePage() {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="serviceRefillStart">Service Refill Start</Label>
+                <Label htmlFor="serviceRefillStart">No Service Start</Label>
                 <Input
                   id="serviceRefillStart"
                   name="serviceRefillStart"
@@ -417,7 +417,7 @@ export default function EditMachinePage() {
                 </p>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="serviceRefillEnd">Service Refill End</Label>
+                <Label htmlFor="serviceRefillEnd">No Service End</Label>
                 <Input
                   id="serviceRefillEnd"
                   name="serviceRefillEnd"

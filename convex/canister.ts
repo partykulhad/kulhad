@@ -1,5 +1,6 @@
 import { mutation } from "./_generated/server"
 import { v, ConvexError } from "convex/values"
+import { api } from "./_generated/api"
 
 // Helper function to calculate distance between two points
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -336,10 +337,44 @@ export const checkCanisterLevel = mutation({
       const timeResult = getTimeWindowAndQuantity(machine.endTime, machine)
 
       if (timeResult.shouldBlock) {
-        console.log("[DYNAMIC] Request blocked: Current time is within 1 hour of machine end time")
+        console.log("[DYNAMIC] Request blocked: Current time is within 1 hour of machine end time. Scheduling for next morning.")
+        
+        // Calculate timestamp for next occurrence of (startTime - 1 hour)
+        const now = new Date()
+        const istTime = new Date(now.toLocaleString("en-US", { timeZone: "Asia/Kolkata" }))
+        
+        let startHour = 9;
+        let startMinute = 0;
+        if (machine.startTime) {
+           const match = machine.startTime.match(/(\d{1,2}):(\d{2})/);
+           if (match) {
+               startHour = parseInt(match[1], 10);
+               startMinute = parseInt(match[2], 10);
+           }
+        }
+        
+        // Set the target time to the machine's start time
+        istTime.setHours(startHour, startMinute, 0, 0);
+        
+        // If that time has already passed today, bump to tomorrow
+        if (istTime.getTime() <= now.getTime()) {
+           istTime.setDate(istTime.getDate() + 1);
+        }
+        
+        // Subtract 1 hour to send the alert exactly 1 hour before start time
+        const scheduledTime = new Date(istTime.getTime() - 60 * 60 * 1000);
+        
+        if (scheduledTime.getTime() > Date.now()) {
+            await ctx.scheduler.runAt(scheduledTime.getTime(), api.canister.checkCanisterLevel, {
+               machineId: machineId,
+               canisterLevel: canisterLevel
+            });
+            console.log(`[DYNAMIC] Successfully scheduled delayed refill alert for ${scheduledTime.toISOString()}`);
+        }
+
         return {
           success: false,
-          message: "Request not allowed within 1 hour of machine end time",
+          message: "Request delayed to next morning (within 1 hour of end time)",
           requestId: null,
           kitchenUserIds: [],
         }
