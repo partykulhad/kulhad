@@ -56,8 +56,8 @@ export default function OTAPage() {
     setIsFetching(true);
     try {
       const res = await fetch("/api/ota-version");
-      const version = await res.text();
-      setCurrentVersion(version.trim());
+      const data = await res.json();
+      setCurrentVersion(data.version || "Unknown");
     } catch {
       setCurrentVersion("Unknown");
     } finally {
