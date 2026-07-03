@@ -416,6 +416,47 @@ dailyScanLogs : defineTable({
   })
     .index("by_machineId", ["machineId"])
     .index("by_storageId", ["videoStorageId"]),
+
+  // ── RFID Tag Registry ──────────────────────────────────────────────────────
+  // Each row is one physical RFID card managed from the Kulhad dashboard.
+  // The kiosk sends cardId (hex UID) + machineId to /api/rfid/auth/start;
+  // Kulhad looks up the card here to decide what to do.
+  rfidTags: defineTable({
+    cardId: v.string(),           // Hex UID from the card, uppercase e.g. "A3F20B1C"
+    label: v.string(),            // Human-readable name, e.g. "John's card"
+    role: v.string(),             // "dispensing" | "maintenance"
+    balance: v.number(),          // Remaining taps / cups (dispensing cards)
+    isActive: v.boolean(),        // false = card blocked / deactivated
+    // Optional: restrict which machine IDs this card works on.
+    // Empty array or undefined = works on all machines.
+    allowedMachines: v.optional(v.array(v.string())),
+    // Maintenance-specific fields (ignored for dispensing cards)
+    maintenanceAction: v.optional(v.string()),  // e.g. "solenoid_open"
+    maintenanceDuration: v.optional(v.number()), // seconds
+    maintenanceMessage: v.optional(v.string()),
+    createdAt: v.number(),        // Unix ms
+    lastUsedAt: v.optional(v.number()),
+    createdBy: v.optional(v.string()), // admin email
+  })
+    .index("by_cardId", ["cardId"])
+    .index("by_role", ["role"]),
+
+  // Ephemeral authentication sessions — created by /start, consumed by /verify.
+  // A background cron (or TTL check) should clean these up after a few minutes.
+  rfidSessions: defineTable({
+    sessionId: v.string(),        // UUID generated on /start
+    cardId: v.string(),           // Hex UID being authenticated
+    machineId: v.string(),        // Which kiosk sent this request
+    // The random challenge value we generated (store to verify step2 response).
+    // For our simplified flow we skip actual AES crypto and use a HMAC approach.
+    challenge: v.string(),        // Random hex challenge sent to kiosk
+    step: v.number(),             // 1 = waiting for step2, 2 = waiting for verify
+    createdAt: v.number(),        // Unix ms — expire after 60 s
+    expiresAt: v.number(),        // Unix ms
+  })
+    .index("by_sessionId", ["sessionId"])
+    .index("by_expiresAt", ["expiresAt"]),
 });
+
 
 

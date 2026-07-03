@@ -19,6 +19,7 @@ import {
   DropletIcon,
   ActivityIcon,
   ReceiptIcon,
+  CreditCard,
 } from "lucide-react";
 
 import { Loading } from "@/components/shared/loading";
@@ -132,6 +133,12 @@ const Header: React.FC<HeaderProps> = ({
       label: "Transactions",
       icon: ReceiptIcon,
       color: "from-cyan-500 to-cyan-600",
+    },
+    {
+      id: "rfid",
+      label: "RFID",
+      icon: CreditCard,
+      color: "from-violet-500 to-purple-600",
     },
   ];
 

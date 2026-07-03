@@ -19,6 +19,7 @@ import AddDeliveryAgent from "@/components/AddDeliveryAgent";
 import { InventoryLevels } from "@/components/charts/inventory-levels";
 import { MachineComparisonChart } from "@/components/charts/machine-comparison-chart";
 import { TransactionsPage } from "@/components/transactions/transactions-page";
+import RFIDManagement from "@/components/rfid-management";
 import { TemperatureMonitor } from "@/components/charts/temperature-monitor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -402,6 +403,17 @@ export default function DashboardPage() {
                 transition={pageTransition}
               >
                 <TransactionsPage />
+              </motion.div>
+            </TabsContent>
+
+            <TabsContent value="rfid" className="mt-0">
+              <motion.div
+                initial="initial"
+                animate="in"
+                variants={pageVariants}
+                transition={pageTransition}
+              >
+                <RFIDManagement />
               </motion.div>
             </TabsContent>
           </Tabs>
