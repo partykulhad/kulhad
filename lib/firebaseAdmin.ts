@@ -29,8 +29,10 @@ if (!admin.apps.length) {
     console.log("Firebase Admin SDK initialized successfully")
   } catch (error) {
     console.error("Error initializing Firebase Admin SDK:", error)
-    // Re-throw the error to make it clear what went wrong during initialization
-    throw error
+    // Don't throw during build to prevent next build from failing
+    if (process.env.NODE_ENV !== "production") {
+      console.warn("Firebase features will not work locally without proper environment variables.")
+    }
   }
 } else {
   console.log("Firebase Admin SDK already initialized")
