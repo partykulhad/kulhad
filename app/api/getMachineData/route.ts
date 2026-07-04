@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
     const latencyMs = searchParams.has("latency_ms") ? Number(searchParams.get("latency_ms")) : undefined
     const heatingIssue = searchParams.get("heating_issue") === "true" ? true : (searchParams.get("heating_issue") === "false" ? false : undefined)
 
-    convex.mutation(api.machines.touchLastSeen, {
+    await convex.mutation(api.machines.touchLastSeen, {
       machineId,
       currentPage,
       cpuPercent,

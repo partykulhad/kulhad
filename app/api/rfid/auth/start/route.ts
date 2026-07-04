@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
     // ── Maintenance card ──────────────────────────────────────────────────────
     if (tag.role === "maintenance") {
       // Touch last-used in background (fire-and-forget)
-      convex.mutation(api.rfidTags.touchLastUsed, { cardId: normalizedCardId })
+      await convex.mutation(api.rfidTags.touchLastUsed, { cardId: normalizedCardId }).catch(console.error)
         .catch(() => {});
 
       return NextResponse.json({
