@@ -39,7 +39,7 @@ export async function POST(req: NextRequest) {
       const notificationResults = await Promise.all(notificationPromises)
 
       // Log any failed notifications
-      notificationResults.forEach((notificationResult, index) => {
+      notificationResults.forEach((notificationResult: any, index: number) => {
         if (!notificationResult.success) {
           console.error(
             `Failed to send notification to user ${result.kitchenUserIds![index]}: ${notificationResult.message}`,

@@ -103,7 +103,7 @@ export function AlertsDialog({
     onOpenChange(false);
   };
 
-  const getAlertIcon = (type: "offline" | "inventory" | "temperature" | "water") => {
+  const getAlertIcon = (type: "offline" | "inventory" | "temperature" | "water" | "heating") => {
     switch (type) {
       case "offline":
         return <WifiOffIcon className="h-4 w-4" />;
