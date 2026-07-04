@@ -66,8 +66,14 @@ export default function DashboardContent({
   const now = useNow();
 
   const handleToggleStatus = async (machine: any) => {
-    const newStatus = machine.status === "online" ? "offline" : "online";
-    await toggleMachineStatus({ id: machine._id });
+    const isCurrentlyOffline = machine.status === "offline" || isMachineUnreachable(machine.status, machine.lastSeenAt, now);
+    const newStatus = isCurrentlyOffline ? "online" : "offline";
+    
+    await toggleMachineStatus({ 
+      id: machine._id,
+      targetStatus: newStatus 
+    });
+    
     await logAction({
       action: `machine_${newStatus}`,
       targetId: machine.id,

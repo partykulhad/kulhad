@@ -163,7 +163,7 @@ export function MachinesTable({
     }
   };
 
-  const goingOnline = pendingMachine ? pendingMachine.status !== "online" : false;
+  const goingOnline = pendingMachine ? (pendingMachine.status === "offline" || isMachineUnreachable(pendingMachine.status, pendingMachine.lastSeenAt, now)) : false;
 
   return (
     <Card>
@@ -311,7 +311,7 @@ export function MachinesTable({
                     <TableCell className="text-right">
                       <div onClick={(e) => e.stopPropagation()}>
                         <Switch
-                          checked={machine.status === "online"}
+                          checked={machine.status === "online" && !isMachineUnreachable(machine.status, machine.lastSeenAt, now)}
                           onCheckedChange={() => setPendingMachine(machine)}
                         />
                       </div>

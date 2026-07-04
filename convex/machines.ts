@@ -58,11 +58,19 @@ export const add = mutation({
 })
 
 export const toggleStatus = mutation({
-  args: { id: v.id("machines") },
+  args: { 
+    id: v.id("machines"),
+    targetStatus: v.optional(v.union(v.literal("online"), v.literal("offline")))
+  },
   handler: async (ctx, args) => {
     const machine = await ctx.db.get(args.id)
     if (!machine) throw new Error("Machine not found")
-    const newStatus = machine.status === "online" ? "offline" : "online"
+    
+    // If targetStatus is provided, use it. Otherwise, flip the current status.
+    const newStatus = args.targetStatus !== undefined 
+      ? args.targetStatus 
+      : (machine.status === "online" ? "offline" : "online")
+      
     const patchData: any = { status: newStatus }
     if (newStatus === "online") {
       patchData.lastSeenAt = Date.now()

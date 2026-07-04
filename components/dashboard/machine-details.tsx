@@ -39,7 +39,7 @@ export function MachineDetails({
 }: MachineDetailsProps) {
   const [confirmOpen, setConfirmOpen] = useState(false);
   const now = useNow();
-  const goingOnline = machine.status !== "online";
+  const goingOnline = machine.status === "offline" || isMachineUnreachable(machine.status, machine.lastSeenAt, now);
 
   const handleConfirm = () => {
     onStatusToggle(machine._id);
@@ -74,7 +74,7 @@ export function MachineDetails({
                 : machine.status}
             </Badge>
             <Switch
-              checked={machine.status === "online"}
+              checked={machine.status === "online" && !isMachineUnreachable(machine.status, machine.lastSeenAt, now)}
               onCheckedChange={() => setConfirmOpen(true)}
             />
           </div>

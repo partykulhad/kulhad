@@ -343,7 +343,11 @@ export default function AddMachineContent() {
   const handleConfirmToggle = async () => {
     if (!pendingMachine?._id) return;
     try {
-      await toggleStatus({ id: pendingMachine._id });
+      const isCurrentlyOffline = pendingMachine.status === "offline" || isMachineUnreachable(pendingMachine.status, pendingMachine.lastSeenAt, now);
+      await toggleStatus({ 
+        id: pendingMachine._id,
+        targetStatus: isCurrentlyOffline ? "online" : "offline"
+      });
       toast.success("Machine status updated successfully");
     } catch (error) {
       console.error("Error updating machine status:", error);
@@ -353,7 +357,7 @@ export default function AddMachineContent() {
     }
   };
 
-  const goingOnline = pendingMachine ? pendingMachine.status !== "online" : false;
+  const goingOnline = pendingMachine ? (pendingMachine.status === "offline" || isMachineUnreachable(pendingMachine.status, pendingMachine.lastSeenAt, now)) : false;
 
   const navigateToMachineDetails = (machineId: string) => {
     router.push(`/machines/${machineId}`);
