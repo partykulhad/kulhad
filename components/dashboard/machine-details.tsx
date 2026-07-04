@@ -30,7 +30,7 @@ import { deriveCanisterLevel, isMachineUnreachable, useNow } from "@/lib/utils";
 
 interface MachineDetailsProps {
   machine: any; // Update this with proper type
-  onStatusToggle: (id: Id<"machines">) => void;
+  onStatusToggle: (machine: any) => void;
 }
 
 export function MachineDetails({
@@ -42,7 +42,7 @@ export function MachineDetails({
   const goingOnline = machine.status === "offline" || isMachineUnreachable(machine.status, machine.lastSeenAt, now);
 
   const handleConfirm = () => {
-    onStatusToggle(machine._id);
+    onStatusToggle(machine);
     setConfirmOpen(false);
   };
 

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "convex/react";
 import { api } from "@/convex/_generated/api";
 import type { Id } from "@/convex/_generated/dataModel";
-import { deriveCanisterLevel, isMachineOffline, useNow } from "@/lib/utils";
+import { deriveCanisterLevel, isMachineOffline, isMachineUnreachable, useNow } from "@/lib/utils";
 import { Tabs, TabsContent } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { OverviewCards } from "@/components/dashboard/overview-cards";
@@ -106,8 +106,14 @@ export default function DashboardPage() {
     threshold: 20,
   }));
 
-  const handleStatusToggle = async (machineId: Id<"machines">) => {
-    await toggleStatus({ id: machineId });
+  const handleStatusToggle = async (machine: any) => {
+    const isCurrentlyOffline =
+      machine.status === "offline" ||
+      isMachineUnreachable(machine.status, machine.lastSeenAt, now);
+    await toggleStatus({
+      id: machine._id,
+      targetStatus: isCurrentlyOffline ? "online" : "offline",
+    });
   };
 
   const handleBackToOverview = () => {

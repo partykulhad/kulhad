@@ -45,7 +45,7 @@ interface Machine {
 interface MachinesTableProps {
   machines: Machine[];
   onMachineSelect: (id: Id<"machines">) => void;
-  onStatusToggle: (id: Id<"machines">) => void;
+  onStatusToggle: (machine: Machine) => void;
 }
 
 const formatRelativeTime = (dateString: string | undefined): string => {
@@ -158,7 +158,7 @@ export function MachinesTable({
 
   const handleConfirmToggle = () => {
     if (pendingMachine) {
-      onStatusToggle(pendingMachine._id);
+      onStatusToggle(pendingMachine);
       setPendingMachine(null);
     }
   };
