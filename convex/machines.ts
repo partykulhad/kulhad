@@ -63,7 +63,11 @@ export const toggleStatus = mutation({
     const machine = await ctx.db.get(args.id)
     if (!machine) throw new Error("Machine not found")
     const newStatus = machine.status === "online" ? "offline" : "online"
-    await ctx.db.patch(args.id, { status: newStatus })
+    const patchData: any = { status: newStatus }
+    if (newStatus === "online") {
+      patchData.lastSeenAt = Date.now()
+    }
+    await ctx.db.patch(args.id, patchData)
     return { id: args.id, status: newStatus }
   },
 })
