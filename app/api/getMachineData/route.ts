@@ -33,15 +33,16 @@ export async function GET(request: NextRequest) {
     const heatingIssue = searchParams.get("heating_issue") === "true" ? true : (searchParams.get("heating_issue") === "false" ? false : undefined)
     const appVersion = searchParams.get("app_version") || undefined
 
-    await convex.mutation(api.machines.touchLastSeen, {
-      machineId,
-      currentPage,
-      cpuPercent,
-      memPercent,
-      diskPercent,
-      latencyMs,
-      heatingIssue,
-      appVersion,
+    const mutationArgs: any = { machineId };
+    if (currentPage !== undefined) mutationArgs.currentPage = currentPage;
+    if (cpuPercent !== undefined && !isNaN(cpuPercent)) mutationArgs.cpuPercent = cpuPercent;
+    if (memPercent !== undefined && !isNaN(memPercent)) mutationArgs.memPercent = memPercent;
+    if (diskPercent !== undefined && !isNaN(diskPercent)) mutationArgs.diskPercent = diskPercent;
+    if (latencyMs !== undefined && !isNaN(latencyMs)) mutationArgs.latencyMs = latencyMs;
+    if (heatingIssue !== undefined) mutationArgs.heatingIssue = heatingIssue;
+    if (appVersion !== undefined) mutationArgs.appVersion = appVersion;
+
+    await convex.mutation(api.machines.touchLastSeen, mutationArgs
     }).catch((err) => {
       console.error("Failed to update lastSeenAt:", err)
     })
