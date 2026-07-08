@@ -42,8 +42,7 @@ export async function GET(request: NextRequest) {
     if (heatingIssue !== undefined) mutationArgs.heatingIssue = heatingIssue;
     if (appVersion !== undefined) mutationArgs.appVersion = appVersion;
 
-    await convex.mutation(api.machines.touchLastSeen, mutationArgs
-    }).catch((err) => {
+    await convex.mutation(api.machines.touchLastSeen, mutationArgs).catch((err) => {
       console.error("Failed to update lastSeenAt:", err)
     })
 
