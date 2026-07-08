@@ -31,6 +31,7 @@ export async function GET(request: NextRequest) {
     const diskPercent = searchParams.has("disk_percent") ? Number(searchParams.get("disk_percent")) : undefined
     const latencyMs = searchParams.has("latency_ms") ? Number(searchParams.get("latency_ms")) : undefined
     const heatingIssue = searchParams.get("heating_issue") === "true" ? true : (searchParams.get("heating_issue") === "false" ? false : undefined)
+    const appVersion = searchParams.get("app_version") || undefined
 
     await convex.mutation(api.machines.touchLastSeen, {
       machineId,
@@ -40,6 +41,7 @@ export async function GET(request: NextRequest) {
       diskPercent,
       latencyMs,
       heatingIssue,
+      appVersion,
     }).catch((err) => {
       console.error("Failed to update lastSeenAt:", err)
     })

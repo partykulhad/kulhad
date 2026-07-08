@@ -158,6 +158,7 @@ export const touchLastSeen = mutation({
     diskPercent: v.optional(v.number()),
     latencyMs: v.optional(v.number()),
     heatingIssue: v.optional(v.boolean()),
+    appVersion: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
     const { machineId, ...telemetry } = args

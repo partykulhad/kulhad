@@ -343,6 +343,12 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
                 <span className="font-medium">{machine.currentPage || "Unknown"}</span>
               </div>
               <div className="flex justify-between">
+                <span className="text-muted-foreground">App version</span>
+                <span className="font-medium">
+                  {machine.appVersion !== undefined ? `v${machine.appVersion}` : "legacy"}
+                </span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-muted-foreground">CPU</span>
                 <span className="font-medium">
                   {machine.cpuPercent !== undefined ? `${machine.cpuPercent}%` : "—"}
