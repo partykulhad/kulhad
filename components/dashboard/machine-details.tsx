@@ -92,6 +92,7 @@ export function MachineDetails({
               {isMachineUnreachable(machine.status, machine.lastSeenAt, now)
                 ? "offline"
                 : machine.status}
+            </Badge>
             <div title={!isOperational ? "Cannot toggle during non-operating hours" : undefined}>
               <Switch
                 disabled={!isOperational}

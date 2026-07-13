@@ -310,6 +310,7 @@ export function MachinesTable({
                         {formatRelativeTime(machine.lastFulfilled)}
                       </span>
                     </TableCell>
+                    <TableCell className="text-right">
                       <div className="text-right flex justify-end" onClick={(e) => e.stopPropagation()}>
                         <div title={!isWithinOperatingHours(machine.startTime, machine.endTime) ? "Cannot toggle during non-operating hours" : undefined}>
                           <Switch
