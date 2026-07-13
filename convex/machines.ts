@@ -141,6 +141,9 @@ export const getMachineData = query({
       workingDays: machine.workingDays,
       // Remote test dispense
       pendingDispenseId: machine.pendingDispenseId,
+      // Refill windows
+      serviceRefillStart: machine.serviceRefillStart,
+      serviceRefillEnd: machine.serviceRefillEnd,
     }
   },
 })
