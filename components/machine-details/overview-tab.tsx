@@ -54,8 +54,8 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
     try {
       await triggerDispense({ machineId: machine.id });
       toast.success("Test dispense command sent to machine");
-    } catch (error) {
-      toast.error("Failed to send dispense command");
+    } catch (error: any) {
+      toast.error(error?.message || "Failed to send dispense command");
     } finally {
       setIsDispensing(false);
     }
