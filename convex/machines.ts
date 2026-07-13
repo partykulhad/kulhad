@@ -159,7 +159,7 @@ export const triggerRemoteDispense = mutation({
 
     // Set a new unique ID so the kiosk knows it's a fresh command
     await ctx.db.patch(machine._id, {
-      pendingDispenseId: crypto.randomUUID()
+      pendingDispenseId: Date.now().toString() + "_" + Math.random().toString(36).substr(2, 9)
     })
     
     return { success: true }

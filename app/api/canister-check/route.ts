@@ -22,8 +22,13 @@ export async function POST(req: NextRequest) {
     })
 
     if (result.success && result.requestId && result.kitchenUserIds) {
+      // Normalize to an array (handles both string and string[])
+      const userIdsArray = Array.isArray(result.kitchenUserIds) 
+        ? result.kitchenUserIds 
+        : [result.kitchenUserIds];
+
       // Send notifications to all kitchen users
-      const notificationPromises = result.kitchenUserIds.map(async (userId) => {
+      const notificationPromises = userIdsArray.map(async (userId: string) => {
         const userDetails = await convex.query(api.appUsers.getUserById, { userId })
         if (userDetails && userDetails.fcmToken) {
           return sendStatusNotification(
