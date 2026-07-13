@@ -3,7 +3,11 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import type { Id } from "@/convex/_generated/dataModel";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Switch } from "@/components/ui/switch";
@@ -40,6 +44,21 @@ export function MachineDetails({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const now = useNow();
   const goingOnline = machine.status === "offline" || isMachineUnreachable(machine.status, machine.lastSeenAt, now);
+  
+  const triggerDispense = useMutation(api.machines.triggerRemoteDispense);
+  const [isDispensing, setIsDispensing] = useState(false);
+
+  const handleTestDispense = async () => {
+    setIsDispensing(true);
+    try {
+      await triggerDispense({ machineId: machine.id });
+      toast.success("Test dispense command sent to machine");
+    } catch (error) {
+      toast.error("Failed to send dispense command");
+    } finally {
+      setIsDispensing(false);
+    }
+  };
 
   const handleConfirm = () => {
     onStatusToggle(machine);
@@ -313,7 +332,17 @@ export function MachineDetails({
                 <CardContent className="pt-6">
                   <div className="space-y-4">
                     <div>
-                      <h3 className="font-semibold mb-2">Last Maintenance</h3>
+                      <h3 className="font-semibold mb-2 flex items-center justify-between">
+                        Last Maintenance
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          onClick={handleTestDispense}
+                          disabled={isDispensing || goingOnline}
+                        >
+                          {isDispensing ? "Sending..." : "Trigger Test Dispense"}
+                        </Button>
+                      </h3>
                       <p>{machine.lastFulfilled}</p>
                     </div>
                     {machine.deliveryBoy && (

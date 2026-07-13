@@ -139,7 +139,53 @@ export const getMachineData = query({
       lockPass: machine.lockPass,
       // Include working days
       workingDays: machine.workingDays,
+      // Remote test dispense
+      pendingDispenseId: machine.pendingDispenseId,
     }
+  },
+})
+
+export const triggerRemoteDispense = mutation({
+  args: { machineId: v.string() },
+  handler: async (ctx, args) => {
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), args.machineId))
+      .first()
+
+    if (!machine) {
+      throw new Error("Machine not found")
+    }
+
+    // Set a new unique ID so the kiosk knows it's a fresh command
+    await ctx.db.patch(machine._id, {
+      pendingDispenseId: crypto.randomUUID()
+    })
+    
+    return { success: true }
+  },
+})
+
+export const clearRemoteDispense = mutation({
+  args: { machineId: v.string(), dispenseId: v.string() },
+  handler: async (ctx, args) => {
+    const machine = await ctx.db
+      .query("machines")
+      .filter((q) => q.eq(q.field("id"), args.machineId))
+      .first()
+
+    if (!machine) {
+      throw new Error("Machine not found")
+    }
+
+    // Only clear if the ID matches what we're trying to clear
+    if (machine.pendingDispenseId === args.dispenseId) {
+      await ctx.db.patch(machine._id, {
+        pendingDispenseId: undefined
+      })
+    }
+    
+    return { success: true }
   },
 })
 

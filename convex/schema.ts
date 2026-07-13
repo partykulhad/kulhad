@@ -146,6 +146,8 @@ export default defineSchema({
       // "Refill at {serviceRefillEnd}" instead of a generic "Refill on its way" message.
       serviceRefillStart: v.optional(v.string()), // e.g. "13:00"
       serviceRefillEnd: v.optional(v.string()),   // e.g. "17:00"
+      // Remote test/purge dispense trigger
+      pendingDispenseId: v.optional(v.string()),
     })
       .index("by_machineId", ["id"])
       .index("by_status", ["status"]),
