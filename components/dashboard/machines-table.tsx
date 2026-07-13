@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Search, SortAsc, SortDesc } from "lucide-react";
-import { deriveCanisterLevel, isMachineUnreachable, useNow } from "@/lib/utils";
+import { deriveCanisterLevel, isMachineUnreachable, useNow, isWithinOperatingHours } from "@/lib/utils";
 
 interface Machine {
   _id: Id<"machines">;
@@ -40,6 +40,8 @@ interface Machine {
   waterLevelLow?: boolean;
   lastFulfilled: string;
   lastSeenAt?: number;
+  startTime?: string;
+  endTime?: string;
 }
 
 interface MachinesTableProps {
@@ -308,12 +310,18 @@ export function MachinesTable({
                         {formatRelativeTime(machine.lastFulfilled)}
                       </span>
                     </TableCell>
-                    <TableCell className="text-right">
-                      <div onClick={(e) => e.stopPropagation()}>
-                        <Switch
-                          checked={machine.status === "online" && !isMachineUnreachable(machine.status, machine.lastSeenAt, now)}
-                          onCheckedChange={() => setPendingMachine(machine)}
-                        />
+                      <div className="text-right flex justify-end" onClick={(e) => e.stopPropagation()}>
+                        <div title={!isWithinOperatingHours(machine.startTime, machine.endTime) ? "Cannot toggle during non-operating hours" : undefined}>
+                          <Switch
+                            disabled={!isWithinOperatingHours(machine.startTime, machine.endTime)}
+                            checked={machine.status === "online" && !isMachineUnreachable(machine.status, machine.lastSeenAt, now)}
+                            onCheckedChange={() => {
+                              if (isWithinOperatingHours(machine.startTime, machine.endTime)) {
+                                setPendingMachine(machine);
+                              }
+                            }}
+                          />
+                        </div>
                       </div>
                     </TableCell>
                   </motion.tr>
