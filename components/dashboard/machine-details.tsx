@@ -78,6 +78,14 @@ export function MachineDetails({
             <p className="text-sm text-muted-foreground">ID: {machine.id}</p>
           </div>
           <div className="flex items-center gap-4">
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleTestDispense}
+              disabled={isDispensing || goingOnline}
+            >
+              {isDispensing ? "Sending..." : "Test Dispense"}
+            </Button>
             <Badge
               variant={
                 isMachineUnreachable(machine.status, machine.lastSeenAt, now)
@@ -332,17 +340,7 @@ export function MachineDetails({
                 <CardContent className="pt-6">
                   <div className="space-y-4">
                     <div>
-                      <h3 className="font-semibold mb-2 flex items-center justify-between">
-                        Last Maintenance
-                        <Button 
-                          variant="secondary" 
-                          size="sm" 
-                          onClick={handleTestDispense}
-                          disabled={isDispensing || goingOnline}
-                        >
-                          {isDispensing ? "Sending..." : "Trigger Test Dispense"}
-                        </Button>
-                      </h3>
+                      <h3 className="font-semibold mb-2">Last Maintenance</h3>
                       <p>{machine.lastFulfilled}</p>
                     </div>
                     {machine.deliveryBoy && (
