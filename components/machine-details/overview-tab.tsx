@@ -1,6 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import { useMutation } from "convex/react";
+import { api } from "@/convex/_generated/api";
+import { toast } from "react-toastify";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -21,6 +25,7 @@ import {
   Thermometer,
   BarChart3,
   Droplet,
+  PlayIcon,
 } from "lucide-react";
 import {
   ResponsiveContainer,
@@ -41,6 +46,21 @@ interface OverviewTabProps {
 
 export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
   const now = useNow();
+  const triggerDispense = useMutation(api.machines.triggerRemoteDispense);
+  const [isDispensing, setIsDispensing] = useState(false);
+
+  const handleTestDispense = async () => {
+    setIsDispensing(true);
+    try {
+      await triggerDispense({ machineId: machine.id });
+      toast.success("Test dispense command sent to machine");
+    } catch (error) {
+      toast.error("Failed to send dispense command");
+    } finally {
+      setIsDispensing(false);
+    }
+  };
+
   const lastRefillTime = useMemo(() => {
     if (!machine || !machine.lastFulfilled) return null;
 
@@ -389,6 +409,27 @@ export function OverviewTab({ machine, transactionMetrics }: OverviewTabProps) {
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Updated on the same ~60s heartbeat as last-seen status
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Test Dispense Card */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium">Machine Actions</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col items-center justify-center pt-2">
+            <Button 
+              className="w-full h-12"
+              variant="outline"
+              onClick={handleTestDispense}
+              disabled={isDispensing || machine.status === "offline" || isMachineUnreachable(machine.status, machine.lastSeenAt, now)}
+            >
+              <PlayIcon className="mr-2 h-4 w-4" />
+              {isDispensing ? "Sending..." : "Test Dispense"}
+            </Button>
+            <p className="text-xs text-muted-foreground mt-2 text-center">
+              Remotely trigger a dispense (e.g. after refill)
             </p>
           </CardContent>
         </Card>

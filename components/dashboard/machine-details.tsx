@@ -78,14 +78,6 @@ export function MachineDetails({
             <p className="text-sm text-muted-foreground">ID: {machine.id}</p>
           </div>
           <div className="flex items-center gap-4">
-            <Button 
-              variant="outline" 
-              size="sm" 
-              onClick={handleTestDispense}
-              disabled={isDispensing || goingOnline}
-            >
-              {isDispensing ? "Sending..." : "Test Dispense"}
-            </Button>
             <Badge
               variant={
                 isMachineUnreachable(machine.status, machine.lastSeenAt, now)
