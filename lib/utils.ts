@@ -72,7 +72,7 @@ export function deriveCanisterLevel(cups: number | undefined): number {
 }
 
 export function isWithinTimeWindow(startTime?: string, endTime?: string): boolean {
-  if (!startTime || !endTime) return false;
+  if (!startTime || !endTime) return true;
 
   const now = new Date();
   

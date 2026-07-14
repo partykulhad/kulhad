@@ -58,7 +58,7 @@ import {
   Trash2,
   ExternalLink,
 } from "lucide-react";
-import { cn, isMachineUnreachable, useNow } from "@/lib/utils";
+import { cn, isMachineUnreachable, useNow, isWithinTimeWindow } from "@/lib/utils";
 import { format } from "date-fns";
 
 interface Address {
@@ -852,23 +852,27 @@ export default function AddMachineContent() {
                   </Badge>
                 </TableCell>
                 <TableCell>
-                  <Badge
-                    variant={
-                      machine.status === "online" &&
-                      !isMachineUnreachable(machine.status, machine.lastSeenAt, now)
-                        ? "success"
-                        : "destructive"
-                    }
-                    className="cursor-pointer"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setPendingMachine(machine);
-                    }}
-                  >
-                    {isMachineUnreachable(machine.status, machine.lastSeenAt, now)
-                      ? "offline"
-                      : machine.status}
-                  </Badge>
+                  <div title={!isWithinTimeWindow(machine.startTime, machine.endTime) ? "Cannot toggle during non-operating hours" : undefined}>
+                    <Badge
+                      variant={
+                        machine.status === "online" &&
+                        !isMachineUnreachable(machine.status, machine.lastSeenAt, now)
+                          ? "success"
+                          : "destructive"
+                      }
+                      className={isWithinTimeWindow(machine.startTime, machine.endTime) ? "cursor-pointer" : "opacity-50 cursor-not-allowed"}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (isWithinTimeWindow(machine.startTime, machine.endTime)) {
+                          setPendingMachine(machine);
+                        }
+                      }}
+                    >
+                      {isMachineUnreachable(machine.status, machine.lastSeenAt, now)
+                        ? "offline"
+                        : machine.status}
+                    </Badge>
+                  </div>
                 </TableCell>
                 <TableCell>
                   {machine.startTime || "00:00"} - {machine.endTime || "24:00"}

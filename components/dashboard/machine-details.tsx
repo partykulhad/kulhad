@@ -44,7 +44,7 @@ export function MachineDetails({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const now = useNow();
   const goingOnline = machine.status === "offline" || isMachineUnreachable(machine.status, machine.lastSeenAt, now);
-  const isNonOperatingHours = isWithinTimeWindow(machine?.serviceRefillStart, machine?.serviceRefillEnd);
+  const isOperational = isWithinTimeWindow(machine.startTime, machine.endTime);
   
   const triggerDispense = useMutation(api.machines.triggerRemoteDispense);
   const [isDispensing, setIsDispensing] = useState(false);
@@ -93,12 +93,12 @@ export function MachineDetails({
                 ? "offline"
                 : machine.status}
             </Badge>
-            <div title={isNonOperatingHours ? "Cannot toggle during non-operating hours" : undefined}>
+            <div title={!isOperational ? "Cannot toggle during non-operating hours" : undefined}>
               <Switch
-                disabled={isNonOperatingHours}
+                disabled={!isOperational}
                 checked={machine.status === "online" && !isMachineUnreachable(machine.status, machine.lastSeenAt, now)}
                 onCheckedChange={() => {
-                  if (!isNonOperatingHours) setConfirmOpen(true);
+                  if (isOperational) setConfirmOpen(true);
                 }}
               />
             </div>

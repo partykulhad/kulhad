@@ -314,12 +314,12 @@ export function MachinesTable({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="text-right flex justify-end" onClick={(e) => e.stopPropagation()}>
-                        <div title={isWithinTimeWindow(machine.serviceRefillStart, machine.serviceRefillEnd) ? "Cannot toggle during non-operating hours" : undefined}>
+                        <div title={!isWithinTimeWindow(machine.startTime, machine.endTime) ? "Cannot toggle during non-operating hours" : undefined}>
                           <Switch
-                            disabled={isWithinTimeWindow(machine.serviceRefillStart, machine.serviceRefillEnd)}
+                            disabled={!isWithinTimeWindow(machine.startTime, machine.endTime)}
                             checked={machine.status === "online" && !isMachineUnreachable(machine.status, machine.lastSeenAt, now)}
                             onCheckedChange={() => {
-                              if (!isWithinTimeWindow(machine.serviceRefillStart, machine.serviceRefillEnd)) {
+                              if (isWithinTimeWindow(machine.startTime, machine.endTime)) {
                                 setPendingMachine(machine);
                               }
                             }}
