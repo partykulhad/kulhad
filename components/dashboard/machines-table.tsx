@@ -27,7 +27,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Search, SortAsc, SortDesc } from "lucide-react";
-import { deriveCanisterLevel, isMachineUnreachable, useNow, isWithinOperatingHours } from "@/lib/utils";
+import { deriveCanisterLevel, isMachineUnreachable, useNow, isWithinTimeWindow } from "@/lib/utils";
 
 interface Machine {
   _id: Id<"machines">;
@@ -42,6 +42,8 @@ interface Machine {
   lastSeenAt?: number;
   startTime?: string;
   endTime?: string;
+  serviceRefillStart?: string;
+  serviceRefillEnd?: string;
 }
 
 interface MachinesTableProps {
@@ -312,12 +314,12 @@ export function MachinesTable({
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="text-right flex justify-end" onClick={(e) => e.stopPropagation()}>
-                        <div title={!isWithinOperatingHours(machine.startTime, machine.endTime) ? "Cannot toggle during non-operating hours" : undefined}>
+                        <div title={isWithinTimeWindow(machine.serviceRefillStart, machine.serviceRefillEnd) ? "Cannot toggle during non-operating hours" : undefined}>
                           <Switch
-                            disabled={!isWithinOperatingHours(machine.startTime, machine.endTime)}
+                            disabled={isWithinTimeWindow(machine.serviceRefillStart, machine.serviceRefillEnd)}
                             checked={machine.status === "online" && !isMachineUnreachable(machine.status, machine.lastSeenAt, now)}
                             onCheckedChange={() => {
-                              if (isWithinOperatingHours(machine.startTime, machine.endTime)) {
+                              if (!isWithinTimeWindow(machine.serviceRefillStart, machine.serviceRefillEnd)) {
                                 setPendingMachine(machine);
                               }
                             }}

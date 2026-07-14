@@ -30,7 +30,7 @@ import {
   StarIcon,
   TruckIcon,
 } from "lucide-react";
-import { deriveCanisterLevel, isMachineUnreachable, useNow, isWithinOperatingHours } from "@/lib/utils";
+import { deriveCanisterLevel, isMachineUnreachable, useNow, isWithinTimeWindow } from "@/lib/utils";
 
 interface MachineDetailsProps {
   machine: any; // Update this with proper type
@@ -44,7 +44,7 @@ export function MachineDetails({
   const [confirmOpen, setConfirmOpen] = useState(false);
   const now = useNow();
   const goingOnline = machine.status === "offline" || isMachineUnreachable(machine.status, machine.lastSeenAt, now);
-  const isOperational = isWithinOperatingHours(machine.startTime, machine.endTime);
+  const isNonOperatingHours = isWithinTimeWindow(machine?.serviceRefillStart, machine?.serviceRefillEnd);
   
   const triggerDispense = useMutation(api.machines.triggerRemoteDispense);
   const [isDispensing, setIsDispensing] = useState(false);
@@ -93,12 +93,12 @@ export function MachineDetails({
                 ? "offline"
                 : machine.status}
             </Badge>
-            <div title={!isOperational ? "Cannot toggle during non-operating hours" : undefined}>
+            <div title={isNonOperatingHours ? "Cannot toggle during non-operating hours" : undefined}>
               <Switch
-                disabled={!isOperational}
+                disabled={isNonOperatingHours}
                 checked={machine.status === "online" && !isMachineUnreachable(machine.status, machine.lastSeenAt, now)}
                 onCheckedChange={() => {
-                  if (isOperational) setConfirmOpen(true);
+                  if (!isNonOperatingHours) setConfirmOpen(true);
                 }}
               />
             </div>

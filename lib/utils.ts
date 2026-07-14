@@ -71,8 +71,8 @@ export function deriveCanisterLevel(cups: number | undefined): number {
   return Math.min(100, Math.round((cups / ASSUMED_MAX_CUPS) * 100))
 }
 
-export function isWithinOperatingHours(startTime?: string, endTime?: string): boolean {
-  if (!startTime || !endTime) return true;
+export function isWithinTimeWindow(startTime?: string, endTime?: string): boolean {
+  if (!startTime || !endTime) return false;
 
   const now = new Date();
   
